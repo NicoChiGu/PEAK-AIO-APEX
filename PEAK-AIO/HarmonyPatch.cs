@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Photon.Pun;
 using System;
 using UnityEngine;
@@ -53,6 +53,9 @@ public class FlyPatch
 
     static void Postfix(Character __instance)
     {
+        if (!ConfigManager.FlyMod.Value && !isFlying)
+            return;
+
         if (!__instance.IsLocal)
             return;
 
@@ -93,12 +96,12 @@ public class FlyPatch
 
         flyVelocity = Vector3.Lerp(flyVelocity, moveVec.normalized * speed, Time.deltaTime * accel);
 
-        foreach (var part in __instance.refs.ragdoll.partList)
+        var partList = __instance.refs.ragdoll.partList;
+        for (int i = 0; i < partList.Count; i++)
         {
-            if (part?.Rig != null)
-            {
-                part.Rig.linearVelocity = flyVelocity;
-            }
+            var rig = partList[i]?.Rig;
+            if (rig != null)
+                rig.linearVelocity = flyVelocity;
         }
     }
 }
@@ -106,9 +109,25 @@ public class FlyPatch
 [HarmonyPatch(typeof(CharacterAfflictions), "UpdateWeight")]
 public class Patch_UpdateWeight
 {
+    private static CharacterAfflictions cachedLocalAfflictions;
+    private static Character cachedLocalCharacter;
+
     static void Postfix(CharacterAfflictions __instance)
     {
-        if (ConfigManager.NoWeight.Value)
+        if (!ConfigManager.NoWeight.Value)
+            return;
+
+        var localChar = Character.localCharacter;
+        if (ReferenceEquals(localChar, null))
+            return;
+
+        if (!ReferenceEquals(localChar, cachedLocalCharacter))
+        {
+            cachedLocalCharacter = localChar;
+            cachedLocalAfflictions = localChar.GetComponent<CharacterAfflictions>();
+        }
+
+        if (ReferenceEquals(__instance, cachedLocalAfflictions))
         {
             __instance.SetStatus(CharacterAfflictions.STATUSTYPE.Weight, 0f);
         }

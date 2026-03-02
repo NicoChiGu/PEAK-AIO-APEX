@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using UnityEngine;
 
 internal static class GameHelpers
 {
@@ -10,65 +10,96 @@ internal static class GameHelpers
     private static CharacterVineClimbing vineClimbingComponent;
     private static CharacterRopeHandling ropeClimbingComponent;
 
-    public static Character GetCharacterComponent()
+    private static bool cacheValid = false;
+
+    public static void InvalidateCache()
     {
+        if (!cacheValid)
+            return;
+
+        cacheValid = false;
+
         if (character == null || !character.isActiveAndEnabled)
         {
+            character = null;
+            movementComponent = null;
+            afflictionsComponent = null;
+            climbingComponent = null;
+            vineClimbingComponent = null;
+            ropeClimbingComponent = null;
+        }
+    }
+
+    public static Character GetCharacterComponent()
+    {
+        if (ReferenceEquals(character, null))
+        {
             character = Character.localCharacter;
+            cacheValid = true;
         }
         return character;
     }
 
     public static CharacterData GetCharacterData()
     {
-        if (characterData == null || !characterData.isActiveAndEnabled)
+        if (ReferenceEquals(characterData, null))
         {
-            characterData = UnityEngine.Object.FindFirstObjectByType<CharacterData>();
+            characterData = Object.FindFirstObjectByType<CharacterData>();
         }
         return characterData;
     }
 
     public static CharacterMovement GetMovementComponent()
     {
-        if (movementComponent == null || !movementComponent.isActiveAndEnabled)
+        if (ReferenceEquals(movementComponent, null))
         {
-            movementComponent = GetCharacterComponent()?.GetComponent<CharacterMovement>();
+            var c = GetCharacterComponent();
+            if (!ReferenceEquals(c, null))
+                movementComponent = c.GetComponent<CharacterMovement>();
         }
         return movementComponent;
     }
 
     public static CharacterAfflictions GetAfflictionsComponent()
     {
-        if (afflictionsComponent == null || !afflictionsComponent.isActiveAndEnabled)
+        if (ReferenceEquals(afflictionsComponent, null))
         {
-            afflictionsComponent = GetCharacterComponent()?.GetComponent<CharacterAfflictions>();
+            var c = GetCharacterComponent();
+            if (!ReferenceEquals(c, null))
+                afflictionsComponent = c.GetComponent<CharacterAfflictions>();
         }
         return afflictionsComponent;
     }
 
     public static CharacterClimbing GetClimbingComponent()
     {
-        if (climbingComponent == null || !climbingComponent.isActiveAndEnabled)
+        if (ReferenceEquals(climbingComponent, null))
         {
-            climbingComponent = GetCharacterComponent()?.GetComponent<CharacterClimbing>();
+            var c = GetCharacterComponent();
+            if (!ReferenceEquals(c, null))
+                climbingComponent = c.GetComponent<CharacterClimbing>();
         }
         return climbingComponent;
     }
 
     public static CharacterVineClimbing GetVineClimbComponent()
     {
-        if (vineClimbingComponent == null || !vineClimbingComponent.isActiveAndEnabled)
+        if (ReferenceEquals(vineClimbingComponent, null))
         {
-            vineClimbingComponent = GetCharacterComponent()?.GetComponent<CharacterVineClimbing>();
+            var c = GetCharacterComponent();
+            if (!ReferenceEquals(c, null))
+                vineClimbingComponent = c.GetComponent<CharacterVineClimbing>();
         }
         return vineClimbingComponent;
     }
 
     public static CharacterRopeHandling GetRopeClimbComponent()
     {
-        if (ropeClimbingComponent == null || !ropeClimbingComponent.isActiveAndEnabled)
+        if (ReferenceEquals(ropeClimbingComponent, null))
         {
-            ropeClimbingComponent = GetCharacterComponent()?.GetComponent<CharacterRopeHandling>();
+            var c = GetCharacterComponent();
+            if (!ReferenceEquals(c, null))
+                ropeClimbingComponent = c.GetComponent<CharacterRopeHandling>();
         }
         return ropeClimbingComponent;
     }
@@ -82,5 +113,6 @@ internal static class GameHelpers
         climbingComponent = null;
         vineClimbingComponent = null;
         ropeClimbingComponent = null;
+        cacheValid = false;
     }
 }

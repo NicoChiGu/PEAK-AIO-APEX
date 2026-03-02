@@ -1,50 +1,76 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class EventComponent : MonoBehaviour
 {
+    private float stateTimer = 0f;
+    private float validationTimer = 0f;
+    private const float STATE_INTERVAL = 0.1f;
+    private const float VALIDATION_INTERVAL = 1f;
+
     private void Update()
     {
-        var movement = GameHelpers.GetMovementComponent();
-        if (movement != null)
+        validationTimer += Time.deltaTime;
+        if (validationTimer >= VALIDATION_INTERVAL)
         {
-            if (ConfigManager.SpeedMod.Value)
-                ConstantFields.GetMovementModifierField()?.SetValue(movement, ConfigManager.SpeedAmount.Value);
+            validationTimer = 0f;
+            GameHelpers.InvalidateCache();
+        }
 
-            if (ConfigManager.JumpMod.Value)
+        if (ConfigManager.SpeedMod.Value || ConfigManager.JumpMod.Value)
+        {
+            var movement = GameHelpers.GetMovementComponent();
+            if (movement != null)
             {
-                ConstantFields.GetJumpGravityField()?.SetValue(movement, ConfigManager.JumpAmount.Value);
+                if (ConfigManager.SpeedMod.Value)
+                    ConstantFields.GetMovementModifierField()?.SetValue(movement, ConfigManager.SpeedAmount.Value);
 
-                if (ConfigManager.NoFallDmg.Value)
-                    ConstantFields.GetFallDamageTimeField()?.SetValue(movement, 999f);
+                if (ConfigManager.JumpMod.Value)
+                {
+                    ConstantFields.GetJumpGravityField()?.SetValue(movement, ConfigManager.JumpAmount.Value);
+
+                    if (ConfigManager.NoFallDmg.Value)
+                        ConstantFields.GetFallDamageTimeField()?.SetValue(movement, 999f);
+                }
             }
         }
 
-        var character = GameHelpers.GetCharacterComponent();
-        if (character != null)
+        if (ConfigManager.ClimbMod.Value)
         {
-            if (ConfigManager.InfiniteStamina.Value)
-                ConstantFields.GetInfiniteStaminaProperty()?.SetValue(character, true);
-
-            if (ConfigManager.LockStatus.Value)
-                ConstantFields.GetStatusLockProperty()?.SetValue(character, true);
+            var climb = GameHelpers.GetClimbingComponent();
+            if (climb != null)
+                ConstantFields.GetClimbSpeedModField()?.SetValue(climb, ConfigManager.ClimbAmount.Value);
         }
 
-        var climb = GameHelpers.GetClimbingComponent();
-        if (climb != null && ConfigManager.ClimbMod.Value)
+        if (ConfigManager.VineClimbMod.Value)
         {
-            ConstantFields.GetClimbSpeedModField()?.SetValue(climb, ConfigManager.ClimbAmount.Value);
+            var vine = GameHelpers.GetVineClimbComponent();
+            if (vine != null)
+                ConstantFields.GetVineClimbSpeedModField()?.SetValue(vine, ConfigManager.VineClimbAmount.Value);
         }
 
-        var vine = GameHelpers.GetVineClimbComponent();
-        if (vine != null && ConfigManager.VineClimbMod.Value)
+        if (ConfigManager.RopeClimbMod.Value)
         {
-            ConstantFields.GetVineClimbSpeedModField()?.SetValue(vine, ConfigManager.VineClimbAmount.Value);
+            var rope = GameHelpers.GetRopeClimbComponent();
+            if (rope != null)
+                ConstantFields.GetRopeClimbSpeedModField()?.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
         }
 
-        var rope = GameHelpers.GetRopeClimbComponent();
-        if (rope != null && ConfigManager.RopeClimbMod.Value)
+        stateTimer += Time.deltaTime;
+        if (stateTimer < STATE_INTERVAL)
+            return;
+        stateTimer = 0f;
+
+        if (ConfigManager.InfiniteStamina.Value || ConfigManager.LockStatus.Value)
         {
-            ConstantFields.GetRopeClimbSpeedModField()?.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
+            var character = GameHelpers.GetCharacterComponent();
+            if (character != null)
+            {
+                if (ConfigManager.InfiniteStamina.Value)
+                    ConstantFields.GetInfiniteStaminaProperty()?.SetValue(character, true);
+
+                if (ConfigManager.LockStatus.Value)
+                    ConstantFields.GetStatusLockProperty()?.SetValue(character, true);
+            }
         }
     }
 }
