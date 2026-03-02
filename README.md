@@ -1,5 +1,15 @@
 <img width="539" height="339" alt="屏幕截图 2026-03-03 023947" src="https://github.com/user-attachments/assets/94fcbccf-5833-4e3f-8beb-6d5709f11481" /># PEAK AIO Mod
 
+[![Stars](https://img.shields.io/github/stars/elliot35/PEAK-AIO-int?style=flat)](https://github.com/elliot35/PEAK-AIO-int/stargazers)
+[![Forks](https://img.shields.io/github/forks/elliot35/PEAK-AIO-int?style=flat)](https://github.com/elliot35/PEAK-AIO-int/network/members)
+[![Contributors](https://img.shields.io/github/contributors/elliot35/PEAK-AIO-int?style=flat)](https://github.com/elliot35/PEAK-AIO-int/graphs/contributors)
+![C#](https://img.shields.io/badge/-C%23-239120?logo=csharp&logoColor=white)
+![.NET Framework](https://img.shields.io/badge/-.NET_Framework_4.7.2-512BD4?logo=dotnet&logoColor=white)
+![English](https://img.shields.io/badge/lang-English-blue)
+![中文](https://img.shields.io/badge/lang-简体中文-red)
+![日本語](https://img.shields.io/badge/lang-日本語-green)
+![한국어](https://img.shields.io/badge/lang-한국어-orange)
+
 An all-in-one mod menu for [PEAK](https://store.steampowered.com/app/2873498/PEAK/) that brings together player enhancements, inventory tools, teleportation, world interaction, and lobby control in a clean, tabbed ImGui interface.
 
 Supports **English**, **简体中文**, **日本語**, and **한국어**.
@@ -98,7 +108,7 @@ Supports **English**, **简体中文**, **日本語**, and **한국어**.
 
 ### Step 3 — Install PEAK AIO
 
-1. Download the latest `PEAK-AIO.dll` from the [Releases](https://github.com/OniGremlin/PEAK-AIO/releases) page.
+1. Download the latest `PEAK-AIO.dll` from the [Releases](https://github.com/elliot35/PEAK-AIO-int/releases) page.
 2. Place `PEAK-AIO.dll` into `BepInEx/plugins/`.
 
 ### Step 4 — Launch
@@ -239,7 +249,7 @@ The **World** tab lists all luggage and containers within 300 meters. You can re
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/OniGremlin/PEAK-AIO.git
+   git clone https://github.com/elliot35/PEAK-AIO-int.git
    cd PEAK-AIO
    ```
 2. Open `PEAK-AIO.sln` in Visual Studio.
