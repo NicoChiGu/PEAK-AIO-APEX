@@ -121,7 +121,6 @@ public static class CJKFontPatch
             var io = ImGui.GetIO();
             var fonts = io.Fonts;
 
-            fonts.Clear();
             fonts.AddFontDefault();
 
             float fontSize = 13.0f;
@@ -142,14 +141,13 @@ public static class CJKFontPatch
                 fonts.AddFontFromFileTTF(malgunPath, fontSize, mergeConfig, fonts.GetGlyphRangesKorean());
             }
 
-            fonts.Build();
             mergeConfig.Destroy();
 
-            ConfigManager.Logger.LogInfo("[PEAK AIO] CJK font atlas rebuilt.");
+            ConfigManager.Logger.LogInfo("[PEAK AIO] CJK font configs registered.");
         }
         catch (Exception ex)
         {
-            ConfigManager.Logger.LogWarning("[PEAK AIO] CJK font loading failed: " + ex.Message);
+            ConfigManager.Logger.LogWarning("[PEAK AIO] CJK font config failed: " + ex.Message);
         }
     }
 }
