@@ -1,4 +1,4 @@
-﻿using BepInEx.Logging;
+using BepInEx.Logging;
 using DearImGuiInjection.BepInEx;
 using Photon.Pun;
 using System;
@@ -147,8 +147,9 @@ public static class Utilities
 
                 foreach (var character in Character.AllCharacters)
                 {
+                    if (character == null) continue;
                     Globals.allPlayers.Add(character);
-                    Globals.playerNames.Add(character.characterName);
+                    Globals.playerNames.Add(character.characterName ?? "Unknown");
                 }
                 Logger.LogInfo($"[PlayerList] Found {Globals.allPlayers.Count} players.");
             }
@@ -331,7 +332,7 @@ public static class Utilities
 
     public static void EnsureLuggageListInitialized()
     {
-        if (!hasInitializedLuggageList)
+        if (!hasInitializedLuggageList && Character.localCharacter != null)
         {
             hasInitializedLuggageList = true;
             RefreshLuggageList();
@@ -344,6 +345,9 @@ public static class Utilities
         Globals.luggageLabels.Clear();
         Globals.luggageObject.Clear();
         Globals.selectedLuggageIndex = -1;
+
+        if (Character.localCharacter == null)
+            return;
 
         var allLuggage = new List<(Luggage lug, float distance)>();
 
