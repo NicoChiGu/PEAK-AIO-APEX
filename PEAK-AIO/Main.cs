@@ -13,7 +13,7 @@ using Photon.Pun;
 using System.Collections.Generic;
 
 [BepInDependency(DearImGuiInjection.Metadata.GUID)]
-[BepInPlugin("com.onigremlin.peakaio", "PEAK AIO Mod", "1.0.2")]
+[BepInPlugin("com.onigremlin.peakaio", "PEAK AIO Mod", "1.0.10")]
 
 public class PeakMod : BaseUnityPlugin
 {
@@ -137,13 +137,32 @@ public class PeakMod : BaseUnityPlugin
         mergeConfig.Destroy();
 
         var assembly = typeof(DearImGuiInjection.DearImGuiInjection).Assembly;
-        var implType = assembly.GetType("DearImGuiInjection.Backends.ImGuiDX11Impl")
-                    ?? assembly.GetType("DearImGuiInjection.Backends.ImGuiDX12Impl");
+        string[] backendTypeNames = {
+            "DearImGuiInjection.Backends.ImGuiDX12Impl",
+            "DearImGuiInjection.Backends.ImGuiDX11Impl"
+        };
 
-        if (implType != null)
+        foreach (var typeName in backendTypeNames)
         {
-            var createFontsTexture = implType.GetMethod("CreateFontsTexture", BindingFlags.Public | BindingFlags.Static);
-            createFontsTexture?.Invoke(null, null);
+            try
+            {
+                var implType = assembly.GetType(typeName);
+                if (implType == null) continue;
+
+                var deviceField = implType.GetField("_device", BindingFlags.NonPublic | BindingFlags.Static);
+                if (deviceField == null || deviceField.GetValue(null) == null) continue;
+
+                var method = implType.GetMethod("CreateFontsTexture", BindingFlags.Public | BindingFlags.Static);
+                if (method == null) continue;
+
+                method.Invoke(null, null);
+                Logger.LogInfo($"[PEAK AIO] Font texture recreated via {typeName}");
+                break;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PEAK AIO] {typeName} font texture failed: {ex.Message}");
+            }
         }
     }
 
