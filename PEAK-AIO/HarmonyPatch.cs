@@ -136,22 +136,24 @@ public static class CJKFontPatch
             var io = ImGui.GetIO();
             var fonts = io.Fonts;
 
-            // Clear any pre-existing fonts added by DearImGuiInjection during InitImGui().
-            // At this point no GPU texture exists yet, so this is safe.
-            fonts.Clear();
-
             rangesHandle = GCHandle.Alloc(CombinedRanges, GCHandleType.Pinned);
             IntPtr rangesPtr = rangesHandle.AddrOfPinnedObject();
 
             string msyhPath = @"C:\Windows\Fonts\msyh.ttc";
             if (System.IO.File.Exists(msyhPath))
             {
+                // Add CJK font alongside DearImGuiInjection's existing default font.
+                // We can't Clear() existing fonts (crashes due to dangling internal pointers)
+                // and MergeMode doesn't work (struct layout mismatch with bundled cimgui).
+                // Instead, add as a second font and redirect all rendering to it.
                 var cjkFont = fonts.AddFontFromFileTTF(msyhPath, 14.0f, default, rangesPtr);
                 ConfigManager.Logger.LogInfo($"[PEAK AIO] CJK primary font (msyh): {(cjkFont.NativePtr != null ? "OK" : "FAILED")}");
+
+                if (cjkFont.NativePtr != null)
+                    io.NativePtr->FontDefault = cjkFont.NativePtr;
             }
             else
             {
-                fonts.AddFontDefault();
                 ConfigManager.Logger.LogWarning("[PEAK AIO] msyh.ttc not found, using default font.");
             }
 
