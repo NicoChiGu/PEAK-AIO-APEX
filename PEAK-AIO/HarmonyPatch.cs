@@ -265,6 +265,7 @@ public static class ImGuiInputPatch
             var winSize = ImGui.GetWindowSize();
             bool winHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
             bool anyItemHovered = ImGui.IsAnyItemHovered();
+            int activeWins = io.MetricsActiveWindows;
 
             if (cachedLButton)
             {
@@ -274,7 +275,8 @@ public static class ImGuiInputPatch
 
                 ConfigManager.Logger.LogInfo(
                     $"[InputPatch-Render] CLICK clicked={isClicked} isDown={isDown} " +
-                    $"winHovered={winHovered} anyItemHovered={anyItemHovered} " +
+                    $"winHovered={winHovered} itemHovered={anyItemHovered} " +
+                    $"activeWindows={activeWins} " +
                     $"imguiPos=({io.MousePos.X:F0},{io.MousePos.Y:F0}) " +
                     $"winPos=({winPos.X:F0},{winPos.Y:F0}) winSize=({winSize.X:F0},{winSize.Y:F0})");
             }
@@ -282,7 +284,8 @@ public static class ImGuiInputPatch
             {
                 renderLogFrames++;
                 ConfigManager.Logger.LogInfo(
-                    $"[InputPatch-Render] winHovered={winHovered} anyItemHovered={anyItemHovered} " +
+                    $"[InputPatch-Render] winHovered={winHovered} itemHovered={anyItemHovered} " +
+                    $"activeWindows={activeWins} " +
                     $"imguiPos=({io.MousePos.X:F0},{io.MousePos.Y:F0}) " +
                     $"winPos=({winPos.X:F0},{winPos.Y:F0}) winSize=({winSize.X:F0},{winSize.Y:F0})");
             }

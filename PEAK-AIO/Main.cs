@@ -302,6 +302,7 @@ public class PeakMod : BaseUnityPlugin
             // Set window position and size
             ImGui.SetNextWindowPos(new System.Numerics.Vector2(20, 20), ImGuiCond.Once);
             ImGui.SetNextWindowSize(new System.Numerics.Vector2(500, 300), ImGuiCond.Once);
+            ImGui.SetNextWindowFocus();
 
             if (ImGui.Begin("PEAK AIO##Main", ImGuiWindowFlags.NoCollapse))
             {
