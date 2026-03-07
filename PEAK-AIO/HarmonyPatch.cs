@@ -215,11 +215,24 @@ public static class ImGuiInputPatch
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
     [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
     private static extern unsafe void ImGuiIO_AddMouseButtonEvent(ImGuiIO* self, int mouse_button, byte mouse_down);
 
     [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
     private static extern unsafe void ImGuiIO_AddMouseWheelEvent(ImGuiIO* self, float wheel_x, float wheel_y);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
 
     private const int VK_LBUTTON = 0x01;
     private const int VK_RBUTTON = 0x02;
@@ -227,12 +240,30 @@ public static class ImGuiInputPatch
 
     private static bool cachedLButton, cachedRButton, cachedMButton;
     private static float cachedScroll;
+    private static float cachedMouseX, cachedMouseY;
     private static bool forceInput;
     private static int logFrames;
     private static int renderLogFrames;
     private static bool nativeApiWorks = true;
+    private static IntPtr gameWindowHandle = IntPtr.Zero;
+
+    private static IntPtr GetGameWindow()
+    {
+        if (gameWindowHandle == IntPtr.Zero)
+        {
+            try { gameWindowHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle; }
+            catch { }
+        }
+        return gameWindowHandle;
+    }
 
     public static void SetForceInput(bool enabled) => forceInput = enabled;
+
+    public static void ResetLogs()
+    {
+        logFrames = 0;
+        renderLogFrames = 0;
+    }
 
     public static void CaptureInput()
     {
@@ -242,6 +273,21 @@ public static class ImGuiInputPatch
 
         try { cachedScroll = UnityEngine.Input.mouseScrollDelta.y; }
         catch { cachedScroll = 0f; }
+
+        try
+        {
+            if (GetCursorPos(out POINT screenPos))
+            {
+                POINT clientPos = screenPos;
+                IntPtr hwnd = GetGameWindow();
+                if (hwnd != IntPtr.Zero && ScreenToClient(hwnd, ref clientPos))
+                {
+                    cachedMouseX = clientPos.X;
+                    cachedMouseY = clientPos.Y;
+                }
+            }
+        }
+        catch { }
     }
 
     public static unsafe void ApplyToImGui()
@@ -251,6 +297,11 @@ public static class ImGuiInputPatch
         try
         {
             var io = ImGui.GetIO();
+
+            int origFlags = (int)io.ConfigFlags;
+            io.ConfigFlags &= ~ImGuiConfigFlags.NoMouse;
+
+            io.MousePos = new System.Numerics.Vector2(cachedMouseX, cachedMouseY);
 
             if (nativeApiWorks)
             {
@@ -274,13 +325,16 @@ public static class ImGuiInputPatch
             io.MouseDown[2] = cachedMButton;
             io.MouseWheel = cachedScroll;
 
-            if (logFrames < 3)
+            if (logFrames < 5)
             {
                 logFrames++;
+                bool hadNoMouse = (origFlags & (int)ImGuiConfigFlags.NoMouse) != 0;
                 ConfigManager.Logger.LogInfo(
-                    $"[InputPatch] nativeApi={nativeApiWorks} " +
+                    $"[InputPatch] nativeApi={nativeApiWorks} hadNoMouse={hadNoMouse} " +
+                    $"win32Pos=({cachedMouseX:F0},{cachedMouseY:F0}) " +
                     $"imguiPos=({io.MousePos.X:F0},{io.MousePos.Y:F0}) " +
-                    $"displaySize=({io.DisplaySize.X:F0},{io.DisplaySize.Y:F0})");
+                    $"displaySize=({io.DisplaySize.X:F0},{io.DisplaySize.Y:F0}) " +
+                    $"hwnd={gameWindowHandle}");
             }
         }
         catch (Exception ex)

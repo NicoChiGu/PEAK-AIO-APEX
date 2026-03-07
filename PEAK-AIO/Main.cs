@@ -212,6 +212,7 @@ public class PeakMod : BaseUnityPlugin
 
             cursorVisibleField?.SetValue(null, showMenu);
             updateCursorMethod?.Invoke(null, null);
+            ImGuiInputPatch.ResetLogs();
         }
 
         if (showMenu)
@@ -324,6 +325,9 @@ public class PeakMod : BaseUnityPlugin
 
             ImGuiInputPatch.ApplyToImGui();
 
+            var io = ImGui.GetIO();
+            io.ConfigFlags &= ~ImGuiConfigFlags.NoMouse;
+
             if (!styleApplied)
             {
                 ApplyCustomStyle();
@@ -341,9 +345,9 @@ public class PeakMod : BaseUnityPlugin
                 fontPushed = true;
             }
 
-            // Set window position and size
             ImGui.SetNextWindowPos(new System.Numerics.Vector2(20, 20), ImGuiCond.Once);
             ImGui.SetNextWindowSize(new System.Numerics.Vector2(500, 300), ImGuiCond.Once);
+            ImGui.SetNextWindowFocus();
 
             if (ImGui.Begin("PEAK AIO##Main", ImGuiWindowFlags.NoCollapse))
             {
