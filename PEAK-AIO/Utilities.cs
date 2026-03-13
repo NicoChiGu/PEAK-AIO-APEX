@@ -206,6 +206,11 @@ public static class Utilities
         Logger.LogInfo($"Type: {type}");
         Logger.LogInfo($"InstanceID: {instanceID}");
         Logger.LogInfo($"Hash: {hash}");
+
+        foreach (var field in Player.localPlayer.GetType().GetFields())
+        {
+            Logger.LogInfo($"Field: {field.Name}");
+        }
     }
     public static void ReviveAllPlayers()
     {

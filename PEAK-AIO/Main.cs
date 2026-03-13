@@ -1034,7 +1034,7 @@ public class PeakMod : BaseUnityPlugin
 						}
 						else
 						{
-							Logger.LogInfo("[DEBUG] 输入的槽位无效");
+							Logger.LogInfo("[DEBUG] Invalid slot number");
 						}
 					}
 
