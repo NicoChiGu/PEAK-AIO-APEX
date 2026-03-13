@@ -75,4 +75,7 @@ public static class Globals
     public static List<Luggage> luggageObject = new List<Luggage>();
     public static List<Luggage> allOpenedLuggage = new List<Luggage>();
 
+
+    // Debug
+    public static string debugSlotBuffer = "0";
 }

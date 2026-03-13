@@ -175,8 +175,9 @@ public static class Utilities
         });
     }
 
-    public static void GetItemsLogs(int slot = 1)
+    public static void GetItemsLogs()
     {
+        var slot = Globals.debugSlotBuffer;
         if (Player.localPlayer?.itemSlots == null || slot >= Player.localPlayer.itemSlots.Length)
         {
             Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} is empty or invalid");
