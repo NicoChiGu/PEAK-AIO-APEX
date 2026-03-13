@@ -8,6 +8,7 @@ using System.Xml;
 using System.Reflection;
 using System;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using HarmonyLib;
 using Photon.Pun;
 using System.Collections.Generic;
