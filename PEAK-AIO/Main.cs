@@ -1013,21 +1013,31 @@ public class PeakMod : BaseUnityPlugin
 				}
 
 				// Debug
-				else if (selectedTab == 7)
+				else if (selectedTab == 7) // Debug
 				{
 					ImGui.Indent(4.0f);
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
 
-					var slotNum = 0;
-					var debugMessage;
+					// 用字符串接收输入
+					if (Globals.debugSlotBuffer == null)
+						Globals.debugSlotBuffer = new string('0', 8); // 初始化 buffer
 
-					ImGui.InputText($"##ItemSearch{slot}", ref slotNum, 128);
-					if (ImGui.Button($"DEBUG"))
+					ImGui.InputText("##DebugSlot", ref Globals.debugSlotBuffer, 8);
+
+					if (ImGui.Button("DEBUG"))
 					{
-						debugMessage = Utilities.GetItemsLogs(slotNum);
+						// 转换为整数
+						if (int.TryParse(Globals.debugSlotBuffer, out int slotNum))
+						{
+							Utilities.GetItemsLogs(slotNum);
+						}
+						else
+						{
+							Logger.LogInfo("[DEBUG] 输入的槽位无效");
+						}
 					}
-					// ImGui.Separator();
-					// ImGui.Text($"{debugMessage}");
+
+					ImGui.Unindent();
 				}
 				ImGui.EndChild();
 			}

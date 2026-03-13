@@ -177,8 +177,22 @@ public static class Utilities
 
     public static void GetItemsLogs(int slot = 1)
     {
-        string prefabNames = string.Join(", ", Player.localPlayer.itemSlots[slot].prefab.GetName());
-        Logger.LogInfo($"[Slots4_Items]{prefabNames}");
+        if (Player.localPlayer?.itemSlots == null || slot >= Player.localPlayer.itemSlots.Length)
+        {
+            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} is empty or invalid");
+            return;
+        }
+
+        var itemSlot = Player.localPlayer.itemSlots[slot];
+        if (itemSlot?.prefab != null)
+        {
+            string prefabName = itemSlot.prefab.GetName();
+            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} contains: {prefabName}");
+        }
+        else
+        {
+            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} is empty");
+        }
     }
     public static void ReviveAllPlayers()
     {
