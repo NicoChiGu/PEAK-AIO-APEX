@@ -1021,7 +1021,8 @@ public class PeakMod : BaseUnityPlugin
 					// 用字符串接收输入
 					if (Globals.debugSlotBuffer == null)
 						Globals.debugSlotBuffer = new string('0', 8); // 初始化 buffer
-
+					ImGui.Text($"Debug Slot");
+					ImGui.SameLine();
 					ImGui.InputText("##DebugSlot", ref Globals.debugSlotBuffer, 8);
 
 					if (ImGui.Button("DEBUG"))

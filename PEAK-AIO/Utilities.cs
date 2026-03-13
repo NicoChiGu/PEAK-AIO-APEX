@@ -179,20 +179,33 @@ public static class Utilities
     {
         if (Player.localPlayer?.itemSlots == null || slot >= Player.localPlayer.itemSlots.Length)
         {
-            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} is empty or invalid");
+            Logger.LogInfo($"[Slots_Items] Slot {slot + 1} invalid");
             return;
         }
 
         var itemSlot = Player.localPlayer.itemSlots[slot];
-        if (itemSlot?.prefab != null)
+
+        if (itemSlot?.prefab == null)
         {
-            string prefabName = itemSlot.prefab.GetName();
-            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} contains: {prefabName}");
+            Logger.LogInfo($"[Slots_Items] Slot {slot + 1} empty");
+            return;
         }
-        else
-        {
-            Logger.LogInfo($"[Slots4_Items] Slot {slot + 1} is empty");
-        }
+
+        var prefab = itemSlot.prefab;
+
+        string name = prefab.GetName();
+        string unityName = prefab.name;
+        int instanceID = prefab.GetInstanceID();
+        int hash = prefab.GetHashCode();
+        string type = prefab.GetType().Name;
+
+        Logger.LogInfo($"[Slots_Items]");
+        Logger.LogInfo($"Slot: {slot + 1}");
+        Logger.LogInfo($"Name: {name}");
+        Logger.LogInfo($"PrefabName: {unityName}");
+        Logger.LogInfo($"Type: {type}");
+        Logger.LogInfo($"InstanceID: {instanceID}");
+        Logger.LogInfo($"Hash: {hash}");
     }
     public static void ReviveAllPlayers()
     {
