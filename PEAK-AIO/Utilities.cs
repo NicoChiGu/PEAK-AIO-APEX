@@ -175,6 +175,11 @@ public static class Utilities
         });
     }
 
+    public static void GetItemsLogs(int slot = 1)
+    {
+        string prefabNames = string.Join(", ", Player.localPlayer.itemSlots[slot].prefab.GetName());
+        Logger.LogInfo($"[Slots4_Items]{prefabNames}");
+    }
     public static void ReviveAllPlayers()
     {
         UnityMainThreadDispatcher.Enqueue(() =>

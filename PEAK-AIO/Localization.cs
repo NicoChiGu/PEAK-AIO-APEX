@@ -66,6 +66,15 @@ public static class Localization
             { Language.Italian, "LINGUA" }
         }},
 
+         { "tab.debug", new Dictionary<Language, string> {
+            { Language.English, "Debug" },
+            { Language.SimplifiedChinese, "Debug" },
+            { Language.TraditionalChinese, "Debug" },
+            { Language.Japanese, "Debug" },
+            { Language.Korean, "Debug" },
+            { Language.Italian, "Debug" }
+        }},
+
         // Player tab - Self Mods
         { "player.selfmods", new Dictionary<Language, string> {
             { Language.English, "Self Mods" },

@@ -8,7 +8,6 @@ using System.Xml;
 using System.Reflection;
 using System;
 using BepInEx.Configuration;
-using BepInEx.Logging;
 using HarmonyLib;
 using Photon.Pun;
 using System.Collections.Generic;
@@ -18,9 +17,6 @@ using System.Collections.Generic;
 
 public class PeakMod : BaseUnityPlugin
 {
-
-	//Log
-	private static ManualLogSource Logger => ConfigManager.Logger;
 	// Menu
 	private bool styleApplied = false;
 	private bool showMenu = false;
@@ -358,7 +354,7 @@ public class PeakMod : BaseUnityPlugin
 				// Sidebar
 				ImGui.BeginChild("Sidebar", new System.Numerics.Vector2(85, 0), true);
 				ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-				string[] sidebarKeys = { "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.about", "tab.language" };
+				string[] sidebarKeys = { "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.about", "tab.language", "tab.debug" };
 				for (int i = 0; i < sidebarKeys.Length; i++)
 				{
 					bool isSelected = (selectedTab == i + 1);
@@ -562,10 +558,6 @@ public class PeakMod : BaseUnityPlugin
 
 					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 
-					string prefabNames = string.Join(", ", Player.localPlayer.itemSlots[3].prefab.GetName());
-					Logger.LogInfo($"[Slots4_Items]{prefabNames}");
-					
-					
 					if (ImGui.BeginTable("InventorySlots", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
 					{
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
@@ -1020,6 +1012,23 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.Unindent();
 				}
 
+				// Debug
+				else if (selectedTab == 7)
+				{
+					ImGui.Indent(4.0f);
+					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
+
+					var slotNum = 0;
+					var debugMessage;
+
+					ImGui.InputText($"##ItemSearch{slot}", ref slotNum, 128);
+					if (ImGui.Button($"DEBUG"))
+					{
+						debugMessage = Utilities.GetItemsLogs(slotNum);
+					}
+					// ImGui.Separator();
+					// ImGui.Text($"{debugMessage}");
+				}
 				ImGui.EndChild();
 			}
 
