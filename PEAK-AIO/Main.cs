@@ -562,6 +562,7 @@ public class PeakMod : BaseUnityPlugin
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 2");
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 3");
+						ImGui.TableSetupColumn(Localization.T("items.slot") + " 4");
 						ImGui.TableHeadersRow();
 
 						ImGui.TableNextRow();
