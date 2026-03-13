@@ -252,13 +252,17 @@ public class PeakMod : BaseUnityPlugin
 	{
 		bool changed = false;
 
-		// Draw input field
+		// 使用唯一ID防止冲突
+		ImGui.PushID(label);
+
+		// 创建搜索输入框
 		string inputId = $"Search##{label}";
 		ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X - 4);
-		ImGui.InputText("##" + inputId, ref searchBuffer, 100);
-		ImGui.PopItemWidth();
 
-		// Draw custom placeholder if input is empty and not active
+		// 确保输入框能正确获取焦点
+		ImGui.InputText(inputId, ref searchBuffer, 100);
+
+		// 添加占位符文本
 		if (string.IsNullOrEmpty(searchBuffer) && !ImGui.IsItemActive())
 		{
 			var pos = ImGui.GetItemRectMin();
@@ -269,10 +273,20 @@ public class PeakMod : BaseUnityPlugin
 			ImGui.PopStyleColor();
 		}
 
-		if (ImGui.BeginCombo(label, selectedIndex >= 0 && selectedIndex < items.Count ? items[selectedIndex] : Localization.T("items.none")))
+		ImGui.PopItemWidth();
+
+		// 获取当前选中项的显示文本
+		string previewText = selectedIndex >= 0 && selectedIndex < items.Count
+			? items[selectedIndex]
+			: Localization.T("items.none");
+
+		// 创建下拉框
+		if (ImGui.BeginCombo(label, previewText))
 		{
+			// 遍历所有物品项
 			for (int i = 0; i < items.Count; i++)
 			{
+				// 搜索过滤逻辑
 				if (!string.IsNullOrEmpty(searchBuffer) &&
 					!items[i].ToLower().Contains(searchBuffer.ToLower()))
 					continue;
@@ -287,11 +301,15 @@ public class PeakMod : BaseUnityPlugin
 				if (isSelected)
 					ImGui.SetItemDefaultFocus();
 			}
+
 			ImGui.EndCombo();
 		}
 
+		ImGui.PopID();
+
 		return changed;
 	}
+
 
 	void DrawToolTip(string text)
 	{
@@ -555,89 +573,65 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.Indent(4.0f);
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
 
-					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-					if (ImGui.BeginTable("InventorySlots", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+					// 为每个物品槽创建UI
+					for (int slot = 0; slot < 3; slot++)
 					{
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 2");
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 3");
-						ImGui.TableHeadersRow();
+						string currentItemName = Localization.T("items.none");
 
-						ImGui.TableNextRow();
-
-						for (int slot = 0; slot < 3; slot++)
+						if (Player.localPlayer?.itemSlots != null &&
+							Player.localPlayer.itemSlots.Length > slot &&
+							Player.localPlayer.itemSlots[slot]?.prefab != null)
 						{
-							ImGui.TableSetColumnIndex(slot);
-							ImGui.PushID(slot); // Single PushID per slot
-
-							string currentItemName = Localization.T("items.none");
-
-							if (Player.localPlayer?.itemSlots != null &&
-								Player.localPlayer.itemSlots.Length > slot &&
-								Player.localPlayer.itemSlots[slot]?.prefab != null)
-							{
-								currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
-							}
-
-							ImGui.Text(Localization.T("items.item_n", slot + 1));
-							ImGui.SameLine();
-							ImGui.Text(currentItemName);
-							ImGui.Spacing();
-
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-
-							// Detect if the value actually changed
-							int selected = Globals.selectedItems[slot];
-							if (DrawSearchableCombo($"##Combo{slot}", ref selected, Globals.itemNames, ref Globals.itemSearchBuffers[slot]))
-							{
-								Globals.selectedItems[slot] = selected;
-								assignQueue.Add((slot, selected));
-							}
-
-							ImGui.SameLine();
-							DrawToolTip(Localization.T("tip.item_search"));
-
-							ImGui.Spacing();
-
-							ConfigEntry<float> rechargeAmountConfig;
-							switch (slot)
-							{
-								case 0:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-									break;
-								case 1:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot2;
-									break;
-								case 2:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot3;
-									break;
-								default:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-									break;
-							}
-
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(rechargeAmountConfig, $"##recharge_mount##{slot}", 0f, 100f, Localization.T("items.charge_format"));
-
-							if (ImGui.Button(Localization.T("items.recharge") + $"##{slot}"))
-							{
-								Utilities.RechargeInventorySlot(slot, rechargeAmountConfig.Value);
-							}
-							ImGui.SameLine();
-							DrawToolTip(Localization.T("tip.recharge"));
-
-							ImGui.PopID(); // Pop slot ID
+							currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
 						}
 
-						ImGui.EndTable();
+						// 显示当前物品名称
+						ImGui.Text(Localization.T("items.item_n", slot + 1));
+						ImGui.SameLine();
+						ImGui.Text(currentItemName);
+
+						// 搜索下拉框
+						int selected = Globals.selectedItems[slot];
+						if (DrawSearchableCombo($"##Combo{slot}", ref selected, Globals.itemNames, ref Globals.itemSearchBuffers[slot]))
+						{
+							Globals.selectedItems[slot] = selected;
+							assignQueue.Add((slot, selected));
+						}
+
+						ImGui.SameLine();
+						DrawToolTip(Localization.T("tip.item_search"));
+
+						// 充电滑块
+						ConfigEntry<float> rechargeAmountConfig;
+						switch (slot)
+						{
+							case 0: rechargeAmountConfig = ConfigManager.RechargeAmountSlot1; break;
+							case 1: rechargeAmountConfig = ConfigManager.RechargeAmountSlot2; break;
+							case 2: rechargeAmountConfig = ConfigManager.RechargeAmountSlot3; break;
+							default: rechargeAmountConfig = ConfigManager.RechargeAmountSlot1; break;
+						}
+
+						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
+						DrawSliderFloat(rechargeAmountConfig, $"##recharge_mount##{slot}", 0f, 100f, Localization.T("items.charge_format"));
+
+						// 充电按钮
+						if (ImGui.Button(Localization.T("items.recharge") + $"##{slot}"))
+						{
+							Utilities.RechargeInventorySlot(slot, rechargeAmountConfig.Value);
+						}
+						ImGui.SameLine();
+						DrawToolTip(Localization.T("tip.recharge"));
+
+						ImGui.Spacing();
 					}
 
+					// 执行物品分配
 					foreach (var (slot, itemIndex) in assignQueue)
 					{
 						Utilities.AssignInventoryItem(slot, itemIndex);
 					}
 
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
+					// 刷新按钮
 					if (ImGui.Button(Localization.T("items.refresh")))
 						Utilities.UpdateItems();
 					ImGui.SameLine();
@@ -645,6 +639,7 @@ public class PeakMod : BaseUnityPlugin
 
 					ImGui.Unindent();
 				}
+
 				// Lobby
 				else if (selectedTab == 3)
 				{
