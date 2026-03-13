@@ -23,9 +23,9 @@ public class PeakMod : BaseUnityPlugin
 	private bool wasMenuScene = false;
 	private int selectedTab = 1;
 	private static readonly FieldInfo cursorVisibleField = typeof(DearImGuiInjection.DearImGuiInjection)
-	        .GetField("<IsCursorVisible>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
+		.GetField("<IsCursorVisible>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
 	private static readonly MethodInfo updateCursorMethod = typeof(DearImGuiInjection.DearImGuiInjection)
-	        .GetMethod("UpdateCursorVisibility", BindingFlags.Static | BindingFlags.NonPublic);
+		.GetMethod("UpdateCursorVisibility", BindingFlags.Static | BindingFlags.NonPublic);
 
 	private void ApplyCustomStyle()
 	{
@@ -75,24 +75,24 @@ public class PeakMod : BaseUnityPlugin
 		colors[(int)ImGuiCol.ScrollbarBg] = badgeBrown;
 		colors[(int)ImGuiCol.ScrollbarGrab] = sidebarGreen;
 		colors[(int)ImGuiCol.ScrollbarGrabHovered] = new System.Numerics.Vector4(
-		    sidebarGreen.X + 0.1f,
-		    sidebarGreen.Y + 0.1f,
-		    sidebarGreen.Z + 0.1f,
-		    1.0f
+			sidebarGreen.X + 0.1f,
+			sidebarGreen.Y + 0.1f,
+			sidebarGreen.Z + 0.1f,
+			1.0f
 		);
 		colors[(int)ImGuiCol.ScrollbarGrabActive] = new System.Numerics.Vector4(
-		    sidebarGreen.X - 0.05f,
-		    sidebarGreen.Y - 0.05f,
-		    sidebarGreen.Z - 0.05f,
-		    1.0f
+			sidebarGreen.X - 0.05f,
+			sidebarGreen.Y - 0.05f,
+			sidebarGreen.Z - 0.05f,
+			1.0f
 		);
 
 		colors[(int)ImGuiCol.SliderGrab] = sidebarGreen;
 		colors[(int)ImGuiCol.SliderGrabActive] = new System.Numerics.Vector4(
-		    sidebarGreen.X - 0.05f,
-		    sidebarGreen.Y - 0.05f,
-		    sidebarGreen.Z - 0.05f,
-		    1.0f
+			sidebarGreen.X - 0.05f,
+			sidebarGreen.Y - 0.05f,
+			sidebarGreen.Z - 0.05f,
+			1.0f
 		);
 
 		style.WindowRounding = 6f;
@@ -125,7 +125,7 @@ public class PeakMod : BaseUnityPlugin
 
 		var diAssembly = typeof(DearImGuiInjection.DearImGuiInjection).Assembly;
 		var cjkPrefixMethod = new HarmonyMethod(typeof(CJKFontPatch).GetMethod("Prefix",
-		                                        BindingFlags.Public | BindingFlags.Static));
+			BindingFlags.Public | BindingFlags.Static));
 
 		string[] backendTypeNames = {
 			"DearImGuiInjection.Backends.ImGuiDX12Impl",
@@ -140,7 +140,7 @@ public class PeakMod : BaseUnityPlugin
 				if (implType == null) continue;
 
 				var newFrameMethod = implType.GetMethod("NewFrame",
-				                                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+					BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
 				if (newFrameMethod == null) continue;
 
 				harmony.Patch(newFrameMethod, prefix: cjkPrefixMethod);
@@ -153,7 +153,7 @@ public class PeakMod : BaseUnityPlugin
 		}
 
 		var inputPrefixMethod = new HarmonyMethod(typeof(ImGuiInputPatch).GetMethod("Prefix",
-		        BindingFlags.Public | BindingFlags.Static));
+			BindingFlags.Public | BindingFlags.Static));
 		var imguiNewFrame = typeof(ImGui).GetMethod("NewFrame", BindingFlags.Public | BindingFlags.Static);
 		if (imguiNewFrame != null)
 		{
@@ -274,7 +274,7 @@ public class PeakMod : BaseUnityPlugin
 			for (int i = 0; i < items.Count; i++)
 			{
 				if (!string.IsNullOrEmpty(searchBuffer) &&
-				        !items[i].ToLower().Contains(searchBuffer.ToLower()))
+					!items[i].ToLower().Contains(searchBuffer.ToLower()))
 					continue;
 
 				bool isSelected = (selectedIndex == i);
@@ -361,8 +361,8 @@ public class PeakMod : BaseUnityPlugin
 					string label = Localization.T(sidebarKeys[i]);
 
 					var textColor = isSelected
-					                ? new System.Numerics.Vector4(0.318f, 0.569f, 0.384f, 1.0f)
-					                : new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f);
+						? new System.Numerics.Vector4(0.318f, 0.569f, 0.384f, 1.0f)
+						: new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f);
 
 					ImGui.PushStyleColor(ImGuiCol.Text, textColor);
 
@@ -573,8 +573,8 @@ public class PeakMod : BaseUnityPlugin
 							string currentItemName = Localization.T("items.none");
 
 							if (Player.localPlayer?.itemSlots != null &&
-							        Player.localPlayer.itemSlots.Length > slot &&
-							        Player.localPlayer.itemSlots[slot]?.prefab != null)
+								Player.localPlayer.itemSlots.Length > slot &&
+								Player.localPlayer.itemSlots[slot]?.prefab != null)
 							{
 								currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
 							}
@@ -602,18 +602,18 @@ public class PeakMod : BaseUnityPlugin
 							ConfigEntry<float> rechargeAmountConfig;
 							switch (slot)
 							{
-							case 0:
-								rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-								break;
-							case 1:
-								rechargeAmountConfig = ConfigManager.RechargeAmountSlot2;
-								break;
-							case 2:
-								rechargeAmountConfig = ConfigManager.RechargeAmountSlot3;
-								break;
-							default:
-								rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-								break;
+								case 0:
+									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
+									break;
+								case 1:
+									rechargeAmountConfig = ConfigManager.RechargeAmountSlot2;
+									break;
+								case 2:
+									rechargeAmountConfig = ConfigManager.RechargeAmountSlot3;
+									break;
+								default:
+									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
+									break;
 							}
 
 							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
@@ -660,8 +660,9 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.BeginChild("Lobby_PlayerList", new System.Numerics.Vector2(halfWidth, 0), true);
 					ImGui.Indent(4.0f);
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.TreeNode(Localization.T("lobby.players")))
+					if (ImGui.CollapsingHeader(Localization.T("lobby.players"), ImGuiTreeNodeFlags.DefaultOpen))
 					{
+						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 
 						if (Globals.selectedPlayer == -1 && Globals.playerNames.Count > 0)
@@ -669,11 +670,24 @@ public class PeakMod : BaseUnityPlugin
 							Globals.selectedPlayer = 0;
 						}
 
-						if (ImGui.BeginCombo(
-						            Localization.T("lobby.select_player"),
-						            Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.playerNames.Count
-						            ? Globals.playerNames[Globals.selectedPlayer]
-						            : Localization.T("items.none")))
+						// if (ImGui.BeginCombo(Localization.T("lobby.select_player"), Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.playerNames.Count
+						//     ? Globals.playerNames[Globals.selectedPlayer]
+						//     : Localization.T("items.none")))
+						// {
+						//     for (int i = 0; i < Globals.playerNames.Count; i++)
+						//     {
+						//         bool isSelected = (Globals.selectedPlayer == i);
+						//         if (ImGui.Selectable($"{Globals.playerNames[i]}##{i}", isSelected))
+						//         {
+						//             Globals.selectedPlayer = i;
+						//         }
+
+						//         if (isSelected)
+						//             ImGui.SetItemDefaultFocus();
+						//     }
+						//     ImGui.EndCombo();
+						// }
+						if (ImGui.BeginListBox("##player_list", new System.Numerics.Vector2(-1, 120)))
 						{
 							if (Globals.playerNames.Count == 0)
 							{
@@ -685,22 +699,18 @@ public class PeakMod : BaseUnityPlugin
 								{
 									bool isSelected = (Globals.selectedPlayer == i);
 
-									if (ImGui.Selectable($"{Globals.playerNames[i]}##{i}", isSelected))
-									{
+									if (ImGui.Selectable(Globals.playerNames[i], isSelected))
 										Globals.selectedPlayer = i;
-									}
 
 									if (isSelected)
 										ImGui.SetItemDefaultFocus();
 								}
 							}
 
-							ImGui.EndCombo();
+							ImGui.EndListBox();
 						}
-
 						ImGui.Dummy(new System.Numerics.Vector2(4, 4));
 						ImGui.Separator();
-
 						ImGui.Text(Localization.T("lobby.all_players"));
 						ImGui.Text($"Players: {Globals.playerNames.Count}");
 
@@ -709,7 +719,9 @@ public class PeakMod : BaseUnityPlugin
 
 						ImGui.SameLine();
 						if (ImGui.Button(Localization.T("lobby.kill_all")))
+						{
 							Utilities.KillAllPlayers();
+						}
 
 						bool excludeSelf = Globals.excludeSelfFromAllActions;
 						if (ImGui.Checkbox(Localization.T("lobby.exclude_self") + "##KillAll", ref excludeSelf))
@@ -717,8 +729,6 @@ public class PeakMod : BaseUnityPlugin
 
 						if (ImGui.Button(Localization.T("lobby.warp_all_to_me")))
 							Utilities.WarpAllPlayersToMe();
-
-						ImGui.TreePop();
 					}
 
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
@@ -792,8 +802,8 @@ public class PeakMod : BaseUnityPlugin
 
 						// Always show the combo, even if the list is empty
 						string selectedLabel = Globals.selectedLuggageIndex >= 0 && Globals.selectedLuggageIndex < Globals.luggageLabels.Count
-						                       ? Globals.luggageLabels[Globals.selectedLuggageIndex]
-						                       : Localization.T("items.none");
+							? Globals.luggageLabels[Globals.selectedLuggageIndex]
+							: Localization.T("items.none");
 
 						if (ImGui.BeginCombo(Localization.T("world.select_container"), selectedLabel))
 						{
