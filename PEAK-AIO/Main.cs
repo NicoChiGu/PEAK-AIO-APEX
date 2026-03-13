@@ -545,6 +545,8 @@ public class PeakMod : BaseUnityPlugin
 				// Items
 				else if (selectedTab == 2)
 				{
+					//配置列
+					int slots = 4;
 					// 如果物品列表为空，先刷新
 					if (Globals.itemNames.Count == 0)
 					{
@@ -557,7 +559,8 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
 
 					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-					if (ImGui.BeginTable("InventorySlots", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+
+					if (ImGui.BeginTable("InventorySlots", slots, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
 					{
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 2");
@@ -567,7 +570,7 @@ public class PeakMod : BaseUnityPlugin
 
 						ImGui.TableNextRow();
 
-						for (int slot = 0; slot < 3; slot++)
+						for (int slot = 0; slot < slots; slot++)
 						{
 							ImGui.TableSetColumnIndex(slot);
 							ImGui.PushID(slot); // 每个槽独立ID
