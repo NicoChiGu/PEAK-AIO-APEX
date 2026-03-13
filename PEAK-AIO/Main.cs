@@ -1018,16 +1018,15 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.Indent(4.0f);
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
 
-					// 用字符串接收输入
 					if (Globals.debugSlotBuffer == null)
-						Globals.debugSlotBuffer = new string('0', 8); // 初始化 buffer
+						Globals.debugSlotBuffer = new string('0', 8);
 					ImGui.Text($"Debug Slot");
 					ImGui.SameLine();
 					ImGui.InputText("##DebugSlot", ref Globals.debugSlotBuffer, 8);
 
 					if (ImGui.Button("DEBUG"))
 					{
-						// 转换为整数
+
 						if (int.TryParse(Globals.debugSlotBuffer, out int slotNum))
 						{
 							Utilities.GetItemsLogs(slotNum);

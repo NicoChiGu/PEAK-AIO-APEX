@@ -668,9 +668,11 @@ public static class Utilities
                 return;
             }
 
+            // 创建实例数据
             var data = new ItemInstanceData(Guid.NewGuid());
             ItemInstanceDataHandler.AddInstanceData(data);
 
+            // 设置背包
             backpackSlot.hasBackpack = true;
             backpackSlot.data = data;
 
