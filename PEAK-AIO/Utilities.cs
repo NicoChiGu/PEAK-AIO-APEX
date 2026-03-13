@@ -640,7 +640,6 @@ public static class Utilities
     //Spawn Backpack
     public static bool PlayerHasBackpack(Player player)
     {
-        Logger.LogInfo($"BackpackSlot hasBackpack: {backpackSlot.hasBackpack}");
         if (player?.itemSlots == null)
             return false;
 
