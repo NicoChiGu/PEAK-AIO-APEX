@@ -256,6 +256,14 @@ public static class Localization
             { Language.Korean, "비행 가속도: %.2f" },
             { Language.Italian, "Accelerazione Volo: %.2f" }
         }},
+        { "player.spawn_backpack", new Dictionary<Language, string> {
+            { Language.English, "Spawn Backpack" },
+            { Language.SimplifiedChinese, "生成背包" },
+            { Language.TraditionalChinese, "生成背包" },
+            { Language.Japanese, "生成バックパック" },
+            { Language.Korean, "생성 가방" },
+            { Language.Italian, "Generare Zaino" }
+        }},
 
         // Tooltips - Player
         { "tip.infinite_stamina", new Dictionary<Language, string> {

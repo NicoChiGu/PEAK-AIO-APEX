@@ -479,6 +479,11 @@ public class PeakMod : BaseUnityPlugin
 						DrawCheckbox(ConfigManager.FlyMod, Localization.T("player.fly_mode"), FlyPatch.SetFlying);
 						ImGui.SameLine();
 						DrawToolTip(Localization.T("tip.fly_mode"));
+
+						if (ImGui.Button(Localization.T("player.spawn_backpack")))
+						{
+							Utilities.GivePlayerBackpack(Player.localPlayer);
+						}
 					}
 					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 					if (ImGui.CollapsingHeader(Localization.T("player.teleport") + "##PlayerTeleport", ImGuiTreeNodeFlags.DefaultOpen))
@@ -1013,7 +1018,7 @@ public class PeakMod : BaseUnityPlugin
 				}
 
 				// Debug
-				else if (selectedTab == 7) // Debug
+				else if (selectedTab == 7)
 				{
 					ImGui.Indent(4.0f);
 					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
@@ -1023,7 +1028,7 @@ public class PeakMod : BaseUnityPlugin
 					ImGui.Text($"Debug Slot");
 					ImGui.SameLine();
 					ImGui.InputText("##DebugSlot", ref Globals.debugSlotBuffer, 8);
-
+					ImGui.SameLine();
 					if (ImGui.Button("DEBUG"))
 					{
 
@@ -1035,11 +1040,6 @@ public class PeakMod : BaseUnityPlugin
 						{
 							Logger.LogInfo("[DEBUG] Invalid slot number");
 						}
-					}
-
-					if (ImGui.Button("Give Backpack"))
-					{
-						Utilities.GivePlayerBackpack(Player.localPlayer);
 					}
 
 					ImGui.Unindent();
