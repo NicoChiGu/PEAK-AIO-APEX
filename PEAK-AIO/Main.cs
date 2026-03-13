@@ -651,10 +651,10 @@ public class PeakMod : BaseUnityPlugin
 					float fullWidth = ImGui.GetContentRegionAvail().X;
 					float halfWidth = fullWidth / 2f;
 
-					// if (Globals.allPlayers.Count == 0)
-					// {
-					// 	Utilities.RefreshPlayerList();
-					// }
+					if (Globals.allPlayers.Count == 0)
+					{
+						Utilities.RefreshPlayerList();
+					}
 
 					// Left: Player List
 					ImGui.BeginChild("Lobby_PlayerList", new System.Numerics.Vector2(halfWidth, 0), true);
@@ -675,10 +675,10 @@ public class PeakMod : BaseUnityPlugin
 						            ? Globals.playerNames[Globals.selectedPlayer]
 						            : Localization.T("items.none")))
 						{
-							// if (Globals.playerNames.Count == 0)
-							// {
-							//     ImGui.TextDisabled("None");
-							// }
+							if (Globals.playerNames.Count == 0)
+							{
+								ImGui.TextDisabled("None");
+							}
 							else
 							{
 								for (int i = 0; i < Globals.playerNames.Count; i++)
