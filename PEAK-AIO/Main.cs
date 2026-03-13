@@ -699,11 +699,21 @@ public class PeakMod : BaseUnityPlugin
 								{
 									bool isSelected = (Globals.selectedPlayer == i);
 
+									// 选中时改变文字颜色
+									if (isSelected)
+										ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.3f, 1f, 0.3f, 1f));
+
 									if (ImGui.Selectable(Globals.playerNames[i], isSelected))
+									{
 										Globals.selectedPlayer = i;
+										Logger.LogInfo($"Selected player: {Globals.playerNames[i]}");
+									}
 
 									if (isSelected)
+									{
 										ImGui.SetItemDefaultFocus();
+										ImGui.PopStyleColor();
+									}
 								}
 							}
 
@@ -712,7 +722,6 @@ public class PeakMod : BaseUnityPlugin
 						ImGui.Dummy(new System.Numerics.Vector2(4, 4));
 						ImGui.Separator();
 						ImGui.Text(Localization.T("lobby.all_players"));
-						ImGui.Text($"Players: {Globals.playerNames.Count}");
 
 						if (ImGui.Button(Localization.T("lobby.revive_all")))
 							Utilities.ReviveAllPlayers();
@@ -749,6 +758,7 @@ public class PeakMod : BaseUnityPlugin
 					{
 						if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
 						{
+							ImGui.Text(Globals.playerNames[i]);
 							if (ImGui.Button(Localization.T("lobby.revive")))
 								Utilities.ReviveSelectedPlayer();
 
