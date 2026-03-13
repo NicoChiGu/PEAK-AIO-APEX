@@ -665,6 +665,11 @@ public class PeakMod : BaseUnityPlugin
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 
+                        if (Globals.selectedPlayer == -1 && Globals.playerNames.Count > 0)
+                        {
+                            Globals.selectedPlayer = 0;
+                        }
+
                         if (ImGui.BeginCombo(Localization.T("lobby.select_player"), Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.playerNames.Count
                             ? Globals.playerNames[Globals.selectedPlayer]
                             : Localization.T("items.none")))
@@ -685,6 +690,7 @@ public class PeakMod : BaseUnityPlugin
                         ImGui.Dummy(new System.Numerics.Vector2(4, 4));
                         ImGui.Separator();
                         ImGui.Text(Localization.T("lobby.all_players"));
+                        ImGui.Text($"Players: {Globals.playerNames.Count}");
 
                         if (ImGui.Button(Localization.T("lobby.revive_all")))
                             Utilities.ReviveAllPlayers();
