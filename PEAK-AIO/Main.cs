@@ -17,6 +17,9 @@ using System.Collections.Generic;
 
 public class PeakMod : BaseUnityPlugin
 {
+
+	//Log
+	private static ManualLogSource Logger => ConfigManager.Logger;
 	// Menu
 	private bool styleApplied = false;
 	private bool showMenu = false;
@@ -545,8 +548,6 @@ public class PeakMod : BaseUnityPlugin
 				// Items
 				else if (selectedTab == 2)
 				{
-					//配置列
-					int slots = 4;
 					// 如果物品列表为空，先刷新
 					if (Globals.itemNames.Count == 0)
 					{
@@ -560,17 +561,20 @@ public class PeakMod : BaseUnityPlugin
 
 					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
 
-					if (ImGui.BeginTable("InventorySlots", slots, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+					string prefabNames = string.Join(", ", Player.localPlayer.itemSlots[3].prefab.GetName());
+					Logger.LogInfo($"[Slots4_Items]{prefabNames}");
+					
+					
+					if (ImGui.BeginTable("InventorySlots", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
 					{
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 2");
 						ImGui.TableSetupColumn(Localization.T("items.slot") + " 3");
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 4");
 						ImGui.TableHeadersRow();
 
 						ImGui.TableNextRow();
 
-						for (int slot = 0; slot < slots; slot++)
+						for (int slot = 0; slot < 3; slot++)
 						{
 							ImGui.TableSetColumnIndex(slot);
 							ImGui.PushID(slot); // 每个槽独立ID
