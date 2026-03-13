@@ -634,4 +634,44 @@ public static class Utilities
             }
         });
     }
+
+
+
+    //Spawn BackPack
+    public static bool PlayerHasBackpack(Player player)
+    {
+        if (player?.itemSlots == null)
+            return false;
+
+        if (player.itemSlots.Length <= 3)
+            return false;
+
+        return player.itemSlots[3]?.prefab is Backpack;
+    }
+
+    public static void GivePlayerBackpack(Player player)
+    {
+        if (player == null)
+            return;
+
+        if (PlayerHasBackpack(player))
+        {
+            Logger.LogInfo("Player already has backpack.");
+            return;
+        }
+
+        Backpack prefab = UnityEngine.Object.FindObjectsOfType<Backpack>().FirstOrDefault();
+
+        if (prefab == null)
+        {
+            Logger.LogError("Backpack prefab not found!");
+            return;
+        }
+
+        Backpack backpack = UnityEngine.Object.Instantiate(prefab);
+
+        backpack.transform.position = player.transform.position;
+
+        Logger.LogInfo("Backpack spawned.");
+    }
 }

@@ -1038,6 +1038,11 @@ public class PeakMod : BaseUnityPlugin
 						}
 					}
 
+					if (ImGui.Button("Spawn Bag"))
+					{
+						Utilities.GivePlayerBackpack();
+					}
+
 					ImGui.Unindent();
 				}
 				ImGui.EndChild();
