@@ -164,6 +164,8 @@ public static class Utilities
                         continue;
                     }
                 }
+                string namesStr = string.Join(", ", Globals.playerNames);
+                Logger.LogInfo($"[PlayerList] [{namesStr}]");
                 Logger.LogInfo($"[PlayerList] Found {Globals.allPlayers.Count} players.");
             }
             catch (Exception ex)
