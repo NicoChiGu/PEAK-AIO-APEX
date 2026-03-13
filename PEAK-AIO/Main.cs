@@ -1029,7 +1029,7 @@ public class PeakMod : BaseUnityPlugin
 						// 转换为整数
 						if (int.TryParse(Globals.debugSlotBuffer, out int slotNum))
 						{
-							Utilities.GetItemsLogs();
+							Utilities.GetItemsLogs(slotNum);
 						}
 						else
 						{
