@@ -599,8 +599,9 @@ public class PeakMod : BaseUnityPlugin
 								string itemName = Globals.itemNames[i];
 
 								// 搜索过滤
+								// 修改为兼容写法
 								if (!string.IsNullOrEmpty(Globals.itemSearchBuffers[slot]) &&
-									!itemName.Contains(Globals.itemSearchBuffers[slot], StringComparison.OrdinalIgnoreCase))
+									itemName.IndexOf(Globals.itemSearchBuffers[slot], StringComparison.OrdinalIgnoreCase) < 0)
 									continue;
 
 								hasItems = true;
