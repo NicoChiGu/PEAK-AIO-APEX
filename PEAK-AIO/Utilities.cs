@@ -637,41 +637,48 @@ public static class Utilities
 
 
 
-    //Spawn BackPack
+    //Spawn Backpack
     public static bool PlayerHasBackpack(Player player)
     {
+        Logger.LogInfo($"BackpackSlot hasBackpack: {backpackSlot.hasBackpack}");
         if (player?.itemSlots == null)
             return false;
 
         if (player.itemSlots.Length <= 3)
             return false;
 
-        return player.itemSlots[3]?.prefab is Backpack;
+        return player.itemSlots[3] is BackpackSlot backpackSlot && backpackSlot.hasBackpack;
     }
 
     public static void GivePlayerBackpack(Player player)
     {
         if (player == null)
-            return;
-
-        if (PlayerHasBackpack(player))
         {
-            Logger.LogInfo("Player already has backpack.");
+            Logger.LogError("[SpawnBackpack] Player is null.");
             return;
         }
 
-        Backpack prefab = UnityEngine.Object.FindObjectsOfType<Backpack>().FirstOrDefault();
+        ItemSlot slot = player.GetItemSlot(3);
 
-        if (prefab == null)
+        if (slot is BackpackSlot backpackSlot)
         {
-            Logger.LogError("Backpack prefab not found!");
-            return;
+            if (backpackSlot.hasBackpack)
+            {
+                Logger.LogInfo("[SpawnBackpack] Player already has backpack.");
+                return;
+            }
+
+            var data = new ItemInstanceData(Guid.NewGuid());
+            ItemInstanceDataHandler.AddInstanceData(data);
+
+            backpackSlot.hasBackpack = true;
+            backpackSlot.data = data;
+
+            Logger.LogInfo("[SpawnBackpack] Backpack granted to player.");
         }
-
-        Backpack backpack = UnityEngine.Object.Instantiate(prefab);
-
-        backpack.transform.position = player.transform.position;
-
-        Logger.LogInfo("Backpack spawned.");
+        else
+        {
+            Logger.LogError("[SpawnBackpack] Slot 3 is not BackpackSlot.");
+        }
     }
 }

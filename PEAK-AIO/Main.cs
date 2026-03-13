@@ -1038,9 +1038,9 @@ public class PeakMod : BaseUnityPlugin
 						}
 					}
 
-					if (ImGui.Button("Spawn Bag"))
+					if (ImGui.Button("Give Backpack"))
 					{
-						Utilities.GivePlayerBackpack();
+						Utilities.GivePlayerBackpack(Player.localPlayer);
 					}
 
 					ImGui.Unindent();
