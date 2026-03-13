@@ -753,7 +753,7 @@ public class PeakMod : BaseUnityPlugin
 					{
 						if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
 						{
-							ImGui.Text($"{Globals.playerNames[i]}");
+							ImGui.Text($"{Globals.playerNames[Globals.selectedPlayer]}");
 							if (ImGui.Button(Localization.T("lobby.revive")))
 								Utilities.ReviveSelectedPlayer();
 
