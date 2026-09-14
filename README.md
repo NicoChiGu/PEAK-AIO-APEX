@@ -15,7 +15,7 @@
 ![Italiano](https://img.shields.io/badge/lang-Italiano-brightgreen)
 [![Thunderstore](https://img.shields.io/thunderstore/v/k1r_gamer/PEAK_AIO_APEX?style=flat&label=Thunderstore)](https://thunderstore.io/c/peak/p/k1r_gamer/PEAK_AIO_APEX/)
 
-An all-in-one mod menu for [PEAK](https://store.steampowered.com/app/3527290/PEAK/) that brings together player enhancements, inventory tools, teleportation, world interaction, and lobby control in a clean, tabbed ImGui interface. Inspired by PEAK-AIO.
+An all-in-one mod menu for [PEAK](https://store.steampowered.com/app/3527290/PEAK/) that brings together player enhancements, inventory tools, teleportation, world interaction, map/segment jumping, and lobby control in a clean, tabbed native Unity GUI interface. Inspired by PEAK-AIO.
 
 Supports **English**, **简体中文**, **繁體中文**, **日本語**, **한국어**, and **Italiano**.
 
@@ -43,20 +43,23 @@ Supports **English**, **简体中文**, **繁體中文**, **日本語**, **한�
 ### Player
 - **Infinite Stamina** — sprint and perform actions without stamina drain
 - **Freeze Afflictions** — lock all status effects in their current state
+- **Clear All Afflictions** — immediately clear injury, poison, curse, cold, thorns, spores, web, etc.
 - **No Weight** — remove carry-weight penalties from items and backpack
 - **Speed Modifier** — adjustable movement speed multiplier
 - **Jump Modifier** — adjustable jump height with optional no-fall-damage
 - **Climb / Vine / Rope Speed** — independent speed multipliers for each traversal type
 - **Fly Mode** — free-flight in all directions with configurable speed and acceleration
 - **Teleport to Ping** — instantly warp to your map ping location
-- **Teleport to Coordinates** — enter X/Y/Z and teleport directly
+- **Teleport to Coordinates** — enter X/Y/Z and teleport directly (with one-click "Get Coords")
 
 ### Inventory
 - **Item Slot Editor** — search and assign any game item to your 3 inventory slots
 - **Item Recharge** — restore charges (fuel, uses, durability) to any held item
+- **Spawn in World** — spawn selected items directly into the world
 
 ### World
-- **Container Browser** — list all luggage/containers within 300 m, sorted by distance
+- **Map / Segment Jump** — warp to any game segment: Beach, Tropics, Alpine, Caldera, The Kiln, The Peak
+- **Container Browser** — list all luggage/containers within 300 m (including cursed luggage), sorted by distance
 - **Open Container** — remotely open any selected container
 - **Open All Nearby** — unlock every container in range at once
 - **Warp to Container** — teleport directly to a selected container
@@ -82,9 +85,9 @@ Supports **English**, **简体中文**, **繁體中文**, **日本語**, **한�
 | Dependency | Version | Link |
 |---|---|---|
 | BepInEx | 5.4.23.3 | [GitHub Releases](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.3) |
-| DearImGuiInjection | Latest | [Thunderstore](https://thunderstore.io/c/peak/p/penswer/DearImGuiInjection/) |
 
 > **Important:** Use BepInEx 5.x (not 6.x). The mod targets the BepInEx 5 plugin API.
+> **Note (v1.2.0+):** **DearImGuiInjection is NO LONGER REQUIRED!** The mod now uses native Unity OnGUI rendering, eliminating DirectX 12 hooking crashes and supporting all graphics backends (DX11, DX12, Vulkan).
 
 ---
 
@@ -107,27 +110,20 @@ Supports **English**, **简体中文**, **繁體中文**, **日本語**, **한�
    └── ...
    ```
 
-### Step 2 — Install DearImGuiInjection
+### Step 2 — Install PEAK AIO
 
-1. Download [DearImGuiInjection](https://thunderstore.io/c/peak/p/penswer/DearImGuiInjection/) from Thunderstore.
-2. Place the `DearImGuiInjection` into `BepInEx/plugins/`.
-
-### Step 3 — Install PEAK AIO
-
-1. Download the latest `PEAK-AIO.dll` from the [Releases](https://github.com/elliot35/PEAK-AIO-int/releases) page.
+1. Download `PEAK-AIO.dll` from the Releases or build output.
 2. Place `PEAK-AIO.dll` into `BepInEx/plugins/`.
 
-### Step 4 — Launch
+### Step 3 — Launch
 
-1. Launch PEAK using **DirectX 12** (not Vulkan).
-   - In Steam: Right-click PEAK → Properties → Launch Options → ensure `-dx12` or select DirectX 12 in-game settings.
+1. Launch PEAK using any graphics renderer (DirectX 11, DirectX 12, or Vulkan).
 2. Press **Insert** (default) to open the mod menu.
 
 Your final `BepInEx/plugins/` folder should look like:
 
 ```
 BepInEx/plugins/
-├── DearImGuiInjection
 └── PEAK-AIO.dll
 ```
 
@@ -135,7 +131,7 @@ BepInEx/plugins/
 
 ## Opening the Menu
 
-Press the **Insert** key (default) in-game to toggle the mod overlay and cursor. The menu appears as a floating ImGui window with a tabbed sidebar.
+Press the **Insert** key (default) in-game to toggle the mod overlay and cursor. The menu appears as a floating native Unity GUI window with a tabbed sidebar.
 
 To change the hotkey, see [Configuration](#configuration) below.
 
@@ -263,9 +259,8 @@ The **World** tab lists all luggage and containers within 300 meters. You can re
 3. Restore NuGet packages if prompted.
 4. Ensure the following assembly references resolve (you may need to point them to your game's `Managed/` folder or BepInEx `core/` folder):
    - `BepInEx.dll`, `0Harmony.dll`
-   - `DearImGuiInjection.dll`, `ImGui.NET.dll`
    - `Assembly-CSharp.dll`
-   - `UnityEngine.dll`, `UnityEngine.CoreModule.dll`, `UnityEngine.PhysicsModule.dll`
+   - `UnityEngine.dll`, `UnityEngine.CoreModule.dll`, `UnityEngine.IMGUIModule.dll`, `UnityEngine.PhysicsModule.dll`
    - `Photon*.dll`, `Zorro.Core.Runtime.dll`
 5. Build in **Release** configuration.
 6. Copy `bin/Release/PEAK-AIO.dll` to your `BepInEx/plugins/` folder.

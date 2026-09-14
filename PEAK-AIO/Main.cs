@@ -1,1063 +1,1146 @@
 using BepInEx;
-using ImGuiNET;
-using DearImGuiInjection;
-using DearImGuiInjection.BepInEx;
-using UnityEngine.Windows;
-using UnityEngine;
-using System.Xml;
-using System.Reflection;
-using System;
 using BepInEx.Configuration;
 using HarmonyLib;
-using Photon.Pun;
+using System;
 using System.Collections.Generic;
+using UnityEngine;
 
-[BepInDependency(DearImGuiInjection.Metadata.GUID)]
-[BepInPlugin("com.onigremlin.peakaio", "PEAK AIO Mod", "1.1.1")]
-
+[BepInPlugin("com.onigremlin.peakaio", "PEAK AIO Mod", "1.2.0")]
 public class PeakMod : BaseUnityPlugin
 {
-	// Menu
-	private bool styleApplied = false;
-	private bool showMenu = false;
-	private bool wasMenuScene = false;
-	private int selectedTab = 1;
-	private static readonly FieldInfo cursorVisibleField = typeof(DearImGuiInjection.DearImGuiInjection)
-		.GetField("<IsCursorVisible>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
-	private static readonly MethodInfo updateCursorMethod = typeof(DearImGuiInjection.DearImGuiInjection)
-		.GetMethod("UpdateCursorVisibility", BindingFlags.Static | BindingFlags.NonPublic);
-
-	private void ApplyCustomStyle()
-	{
-		var style = ImGui.GetStyle();
-		var colors = style.Colors;
-
-		var canvasTan = new System.Numerics.Vector4(0.953f, 0.941f, 0.902f, 1.00f);
-		var badgeBrown = new System.Numerics.Vector4(0.361f, 0.294f, 0.231f, 1.00f);
-		var logInk = new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f);
-		var sidebarGreen = new System.Numerics.Vector4(0.18f, 0.28f, 0.22f, 1.00f);
-		var trailDust = new System.Numerics.Vector4(0.866f, 0.827f, 0.741f, 1.00f);
-		var trailDustHover = new System.Numerics.Vector4(0.80f, 0.78f, 0.65f, 1.00f);
-		var trailDustActive = new System.Numerics.Vector4(0.75f, 0.72f, 0.61f, 1.00f);
-		var ropeBrown = new System.Numerics.Vector4(0.55f, 0.42f, 0.28f, 1.00f);
-		var softRed = new System.Numerics.Vector4(0.75f, 0.6f, 0.5f, 1.00f);
-		var scoutRed = new System.Numerics.Vector4(0.76f, 0.44f, 0.39f, 1.00f);
-		var lightGreen = new System.Numerics.Vector4(0.318f, 0.569f, 0.384f, 1.0f);
-
-		colors[(int)ImGuiCol.WindowBg] = canvasTan;
-		colors[(int)ImGuiCol.Border] = logInk;
-		colors[(int)ImGuiCol.TitleBg] = lightGreen;
-		colors[(int)ImGuiCol.TitleBgActive] = lightGreen;
-		colors[(int)ImGuiCol.Text] = logInk;
-		colors[(int)ImGuiCol.TextDisabled] = ropeBrown;
-		colors[(int)ImGuiCol.CheckMark] = sidebarGreen;
-		colors[(int)ImGuiCol.FrameBg] = trailDust;
-		colors[(int)ImGuiCol.FrameBgHovered] = trailDustHover;
-		colors[(int)ImGuiCol.FrameBgActive] = trailDustActive;
-		colors[(int)ImGuiCol.Border] = ropeBrown;
-		colors[(int)ImGuiCol.PopupBg] = canvasTan;
-
-		colors[(int)ImGuiCol.TableHeaderBg] = lightGreen;
-		colors[(int)ImGuiCol.TableBorderStrong] = ropeBrown;
-		colors[(int)ImGuiCol.TableBorderLight] = ropeBrown;
-
-		colors[(int)ImGuiCol.ChildBg] = trailDust;
-		colors[(int)ImGuiCol.Button] = trailDust;
-		colors[(int)ImGuiCol.ButtonHovered] = trailDustHover;
-		colors[(int)ImGuiCol.ButtonActive] = trailDustActive;
-
-		colors[(int)ImGuiCol.Header] = trailDust;
-		colors[(int)ImGuiCol.HeaderHovered] = trailDust;
-		colors[(int)ImGuiCol.HeaderActive] = trailDust;
-
-		colors[(int)ImGuiCol.Separator] = ropeBrown;
-
-		colors[(int)ImGuiCol.ScrollbarBg] = badgeBrown;
-		colors[(int)ImGuiCol.ScrollbarGrab] = sidebarGreen;
-		colors[(int)ImGuiCol.ScrollbarGrabHovered] = new System.Numerics.Vector4(
-			sidebarGreen.X + 0.1f,
-			sidebarGreen.Y + 0.1f,
-			sidebarGreen.Z + 0.1f,
-			1.0f
-		);
-		colors[(int)ImGuiCol.ScrollbarGrabActive] = new System.Numerics.Vector4(
-			sidebarGreen.X - 0.05f,
-			sidebarGreen.Y - 0.05f,
-			sidebarGreen.Z - 0.05f,
-			1.0f
-		);
-
-		colors[(int)ImGuiCol.SliderGrab] = sidebarGreen;
-		colors[(int)ImGuiCol.SliderGrabActive] = new System.Numerics.Vector4(
-			sidebarGreen.X - 0.05f,
-			sidebarGreen.Y - 0.05f,
-			sidebarGreen.Z - 0.05f,
-			1.0f
-		);
-
-		style.WindowRounding = 6f;
-		style.FrameRounding = 4f;
-		style.ChildRounding = 4f;
-		style.FrameBorderSize = 1.0f;
-		style.GrabRounding = 4f;
-		style.WindowPadding = new System.Numerics.Vector2(4, 4);
-		style.CellPadding = new System.Numerics.Vector2(4, 4);
-		style.FrameBorderSize = 1.0f;
-		style.ItemSpacing = new System.Numerics.Vector2(2, 4);
-	}
-
-	private void Awake()
-	{
-		Logger.LogInfo("Mod Initialized");
-		this.gameObject.AddComponent<EventComponent>();
-	}
-
-	private void OnEnable()
-	{
-		Logger.LogInfo("[PEAK AIO] OnEnable called");
-
-		Globals.itemSearchBuffers = new string[3] { "", "", "" };
-		ConfigManager.Init(Config, Logger);
-		DearImGuiInjection.DearImGuiInjection.Render += MyUI;
-
-		var harmony = new Harmony("com.onigremlin.peakaio");
-		harmony.PatchAll();
-
-		var diAssembly = typeof(DearImGuiInjection.DearImGuiInjection).Assembly;
-		var cjkPrefixMethod = new HarmonyMethod(typeof(CJKFontPatch).GetMethod("Prefix",
-			BindingFlags.Public | BindingFlags.Static));
-
-		string[] backendTypeNames = {
-			"DearImGuiInjection.Backends.ImGuiDX12Impl",
-			"DearImGuiInjection.Backends.ImGuiDX11Impl"
-		};
-
-		foreach (var typeName in backendTypeNames)
-		{
-			try
-			{
-				var implType = diAssembly.GetType(typeName);
-				if (implType == null) continue;
-
-				var newFrameMethod = implType.GetMethod("NewFrame",
-					BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-				if (newFrameMethod == null) continue;
-
-				harmony.Patch(newFrameMethod, prefix: cjkPrefixMethod);
-				Logger.LogInfo($"[PEAK AIO] Patched {typeName}.NewFrame for CJK fonts.");
-			}
-			catch (Exception ex)
-			{
-				Logger.LogWarning($"[PEAK AIO] Failed to patch {typeName}.NewFrame: {ex.Message}");
-			}
-		}
-
-		var inputPrefixMethod = new HarmonyMethod(typeof(ImGuiInputPatch).GetMethod("Prefix",
-			BindingFlags.Public | BindingFlags.Static));
-		var imguiNewFrame = typeof(ImGui).GetMethod("NewFrame", BindingFlags.Public | BindingFlags.Static);
-		if (imguiNewFrame != null)
-		{
-			harmony.Patch(imguiNewFrame, prefix: inputPrefixMethod);
-			Logger.LogInfo("[PEAK AIO] Patched ImGui.NewFrame for input override.");
-		}
-		else
-		{
-			Logger.LogWarning("[PEAK AIO] Could not find ImGui.NewFrame to patch for input.");
-		}
-
-		Logger.LogInfo("Harmony patches applied.");
-	}
-
-	private void OnDisable()
-	{
-		Logger.LogInfo("[PEAK AIO] OnDisable called");
-		DearImGuiInjection.DearImGuiInjection.Render -= MyUI;
-
-		if (showMenu && !wasMenuScene)
-		{
-			try
-			{
-				var handler = CursorHandler.Instance;
-				if (handler != null)
-					handler.isMenuScene = false;
-			}
-			catch { }
-		}
-	}
-
-	private void Update()
-	{
-		if (UnityEngine.Input.GetKeyDown(ConfigManager.MenuToggleKey.Value))
-		{
-			showMenu = !showMenu;
-
-			try
-			{
-				var handler = CursorHandler.Instance;
-				if (handler != null)
-				{
-					if (showMenu)
-					{
-						wasMenuScene = handler.isMenuScene;
-						if (!wasMenuScene)
-							handler.isMenuScene = true;
-					}
-					else if (!wasMenuScene)
-					{
-						handler.isMenuScene = false;
-					}
-				}
-			}
-			catch { }
-
-			cursorVisibleField?.SetValue(null, showMenu);
-			updateCursorMethod?.Invoke(null, null);
-			ImGuiInputPatch.ResetLogs();
-		}
-
-		if (showMenu)
-		{
-			ImGuiInputPatch.SetForceInput(true);
-			ImGuiInputPatch.CaptureInput();
-		}
-		else
-		{
-			ImGuiInputPatch.SetForceInput(false);
-		}
-	}
-
-	void DrawCheckbox(ConfigEntry<bool> config, string label, Action<bool> mainThreadAction = null)
-	{
-		bool value = config.Value;
-		if (ImGui.Checkbox(label, ref value))
-		{
-			config.Value = value;
-			Logger.LogInfo($"[Menu] {label} toggled to {(value ? "ON" : "OFF")}");
-
-			if (mainThreadAction != null)
-			{
-				UnityMainThreadDispatcher.Enqueue(() => mainThreadAction.Invoke(value));
-			}
-		}
-	}
-
-	void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format = "%.2f")
-	{
-		float value = config.Value;
-		if (ImGui.SliderFloat(label, ref value, min, max, format))
-			config.Value = value;
-	}
-
-	bool DrawSearchableCombo(string label, ref int selectedIndex, List<string> items, ref string searchBuffer)
-	{
-		bool changed = false;
-
-		// Draw input field
-		string inputId = $"Search##{label}";
-		ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X - 4);
-		ImGui.InputText("##" + inputId, ref searchBuffer, 100);
-		ImGui.PopItemWidth();
-
-		// Draw custom placeholder if input is empty and not active
-		if (string.IsNullOrEmpty(searchBuffer) && !ImGui.IsItemActive())
-		{
-			var pos = ImGui.GetItemRectMin();
-			ImGui.SameLine();
-			ImGui.SetCursorScreenPos(pos + new System.Numerics.Vector2(4, 2));
-			ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f));
-			ImGui.TextUnformatted(Localization.T("items.search"));
-			ImGui.PopStyleColor();
-		}
-
-		if (ImGui.BeginCombo(label, selectedIndex >= 0 && selectedIndex < items.Count ? items[selectedIndex] : Localization.T("items.none")))
-		{
-			for (int i = 0; i < items.Count; i++)
-			{
-				if (!string.IsNullOrEmpty(searchBuffer) &&
-					!items[i].ToLower().Contains(searchBuffer.ToLower()))
-					continue;
-
-				bool isSelected = (selectedIndex == i);
-				if (ImGui.Selectable($"{items[i]}##{i}", isSelected))
-				{
-					selectedIndex = i;
-					changed = true;
-				}
-
-				if (isSelected)
-					ImGui.SetItemDefaultFocus();
-			}
-			ImGui.EndCombo();
-		}
-
-		return changed;
-	}
-
-	void DrawToolTip(string text)
-	{
-		ImGui.SameLine();
-		ImGui.TextDisabled("(?)");
-
-		if (ImGui.IsItemHovered())
-		{
-			ImGui.PushStyleColor(ImGuiCol.PopupBg, new System.Numerics.Vector4(0.89f, 0.82f, 0.70f, 1.0f));
-			ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f));
-			ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1.0f);
-
-			ImGui.BeginTooltip();
-			ImGui.PushTextWrapPos(450.0f);
-			ImGui.TextUnformatted(text);
-			ImGui.PopTextWrapPos();
-			ImGui.EndTooltip();
-
-			ImGui.PopStyleVar();
-			ImGui.PopStyleColor(2);
-		}
-	}
-
-	private void MyUI()
-	{
-		bool fontPushed = false;
-		try
-		{
-			if (!showMenu)
-				return;
-
-			ImGuiInputPatch.ApplyToImGui();
-
-			var io = ImGui.GetIO();
-			io.ConfigFlags &= ~ImGuiConfigFlags.NoMouse;
-
-			if (!styleApplied)
-			{
-				ApplyCustomStyle();
-				styleApplied = true;
-			}
-
-			if (Localization.CurrentLanguage == Language.Korean && CJKFontPatch.HasKoreanFont)
-			{
-				ImGui.PushFont(CJKFontPatch.KoreanFont);
-				fontPushed = true;
-			}
-			else if (Localization.CurrentLanguage != Language.Korean && CJKFontPatch.HasCjkFont)
-			{
-				ImGui.PushFont(CJKFontPatch.CjkFont);
-				fontPushed = true;
-			}
-
-			ImGui.SetNextWindowPos(new System.Numerics.Vector2(20, 20), ImGuiCond.Once);
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(500, 300), ImGuiCond.Once);
-			ImGui.SetNextWindowFocus();
-
-			if (ImGui.Begin("PEAK AIO##Main", ImGuiWindowFlags.NoCollapse))
-			{
-				// Sidebar
-				ImGui.BeginChild("Sidebar", new System.Numerics.Vector2(85, 0), true);
-				ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-				string[] sidebarKeys = { "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.about", "tab.language", "tab.debug" };
-				for (int i = 0; i < sidebarKeys.Length; i++)
-				{
-					bool isSelected = (selectedTab == i + 1);
-					string label = Localization.T(sidebarKeys[i]);
-
-					var textColor = isSelected
-						? new System.Numerics.Vector4(0.318f, 0.569f, 0.384f, 1.0f)
-						: new System.Numerics.Vector4(0.18f, 0.18f, 0.18f, 1.00f);
-
-					ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-
-					float textWidth = ImGui.CalcTextSize(label).X;
-					float availableWidth = ImGui.GetContentRegionAvail().X;
-					float offsetX = (availableWidth - textWidth) * 0.5f;
-					ImGui.SetCursorPosX(offsetX);
-
-					if (ImGui.Selectable(label + "##tab" + i, isSelected))
-						selectedTab = i + 1;
-
-					ImGui.PopStyleColor();
-				}
-
-				ImGui.EndChild();
-
-				// Main content area
-				ImGui.SameLine();
-				ImGui.BeginChild("MainArea");
-
-				// Player
-				if (selectedTab == 1)
-				{
-					float fullWidth = ImGui.GetContentRegionAvail().X;
-					float halfWidth = fullWidth / 2f;
-
-					ImGui.BeginChild("PlayerColumn", new System.Numerics.Vector2(halfWidth, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.CollapsingHeader(Localization.T("player.selfmods") + "##SelfMods", ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						DrawCheckbox(ConfigManager.InfiniteStamina, Localization.T("player.infinite_stamina"), (val) =>
-						{
-							var character = GameHelpers.GetCharacterComponent();
-							var prop = ConstantFields.GetInfiniteStaminaProperty();
-							if (character != null && prop != null)
-								prop.SetValue(character, val);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.infinite_stamina"));
-
-						DrawCheckbox(ConfigManager.LockStatus, Localization.T("player.freeze_afflictions"), (val) =>
-						{
-							var character = GameHelpers.GetCharacterComponent();
-							var prop = ConstantFields.GetStatusLockProperty();
-							if (character != null && prop != null)
-								prop.SetValue(character, val);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.freeze_afflictions"));
-
-						DrawCheckbox(ConfigManager.NoWeight, Localization.T("player.no_weight"));
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.no_weight"));
-
-						DrawCheckbox(ConfigManager.SpeedMod, Localization.T("player.change_speed"), (val) =>
-						{
-							var movement = GameHelpers.GetMovementComponent();
-							var field = ConstantFields.GetMovementModifierField();
-							if (movement != null && field != null)
-								field.SetValue(movement, ConfigManager.SpeedAmount.Value);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.change_speed"));
-
-						DrawCheckbox(ConfigManager.JumpMod, Localization.T("player.change_jump"), (val) =>
-						{
-							var movement = GameHelpers.GetMovementComponent();
-							var jumpField = ConstantFields.GetJumpGravityField();
-							var fallField = ConstantFields.GetFallDamageTimeField();
-							if (movement != null && jumpField != null)
-								jumpField.SetValue(movement, ConfigManager.JumpAmount.Value);
-							if (movement != null && fallField != null)
-								fallField.SetValue(movement, ConfigManager.NoFallDmg.Value ? 999f : 1.5f);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.change_jump"));
-
-						DrawCheckbox(ConfigManager.ClimbMod, Localization.T("player.change_climb"), (val) =>
-						{
-							var climb = GameHelpers.GetClimbingComponent();
-							var field = ConstantFields.GetClimbSpeedModField();
-							if (climb != null && field != null)
-								field.SetValue(climb, ConfigManager.ClimbAmount.Value);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.change_climb"));
-
-						DrawCheckbox(ConfigManager.VineClimbMod, Localization.T("player.change_vine_climb"), (val) =>
-						{
-							var vine = GameHelpers.GetVineClimbComponent();
-							var field = ConstantFields.GetVineClimbSpeedModField();
-							if (vine != null && field != null)
-								field.SetValue(vine, ConfigManager.VineClimbAmount.Value);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.change_vine_climb"));
-
-						DrawCheckbox(ConfigManager.RopeClimbMod, Localization.T("player.change_rope_climb"), (val) =>
-						{
-							var rope = GameHelpers.GetRopeClimbComponent();
-							var field = ConstantFields.GetRopeClimbSpeedModField();
-							if (rope != null && field != null)
-								field.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
-						});
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.change_rope_climb"));
-
-						DrawCheckbox(ConfigManager.TeleportToPing, Localization.T("player.teleport_to_ping"));
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.teleport_to_ping"));
-
-						DrawCheckbox(ConfigManager.FlyMod, Localization.T("player.fly_mode"), FlyPatch.SetFlying);
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.fly_mode"));
-
-						if (ImGui.Button(Localization.T("player.spawn_backpack")))
-						{
-							Utilities.GivePlayerBackpack(Player.localPlayer);
-						}
-					}
-					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-					if (ImGui.CollapsingHeader(Localization.T("player.teleport") + "##PlayerTeleport", ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						ImGui.InputFloat("X", ref Globals.teleportX);
-						ImGui.InputFloat("Y", ref Globals.teleportY);
-						ImGui.InputFloat("Z", ref Globals.teleportZ);
-
-						if (ImGui.Button(Localization.T("player.teleport_to_coords")))
-						{
-							Logger.LogInfo($"[Teleport] Requested to X:{Globals.teleportX} Y:{Globals.teleportY} Z:{Globals.teleportZ}");
-							Utilities.TeleportToCoords(Globals.teleportX, Globals.teleportY, Globals.teleportZ);
-						}
-					}
-					ImGui.EndChild();
-					ImGui.Unindent();
-					ImGui.SameLine();
-					ImGui.BeginChild("PlayerDetailsColumn", new System.Numerics.Vector2(halfWidth - 10, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.CollapsingHeader(Localization.T("player.details"), ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						if (ConfigManager.JumpMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawCheckbox(ConfigManager.NoFallDmg, Localization.T("player.no_fall_dmg"));
-							DrawSliderFloat(ConfigManager.JumpAmount, "##jump_amt", 10.0f, 500.0f, Localization.T("player.jump_mult"));
-						}
-
-						if (ConfigManager.SpeedMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.SpeedAmount, "##speed_amt", 1.0f, 20.0f, Localization.T("player.move_speed"));
-						}
-
-						if (ConfigManager.ClimbMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.ClimbAmount, "##climb_amt", 1.0f, 20.0f, Localization.T("player.climb_speed"));
-						}
-
-						if (ConfigManager.VineClimbMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.VineClimbAmount, "##vine_climb_amt", 1.0f, 20.0f, Localization.T("player.vine_speed"));
-						}
-
-						if (ConfigManager.RopeClimbMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.RopeClimbAmount, "##rope_climb_amt", 1.0f, 20.0f, Localization.T("player.rope_speed"));
-						}
-						if (ConfigManager.FlyMod.Value)
-						{
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.FlySpeed, "##fly_speed", 10f, 100f, Localization.T("player.fly_speed"));
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(ConfigManager.FlyAcceleration, "##fly_acceleration", 10f, 300f, Localization.T("player.fly_acceleration"));
-						}
-					}
-					ImGui.Unindent();
-					ImGui.EndChild();
-				}
-				// Items
-				else if (selectedTab == 2)
-				{
-					// 如果物品列表为空，先刷新
-					if (Globals.itemNames.Count == 0)
-					{
-						Utilities.UpdateItems();
-					}
-
-					List<(int slot, int itemIndex)> assignQueue = new List<(int slot, int itemIndex)>();
-
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-
-					ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-
-					if (ImGui.BeginTable("InventorySlots", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
-					{
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 1");
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 2");
-						ImGui.TableSetupColumn(Localization.T("items.slot") + " 3");
-						ImGui.TableHeadersRow();
-
-						ImGui.TableNextRow();
-
-						for (int slot = 0; slot < 3; slot++)
-						{
-							ImGui.TableSetColumnIndex(slot);
-							ImGui.PushID(slot); // 每个槽独立ID
-
-							// 当前物品名称
-							string currentItemName = Localization.T("items.none");
-							if (Player.localPlayer?.itemSlots != null &&
-								Player.localPlayer.itemSlots.Length > slot &&
-								Player.localPlayer.itemSlots[slot]?.prefab != null)
-							{
-								currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
-							}
-
-							ImGui.Text(Localization.T("items.item_n", slot + 1));
-							ImGui.SameLine();
-							ImGui.Text(currentItemName);
-							ImGui.Spacing();
-
-							// 搜索栏
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							ImGui.InputText($"##ItemSearch{slot}", ref Globals.itemSearchBuffers[slot], 128);
-
-							// 滚动列表限制最大高度
-							float maxHeight = 150f; // 最大高度
-							ImGui.BeginChild($"##ItemList{slot}", new System.Numerics.Vector2(0, maxHeight), true);
-
-							bool hasItems = false;
-							for (int i = 0; i < Globals.itemNames.Count; i++)
-							{
-								string itemName = Globals.itemNames[i];
-
-								// 搜索过滤
-								// 修改为兼容写法
-								if (!string.IsNullOrEmpty(Globals.itemSearchBuffers[slot]) &&
-									itemName.IndexOf(Globals.itemSearchBuffers[slot], StringComparison.OrdinalIgnoreCase) < 0)
-									continue;
-
-								hasItems = true;
-								bool isSelected = (Globals.selectedItems[slot] == i);
-
-								if (ImGui.Selectable(itemName, isSelected))
-								{
-									Globals.selectedItems[slot] = i;
-									assignQueue.Add((slot, i));
-								}
-
-								if (isSelected)
-									ImGui.SetItemDefaultFocus();
-							}
-
-							if (!hasItems)
-							{
-								ImGui.TextDisabled("None");
-							}
-
-							ImGui.EndChild();
-
-							ImGui.SameLine();
-							DrawToolTip(Localization.T("tip.item_search"));
-
-							ImGui.Spacing();
-
-							// 充值滑条
-							ConfigEntry<float> rechargeAmountConfig;
-							switch (slot)
-							{
-								case 0:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-									break;
-								case 1:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot2;
-									break;
-								case 2:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot3;
-									break;
-								default:
-									rechargeAmountConfig = ConfigManager.RechargeAmountSlot1;
-									break;
-							}
-
-							ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-							DrawSliderFloat(rechargeAmountConfig, $"##recharge_mount##{slot}", 0f, 100f, Localization.T("items.charge_format"));
-
-							if (ImGui.Button(Localization.T("items.recharge") + $"##{slot}"))
-							{
-								Utilities.RechargeInventorySlot(slot, rechargeAmountConfig.Value);
-							}
-							ImGui.SameLine();
-							DrawToolTip(Localization.T("tip.recharge"));
-
-							ImGui.PopID(); // Pop slot ID
-						}
-
-						ImGui.EndTable();
-					}
-
-					// 分配选择的物品
-					foreach (var (slot, itemIndex) in assignQueue)
-					{
-						Utilities.AssignInventoryItem(slot, itemIndex);
-					}
-
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.Button(Localization.T("items.refresh")))
-						Utilities.UpdateItems();
-					ImGui.SameLine();
-					DrawToolTip(Localization.T("tip.refresh_items"));
-
-					ImGui.Unindent();
-				}
-				// Lobby
-				else if (selectedTab == 3)
-				{
-					float fullWidth = ImGui.GetContentRegionAvail().X;
-					float halfWidth = fullWidth / 2f;
-
-					if (Globals.allPlayers.Count == 0)
-					{
-						Utilities.RefreshPlayerList();
-					}
-
-					// Left: Player List
-					ImGui.BeginChild("Lobby_PlayerList", new System.Numerics.Vector2(halfWidth, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.CollapsingHeader(Localization.T("lobby.players"), ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-
-						if (Globals.selectedPlayer == -1 && Globals.playerNames.Count > 0)
-						{
-							Globals.selectedPlayer = 0;
-						}
-
-						// if (ImGui.BeginCombo(Localization.T("lobby.select_player"), Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.playerNames.Count
-						//     ? Globals.playerNames[Globals.selectedPlayer]
-						//     : Localization.T("items.none")))
-						// {
-						//     for (int i = 0; i < Globals.playerNames.Count; i++)
-						//     {
-						//         bool isSelected = (Globals.selectedPlayer == i);
-						//         if (ImGui.Selectable($"{Globals.playerNames[i]}##{i}", isSelected))
-						//         {
-						//             Globals.selectedPlayer = i;
-						//         }
-
-						//         if (isSelected)
-						//             ImGui.SetItemDefaultFocus();
-						//     }
-						//     ImGui.EndCombo();
-						// }
-						if (ImGui.BeginListBox("##player_list", new System.Numerics.Vector2(-1, 120)))
-						{
-							if (Globals.playerNames.Count == 0)
-							{
-								ImGui.TextDisabled("None");
-							}
-							else
-							{
-								for (int i = 0; i < Globals.playerNames.Count; i++)
-								{
-									bool isSelected = (Globals.selectedPlayer == i);
-
-									// 选中时改变文字颜色
-									if (isSelected)
-										ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.3f, 1f, 0.3f, 1f));
-
-									if (ImGui.Selectable(Globals.playerNames[i], isSelected))
-									{
-										Globals.selectedPlayer = i;
-										Logger.LogInfo($"Selected player: {Globals.playerNames[i]}");
-									}
-
-									if (isSelected)
-									{
-										ImGui.SetItemDefaultFocus();
-										ImGui.PopStyleColor();
-									}
-								}
-							}
-
-							ImGui.EndListBox();
-						}
-						ImGui.Dummy(new System.Numerics.Vector2(4, 4));
-						ImGui.Separator();
-						ImGui.Text(Localization.T("lobby.all_players"));
-						ImGui.Text($"Players: {Globals.playerNames.Count}");
-
-						if (ImGui.Button(Localization.T("lobby.revive_all")))
-							Utilities.ReviveAllPlayers();
-
-						ImGui.SameLine();
-						if (ImGui.Button(Localization.T("lobby.kill_all")))
-						{
-							Utilities.KillAllPlayers();
-						}
-
-						bool excludeSelf = Globals.excludeSelfFromAllActions;
-						if (ImGui.Checkbox(Localization.T("lobby.exclude_self") + "##KillAll", ref excludeSelf))
-							Globals.excludeSelfFromAllActions = excludeSelf;
-
-						if (ImGui.Button(Localization.T("lobby.warp_all_to_me")))
-							Utilities.WarpAllPlayersToMe();
-					}
-
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-					if (ImGui.Button(Localization.T("lobby.refresh_players")))
-						Utilities.RefreshPlayerList();
-					ImGui.SameLine();
-					DrawToolTip(Localization.T("tip.refresh_players"));
-
-					ImGui.Unindent();
-					ImGui.EndChild();
-
-					// Right: Player Actions
-					ImGui.SameLine();
-					ImGui.BeginChild("Lobby_PlayerActions", new System.Numerics.Vector2(halfWidth - 10, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(0, 4));
-					if (ImGui.CollapsingHeader(Localization.T("lobby.actions"), ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
-						{
-							ImGui.Text($"{Globals.playerNames[Globals.selectedPlayer]}");
-							if (ImGui.Button(Localization.T("lobby.revive")))
-								Utilities.ReviveSelectedPlayer();
-
-							ImGui.SameLine();
-							if (ImGui.Button(Localization.T("lobby.kill")))
-								Utilities.KillSelectedPlayer();
-
-							if (ImGui.Button(Localization.T("lobby.warp_to")))
-								Utilities.WarpToSelectedPlayer();
-
-							ImGui.SameLine();
-							if (ImGui.Button(Localization.T("lobby.warp_to_me")))
-								Utilities.WarpSelectedPlayerToMe();
-
-							ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-							ImGui.Separator();
-							ImGui.Text(Localization.T("lobby.special_actions"));
-
-							if (ImGui.Button(Localization.T("lobby.spawn_scoutmaster")))
-							{
-								Utilities.SpawnScoutmasterForPlayer(Globals.selectedPlayer);
-							}
-							ImGui.SameLine();
-							DrawToolTip(Localization.T("tip.spawn_scoutmaster"));
-						}
-						else
-						{
-							ImGui.Text(Localization.T("lobby.no_player_selected"));
-						}
-					}
-
-					ImGui.Unindent();
-					ImGui.EndChild();
-				}
-				// World
-				else if (selectedTab == 4)
-				{
-					float fullWidth = ImGui.GetContentRegionAvail().X;
-					float halfWidth = fullWidth / 2f;
-
-					Utilities.EnsureLuggageListInitialized();
-
-					// Left: Luggage List
-					ImGui.BeginChild("World_LuggageList", new System.Numerics.Vector2(halfWidth, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-
-					if (ImGui.CollapsingHeader(Localization.T("world.containers"), ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 4);
-
-						// Always show the combo, even if the list is empty
-						string selectedLabel = Globals.selectedLuggageIndex >= 0 && Globals.selectedLuggageIndex < Globals.luggageLabels.Count
-							? Globals.luggageLabels[Globals.selectedLuggageIndex]
-							: Localization.T("items.none");
-
-						if (ImGui.BeginCombo(Localization.T("world.select_container"), selectedLabel))
-						{
-							if (Globals.luggageLabels.Count > 0)
-							{
-								for (int i = 0; i < Globals.luggageLabels.Count; i++)
-								{
-									bool isSelected = (Globals.selectedLuggageIndex == i);
-									if (ImGui.Selectable($"{Globals.luggageLabels[i]}##{i}", isSelected))
-									{
-										Globals.selectedLuggageIndex = i;
-									}
-
-									if (isSelected)
-										ImGui.SetItemDefaultFocus();
-								}
-							}
-							else
-							{
-								ImGui.TextDisabled(Localization.T("world.no_containers"));
-							}
-
-							ImGui.EndCombo();
-						}
-
-						ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-						if (ImGui.Button(Localization.T("world.refresh_luggage")))
-						{
-							Utilities.hasInitializedLuggageList = false;
-							Utilities.RefreshLuggageList();
-						}
-						ImGui.SameLine();
-						DrawToolTip(Localization.T("tip.refresh_luggage"));
-
-						ImGui.Dummy(new System.Numerics.Vector2(4, 4));
-						ImGui.Separator();
-						ImGui.Text(Localization.T("world.all_nearby"));
-
-						if (ImGui.Button(Localization.T("world.open_all_nearby")))
-						{
-							Utilities.OpenAllNearbyLuggage();
-						}
-					}
-
-					ImGui.Unindent();
-					ImGui.EndChild();
-
-					// Right: Luggage Actions
-					ImGui.SameLine();
-					ImGui.BeginChild("World_LuggageActions", new System.Numerics.Vector2(halfWidth - 10, 0), true);
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(0, 4));
-
-					if (ImGui.CollapsingHeader(Localization.T("lobby.actions") + "##WorldActions", ImGuiTreeNodeFlags.DefaultOpen))
-					{
-						if (Globals.selectedLuggageIndex >= 0 && Globals.selectedLuggageIndex < Globals.luggageLabels.Count)
-						{
-							string label = Globals.luggageLabels[Globals.selectedLuggageIndex];
-
-							if (ImGui.Button(Localization.T("world.warp_to_luggage")))
-							{
-								Logger.LogInfo($"[UI] Warp requested for index {Globals.selectedLuggageIndex} - {label}");
-								Vector3 luggageCoords = Globals.luggageObject[Globals.selectedLuggageIndex].Center();
-								luggageCoords.y += 1.5f;
-
-								Utilities.TeleportToCoords(luggageCoords.x, luggageCoords.y, luggageCoords.z);
-							}
-
-							if (ImGui.Button(Localization.T("world.open_luggage")))
-							{
-								Utilities.OpenLuggage(Globals.selectedLuggageIndex);
-							}
-						}
-						else
-						{
-							ImGui.Text(Localization.T("world.no_luggage_selected"));
-						}
-					}
-
-					ImGui.Unindent();
-					ImGui.EndChild();
-				}
-				// About
-				else if (selectedTab == 5)
-				{
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-
-					ImGui.Text(Localization.T("about.title"));
-					ImGui.Separator();
-					ImGui.Text(Localization.T("about.version"));
-					ImGui.Text(Localization.T("about.author"));
-
-					ImGui.Spacing();
-					ImGui.TextWrapped(Localization.T("about.description"));
-
-					ImGui.Spacing();
-					ImGui.Text(Localization.T("about.key_features"));
-					ImGui.BulletText(Localization.T("about.feature1"));
-					ImGui.BulletText(Localization.T("about.feature2"));
-					ImGui.BulletText(Localization.T("about.feature3"));
-					ImGui.BulletText(Localization.T("about.feature4"));
-					ImGui.BulletText(Localization.T("about.feature5"));
-					ImGui.BulletText(Localization.T("about.feature6"));
-
-					ImGui.Spacing();
-					ImGui.Text(Localization.T("about.thanks"));
-					ImGui.BulletText(Localization.T("about.thanks1"));
-					ImGui.BulletText(Localization.T("about.thanks2"));
-					ImGui.BulletText(Localization.T("about.thanks3"));
-					ImGui.BulletText(Localization.T("about.thanks4"));
-
-					ImGui.Spacing();
-					ImGui.Separator();
-					ImGui.TextWrapped(Localization.T("about.disclaimer"));
-
-					ImGui.Unindent();
-				}
-				// Language
-				else if (selectedTab == 6)
-				{
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-
-					ImGui.Text(Localization.T("lang.title"));
-					ImGui.Separator();
-					ImGui.Spacing();
-
-					ImGui.Text(Localization.T("lang.current"));
-					ImGui.Spacing();
-					ImGui.Text(Localization.T("lang.select"));
-					ImGui.Spacing();
-
-					for (int i = 0; i < Localization.LanguageNames.Length; i++)
-					{
-						bool isActive = ((int)Localization.CurrentLanguage == i);
-
-						bool needKoreanFont = (i == (int)Language.Korean) && Localization.CurrentLanguage != Language.Korean && CJKFontPatch.HasKoreanFont;
-						bool needCjkFont = (i == (int)Language.SimplifiedChinese || i == (int)Language.Japanese || i == (int)Language.TraditionalChinese) && Localization.CurrentLanguage == Language.Korean && CJKFontPatch.HasCjkFont;
-
-						if (needKoreanFont) ImGui.PushFont(CJKFontPatch.KoreanFont);
-						else if (needCjkFont) ImGui.PushFont(CJKFontPatch.CjkFont);
-
-						if (isActive)
-						{
-							ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.318f, 0.569f, 0.384f, 1.0f));
-							ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.953f, 0.941f, 0.902f, 1.00f));
-						}
-
-						if (ImGui.Button(Localization.LanguageNames[i] + "##lang" + i, new System.Numerics.Vector2(ImGui.GetContentRegionAvail().X - 4, 28)))
-						{
-							Localization.SetLanguage(i);
-							ConfigManager.LanguageIndex.Value = i;
-						}
-
-						if (isActive)
-							ImGui.PopStyleColor(2);
-
-						if (needKoreanFont || needCjkFont) ImGui.PopFont();
-					}
-
-					ImGui.Unindent();
-				}
-
-				// Debug
-				else if (selectedTab == 7)
-				{
-					ImGui.Indent(4.0f);
-					ImGui.Dummy(new System.Numerics.Vector2(4, 2));
-
-					if (Globals.debugSlotBuffer == null)
-						Globals.debugSlotBuffer = new string('0', 8);
-					ImGui.Text($"Debug Slot");
-					ImGui.SameLine();
-					ImGui.InputText("##DebugSlot", ref Globals.debugSlotBuffer, 8);
-					ImGui.SameLine();
-					if (ImGui.Button("DEBUG"))
-					{
-
-						if (int.TryParse(Globals.debugSlotBuffer, out int slotNum))
-						{
-							Utilities.GetItemsLogs(slotNum);
-						}
-						else
-						{
-							Logger.LogInfo("[DEBUG] Invalid slot number");
-						}
-					}
-
-					ImGui.Unindent();
-				}
-				ImGui.EndChild();
-			}
-
-			ImGuiInputPatch.LogPostNewFrame();
-			ImGui.End();
-
-			if (fontPushed)
-				ImGui.PopFont();
-		}
-		catch (Exception ex)
-		{
-			if (fontPushed)
-				ImGui.PopFont();
-			ConfigManager.Logger.LogError("[UI ERROR] Exception in MyUI: " + ex);
-		}
-	}
+    public static bool IsMenuOpen = false;
+    private bool showMenu = false;
+    private int selectedTab = 1;
+
+    // Coordinate inputs
+    private string coordXStr = "0";
+    private string coordYStr = "0";
+    private string coordZStr = "0";
+
+    // GUI Styling
+    private bool skinInitialized = false;
+    private GUISkin customSkin;
+    private GUIStyle windowStyle;
+    private GUIStyle sidebarBtnStyle;
+    private GUIStyle sidebarActiveBtnStyle;
+    private GUIStyle cardBoxStyle;
+    private GUIStyle primaryBtnStyle;
+    private GUIStyle dangerBtnStyle;
+    private GUIStyle sectionHeaderStyle;
+    private GUIStyle subHeaderStyle;
+    private GUIStyle labelStyle;
+    private GUIStyle boldLabelStyle;
+    private GUIStyle tipLabelStyle;
+    private GUIStyle textInputStyle;
+    private GUIStyle itemSelectableStyle;
+    private GUIStyle itemSelectedStyle;
+    private GUIStyle toggleStyle;
+
+    // Solid Color Textures
+    private Texture2D texCanvasTan;
+    private Texture2D texBadgeBrown;
+    private Texture2D texLogInk;
+    private Texture2D texSidebarGreen;
+    private Texture2D texTrailDust;
+    private Texture2D texTrailDustHover;
+    private Texture2D texTrailDustActive;
+    private Texture2D texRopeBrown;
+    private Texture2D texLightGreen;
+    private Texture2D texScoutRed;
+    private Texture2D texCardBg;
+
+    private static Texture2D MakeSolidTex(int width, int height, Color col)
+    {
+        Color[] pix = new Color[width * height];
+        for (int i = 0; i < pix.Length; i++)
+            pix[i] = col;
+        Texture2D result = new Texture2D(width, height);
+        result.SetPixels(pix);
+        result.Apply();
+        return result;
+    }
+
+    private void Awake()
+    {
+        Logger.LogInfo("[PEAK AIO] Initializing Mod (Native Unity GUI)...");
+        this.gameObject.AddComponent<EventComponent>();
+    }
+
+    private void OnEnable()
+    {
+        Logger.LogInfo("[PEAK AIO] OnEnable called");
+
+        Globals.itemSearchBuffers = new string[3] { "", "", "" };
+        ConfigManager.Init(Config, Logger);
+
+        try
+        {
+            var harmony = new Harmony("com.onigremlin.peakaio");
+            harmony.PatchAll();
+            Logger.LogInfo("[PEAK AIO] Harmony patches applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[PEAK AIO] Harmony PatchAll failed: " + ex);
+        }
+    }
+
+    private void OnDisable()
+    {
+        Logger.LogInfo("[PEAK AIO] OnDisable called");
+        if (showMenu)
+        {
+            showMenu = false;
+            IsMenuOpen = false;
+            RestoreCursor();
+        }
+    }
+
+    private void Update()
+    {
+        UnityMainThreadDispatcher.Update();
+
+        if (UnityEngine.Input.GetKeyDown(ConfigManager.MenuToggleKey.Value))
+        {
+            ToggleMenu();
+        }
+    }
+
+    public void ToggleMenu()
+    {
+        showMenu = !showMenu;
+        IsMenuOpen = showMenu;
+        if (showMenu)
+        {
+            CaptureCursor();
+        }
+        else
+        {
+            RestoreCursor();
+        }
+    }
+
+    private void CaptureCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void RestoreCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    private void InitStyles()
+    {
+        if (skinInitialized) return;
+
+        // Colors
+        Color canvasTan = new Color(0.953f, 0.941f, 0.902f, 1.0f);
+        Color badgeBrown = new Color(0.361f, 0.294f, 0.231f, 1.0f);
+        Color logInk = new Color(0.18f, 0.18f, 0.18f, 1.0f);
+        Color sidebarGreen = new Color(0.18f, 0.28f, 0.22f, 1.0f);
+        Color trailDust = new Color(0.866f, 0.827f, 0.741f, 1.0f);
+        Color trailDustHover = new Color(0.80f, 0.78f, 0.65f, 1.0f);
+        Color trailDustActive = new Color(0.75f, 0.72f, 0.61f, 1.0f);
+        Color ropeBrown = new Color(0.55f, 0.42f, 0.28f, 1.0f);
+        Color lightGreen = new Color(0.318f, 0.569f, 0.384f, 1.0f);
+        Color scoutRed = new Color(0.76f, 0.44f, 0.39f, 1.0f);
+        Color cardBg = new Color(0.91f, 0.88f, 0.82f, 1.0f);
+
+        // Textures
+        texCanvasTan = MakeSolidTex(2, 2, canvasTan);
+        texBadgeBrown = MakeSolidTex(2, 2, badgeBrown);
+        texLogInk = MakeSolidTex(2, 2, logInk);
+        texSidebarGreen = MakeSolidTex(2, 2, sidebarGreen);
+        texTrailDust = MakeSolidTex(2, 2, trailDust);
+        texTrailDustHover = MakeSolidTex(2, 2, trailDustHover);
+        texTrailDustActive = MakeSolidTex(2, 2, trailDustActive);
+        texRopeBrown = MakeSolidTex(2, 2, ropeBrown);
+        texLightGreen = MakeSolidTex(2, 2, lightGreen);
+        texScoutRed = MakeSolidTex(2, 2, scoutRed);
+        texCardBg = MakeSolidTex(2, 2, cardBg);
+
+        // Clone base skin to retain all default controls and scrollbars
+        customSkin = Instantiate(GUI.skin);
+        try
+        {
+            string[] fontCandidates = new string[] {
+                "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Malgun Gothic", "Meiryo", "Arial"
+            };
+            Font dynamicFont = Font.CreateDynamicFontFromOSFont(fontCandidates, 12);
+            if (dynamicFont != null)
+            {
+                customSkin.font = dynamicFont;
+            }
+        }
+        catch { }
+
+        // Window style
+        windowStyle = new GUIStyle(customSkin.window);
+        windowStyle.normal.background = texCanvasTan;
+        windowStyle.onNormal.background = texCanvasTan;
+        windowStyle.normal.textColor = logInk;
+        windowStyle.onNormal.textColor = logInk;
+        windowStyle.fontSize = 14;
+        windowStyle.fontStyle = FontStyle.Bold;
+        windowStyle.padding = new RectOffset(8, 8, 24, 8);
+        windowStyle.border = new RectOffset(4, 4, 4, 4);
+        customSkin.window = windowStyle;
+
+        // Default button style
+        GUIStyle defaultBtn = new GUIStyle(customSkin.button);
+        defaultBtn.normal.background = texTrailDust;
+        defaultBtn.hover.background = texTrailDustHover;
+        defaultBtn.active.background = texTrailDustActive;
+        defaultBtn.normal.textColor = logInk;
+        defaultBtn.hover.textColor = logInk;
+        defaultBtn.active.textColor = logInk;
+        defaultBtn.fontSize = 12;
+        defaultBtn.alignment = TextAnchor.MiddleCenter;
+        defaultBtn.margin = new RectOffset(2, 2, 2, 2);
+        defaultBtn.padding = new RectOffset(6, 6, 4, 4);
+        customSkin.button = defaultBtn;
+
+        // Primary Button
+        primaryBtnStyle = new GUIStyle(defaultBtn);
+        primaryBtnStyle.normal.background = texLightGreen;
+        primaryBtnStyle.hover.background = MakeSolidTex(2, 2, new Color(0.36f, 0.63f, 0.43f, 1.0f));
+        primaryBtnStyle.active.background = MakeSolidTex(2, 2, new Color(0.28f, 0.50f, 0.34f, 1.0f));
+        primaryBtnStyle.normal.textColor = Color.white;
+        primaryBtnStyle.hover.textColor = Color.white;
+        primaryBtnStyle.active.textColor = Color.white;
+        primaryBtnStyle.fontStyle = FontStyle.Bold;
+
+        // Danger Button
+        dangerBtnStyle = new GUIStyle(defaultBtn);
+        dangerBtnStyle.normal.background = texScoutRed;
+        dangerBtnStyle.hover.background = MakeSolidTex(2, 2, new Color(0.82f, 0.50f, 0.45f, 1.0f));
+        dangerBtnStyle.active.background = MakeSolidTex(2, 2, new Color(0.68f, 0.38f, 0.33f, 1.0f));
+        dangerBtnStyle.normal.textColor = Color.white;
+        dangerBtnStyle.hover.textColor = Color.white;
+        dangerBtnStyle.active.textColor = Color.white;
+        dangerBtnStyle.fontStyle = FontStyle.Bold;
+
+        // Sidebar Buttons
+        sidebarBtnStyle = new GUIStyle(defaultBtn);
+        sidebarBtnStyle.normal.background = texTrailDust;
+        sidebarBtnStyle.hover.background = texTrailDustHover;
+        sidebarBtnStyle.normal.textColor = logInk;
+        sidebarBtnStyle.fontSize = 11;
+        sidebarBtnStyle.fixedHeight = 32;
+        sidebarBtnStyle.fontStyle = FontStyle.Bold;
+
+        sidebarActiveBtnStyle = new GUIStyle(sidebarBtnStyle);
+        sidebarActiveBtnStyle.normal.background = texSidebarGreen;
+        sidebarActiveBtnStyle.hover.background = texSidebarGreen;
+        sidebarActiveBtnStyle.active.background = texSidebarGreen;
+        sidebarActiveBtnStyle.normal.textColor = Color.white;
+        sidebarActiveBtnStyle.hover.textColor = Color.white;
+        sidebarActiveBtnStyle.active.textColor = Color.white;
+
+        // Card Box
+        cardBoxStyle = new GUIStyle(customSkin.box);
+        cardBoxStyle.normal.background = texCardBg;
+        cardBoxStyle.normal.textColor = logInk;
+        cardBoxStyle.padding = new RectOffset(8, 8, 8, 8);
+        cardBoxStyle.margin = new RectOffset(2, 2, 2, 2);
+        customSkin.box = cardBoxStyle;
+
+        // Section Header
+        sectionHeaderStyle = new GUIStyle(customSkin.label);
+        sectionHeaderStyle.normal.textColor = sidebarGreen;
+        sectionHeaderStyle.fontSize = 13;
+        sectionHeaderStyle.fontStyle = FontStyle.Bold;
+        sectionHeaderStyle.margin = new RectOffset(0, 0, 4, 2);
+
+        // Subheader
+        subHeaderStyle = new GUIStyle(customSkin.label);
+        subHeaderStyle.normal.textColor = badgeBrown;
+        subHeaderStyle.fontSize = 12;
+        subHeaderStyle.fontStyle = FontStyle.Bold;
+        subHeaderStyle.margin = new RectOffset(0, 0, 2, 2);
+
+        // Standard Label
+        labelStyle = new GUIStyle(customSkin.label);
+        labelStyle.normal.textColor = logInk;
+        labelStyle.fontSize = 12;
+        labelStyle.wordWrap = true;
+        customSkin.label = labelStyle;
+
+        boldLabelStyle = new GUIStyle(labelStyle);
+        boldLabelStyle.fontStyle = FontStyle.Bold;
+
+        tipLabelStyle = new GUIStyle(labelStyle);
+        tipLabelStyle.normal.textColor = ropeBrown;
+        tipLabelStyle.fontSize = 10;
+
+        // Text input
+        textInputStyle = new GUIStyle(customSkin.textField);
+        textInputStyle.normal.background = texTrailDust;
+        textInputStyle.focused.background = texTrailDustHover;
+        textInputStyle.normal.textColor = logInk;
+        textInputStyle.focused.textColor = logInk;
+        textInputStyle.fontSize = 12;
+        textInputStyle.padding = new RectOffset(4, 4, 3, 3);
+        customSkin.textField = textInputStyle;
+
+        // Selectables
+        itemSelectableStyle = new GUIStyle(customSkin.button);
+        itemSelectableStyle.normal.background = texTrailDust;
+        itemSelectableStyle.hover.background = texTrailDustHover;
+        itemSelectableStyle.normal.textColor = logInk;
+        itemSelectableStyle.fontSize = 11;
+        itemSelectableStyle.alignment = TextAnchor.MiddleLeft;
+        itemSelectableStyle.padding = new RectOffset(6, 4, 3, 3);
+        itemSelectableStyle.margin = new RectOffset(1, 1, 1, 1);
+        itemSelectableStyle.fixedHeight = 22;
+
+        itemSelectedStyle = new GUIStyle(itemSelectableStyle);
+        itemSelectedStyle.normal.background = texLightGreen;
+        itemSelectedStyle.hover.background = texLightGreen;
+        itemSelectedStyle.normal.textColor = Color.white;
+        itemSelectedStyle.hover.textColor = Color.white;
+
+        // Toggle
+        toggleStyle = new GUIStyle(customSkin.toggle);
+        toggleStyle.normal.textColor = logInk;
+        toggleStyle.hover.textColor = logInk;
+        toggleStyle.active.textColor = logInk;
+        toggleStyle.onNormal.textColor = sidebarGreen;
+        toggleStyle.onHover.textColor = sidebarGreen;
+        toggleStyle.onActive.textColor = sidebarGreen;
+        toggleStyle.fontSize = 12;
+        toggleStyle.fontStyle = FontStyle.Normal;
+        customSkin.toggle = toggleStyle;
+
+        // Horizontal Slider
+        GUIStyle sliderTrack = new GUIStyle(customSkin.horizontalSlider);
+        sliderTrack.normal.background = texTrailDust;
+        sliderTrack.fixedHeight = 8;
+        customSkin.horizontalSlider = sliderTrack;
+
+        GUIStyle sliderThumb = new GUIStyle(customSkin.horizontalSliderThumb);
+        sliderThumb.normal.background = texSidebarGreen;
+        sliderThumb.hover.background = texLightGreen;
+        sliderThumb.active.background = texSidebarGreen;
+        sliderThumb.fixedWidth = 14;
+        sliderThumb.fixedHeight = 14;
+        customSkin.horizontalSliderThumb = sliderThumb;
+
+        // Scrollbars
+        GUIStyle vScroll = new GUIStyle(customSkin.verticalScrollbar);
+        vScroll.normal.background = texBadgeBrown;
+        vScroll.fixedWidth = 10;
+        customSkin.verticalScrollbar = vScroll;
+
+        GUIStyle vScrollThumb = new GUIStyle(customSkin.verticalScrollbarThumb);
+        vScrollThumb.normal.background = texSidebarGreen;
+        vScrollThumb.hover.background = texLightGreen;
+        vScrollThumb.active.background = texSidebarGreen;
+        vScrollThumb.fixedWidth = 10;
+        customSkin.verticalScrollbarThumb = vScrollThumb;
+
+        skinInitialized = true;
+    }
+
+    private void OnGUI()
+    {
+        if (!showMenu)
+            return;
+
+        InitStyles();
+
+        GUI.skin = customSkin;
+
+        // Ensure window stays within screen bounds
+        Globals.windowRect.x = Mathf.Clamp(Globals.windowRect.x, 0, Mathf.Max(0, Screen.width - Globals.windowRect.width));
+        Globals.windowRect.y = Mathf.Clamp(Globals.windowRect.y, 0, Mathf.Max(0, Screen.height - Globals.windowRect.height));
+
+        Globals.windowRect = GUI.Window(9999, Globals.windowRect, DrawWindow, "PEAK AIO [APEX Edition]");
+    }
+
+    private void DrawWindow(int windowId)
+    {
+        // Close button at top right
+        if (GUI.Button(new Rect(Globals.windowRect.width - 26, 3, 22, 20), "X", dangerBtnStyle))
+        {
+            ToggleMenu();
+            return;
+        }
+
+        GUILayout.BeginHorizontal();
+
+        // 1. Left Sidebar
+        GUILayout.BeginVertical(GUILayout.Width(115));
+        DrawSidebar();
+        GUILayout.EndVertical();
+
+        GUILayout.Space(6);
+
+        // 2. Main Content Area
+        GUILayout.BeginVertical(cardBoxStyle);
+        DrawMainArea();
+        GUILayout.EndVertical();
+
+        GUILayout.EndHorizontal();
+
+        // Drag bar across the top header
+        GUI.DragWindow(new Rect(0, 0, Globals.windowRect.width - 28, 24));
+    }
+
+    private void DrawSidebar()
+    {
+        string[] sidebarKeys = new string[] {
+            "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.about", "tab.language", "tab.debug"
+        };
+
+        for (int i = 0; i < sidebarKeys.Length; i++)
+        {
+            int tabIndex = i + 1;
+            bool isSelected = (selectedTab == tabIndex);
+            string label = Localization.T(sidebarKeys[i]);
+
+            GUIStyle style = isSelected ? sidebarActiveBtnStyle : sidebarBtnStyle;
+            if (GUILayout.Button(label, style))
+            {
+                if (selectedTab != tabIndex)
+                {
+                    selectedTab = tabIndex;
+                    Globals.mainScroll = Vector2.zero;
+                }
+            }
+            GUILayout.Space(2);
+        }
+
+        GUILayout.FlexibleSpace();
+
+        // Menu Hotkey indicator
+        GUILayout.Label(string.Format("[{0}]", ConfigManager.MenuToggleKey.Value), tipLabelStyle);
+    }
+
+    private void DrawMainArea()
+    {
+        switch (selectedTab)
+        {
+            case 1:
+                DrawPlayerTab();
+                break;
+            case 2:
+                DrawItemsTab();
+                break;
+            case 3:
+                DrawLobbyTab();
+                break;
+            case 4:
+                DrawWorldTab();
+                break;
+            case 5:
+                DrawAboutTab();
+                break;
+            case 6:
+                DrawLanguageTab();
+                break;
+            case 7:
+                DrawDebugTab();
+                break;
+            default:
+                DrawPlayerTab();
+                break;
+        }
+    }
+
+    // ==========================================
+    // TAB 1: PLAYER
+    // ==========================================
+    private void DrawPlayerTab()
+    {
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+
+        GUILayout.BeginHorizontal();
+
+        // Left Column: Self Mods & Teleport
+        GUILayout.BeginVertical(GUILayout.Width(310));
+
+        GUILayout.Label(Localization.T("player.selfmods"), sectionHeaderStyle);
+
+        DrawCheckbox(ConfigManager.InfiniteStamina, Localization.T("player.infinite_stamina"), (val) =>
+        {
+            var character = GameHelpers.GetCharacterComponent();
+            var prop = ConstantFields.GetInfiniteStaminaProperty();
+            if (character != null && prop != null)
+                prop.SetValue(character, val);
+        });
+
+        DrawCheckbox(ConfigManager.LockStatus, Localization.T("player.freeze_afflictions"), (val) =>
+        {
+            var character = GameHelpers.GetCharacterComponent();
+            var prop = ConstantFields.GetStatusLockProperty();
+            if (character != null && prop != null)
+                prop.SetValue(character, val);
+        });
+
+        // Clear All Afflictions button
+        if (GUILayout.Button(Localization.T("player.clear_afflictions"), primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Utilities.ClearAllAfflictions();
+        }
+        GUILayout.Label(Localization.T("tip.clear_afflictions"), tipLabelStyle);
+        GUILayout.Space(4);
+
+        DrawCheckbox(ConfigManager.NoWeight, Localization.T("player.no_weight"));
+
+        DrawCheckbox(ConfigManager.SpeedMod, Localization.T("player.change_speed"), (val) =>
+        {
+            var movement = GameHelpers.GetMovementComponent();
+            var field = ConstantFields.GetMovementModifierField();
+            if (movement != null && field != null)
+                field.SetValue(movement, ConfigManager.SpeedAmount.Value);
+        });
+
+        DrawCheckbox(ConfigManager.JumpMod, Localization.T("player.change_jump"), (val) =>
+        {
+            var movement = GameHelpers.GetMovementComponent();
+            var jumpField = ConstantFields.GetJumpGravityField();
+            var fallField = ConstantFields.GetFallDamageTimeField();
+            if (movement != null && jumpField != null)
+                jumpField.SetValue(movement, ConfigManager.JumpAmount.Value);
+            if (movement != null && fallField != null)
+                fallField.SetValue(movement, ConfigManager.NoFallDmg.Value ? 999f : 1.5f);
+        });
+
+        DrawCheckbox(ConfigManager.ClimbMod, Localization.T("player.change_climb"), (val) =>
+        {
+            var climb = GameHelpers.GetClimbingComponent();
+            var field = ConstantFields.GetClimbSpeedModField();
+            if (climb != null && field != null)
+                field.SetValue(climb, ConfigManager.ClimbAmount.Value);
+        });
+
+        DrawCheckbox(ConfigManager.VineClimbMod, Localization.T("player.change_vine_climb"), (val) =>
+        {
+            var vine = GameHelpers.GetVineClimbComponent();
+            var field = ConstantFields.GetVineClimbSpeedModField();
+            if (vine != null && field != null)
+                field.SetValue(vine, ConfigManager.VineClimbAmount.Value);
+        });
+
+        DrawCheckbox(ConfigManager.RopeClimbMod, Localization.T("player.change_rope_climb"), (val) =>
+        {
+            var rope = GameHelpers.GetRopeClimbComponent();
+            var field = ConstantFields.GetRopeClimbSpeedModField();
+            if (rope != null && field != null)
+                field.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
+        });
+
+        DrawCheckbox(ConfigManager.TeleportToPing, Localization.T("player.teleport_to_ping"));
+
+        DrawCheckbox(ConfigManager.FlyMod, Localization.T("player.fly_mode"), FlyPatch.SetFlying);
+
+        GUILayout.Space(6);
+        if (GUILayout.Button(Localization.T("player.spawn_backpack"), GUILayout.Height(24)))
+        {
+            Utilities.GivePlayerBackpack(Player.localPlayer);
+        }
+
+        GUILayout.Space(8);
+        GUILayout.Label(Localization.T("player.teleport"), sectionHeaderStyle);
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("X:", GUILayout.Width(18));
+        coordXStr = GUILayout.TextField(coordXStr, GUILayout.Width(70));
+        GUILayout.Label("Y:", GUILayout.Width(18));
+        coordYStr = GUILayout.TextField(coordYStr, GUILayout.Width(70));
+        GUILayout.Label("Z:", GUILayout.Width(18));
+        coordZStr = GUILayout.TextField(coordZStr, GUILayout.Width(70));
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(Localization.T("player.teleport_to_coords"), GUILayout.Height(24)))
+        {
+            float x, y, z;
+            float.TryParse(coordXStr, out x);
+            float.TryParse(coordYStr, out y);
+            float.TryParse(coordZStr, out z);
+            Utilities.TeleportToCoords(x, y, z);
+        }
+
+        if (GUILayout.Button("Get Coords", GUILayout.Width(85), GUILayout.Height(24)))
+        {
+            if (Character.localCharacter != null)
+            {
+                var pos = Character.localCharacter.transform.position;
+                coordXStr = pos.x.ToString("F1");
+                coordYStr = pos.y.ToString("F1");
+                coordZStr = pos.z.ToString("F1");
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndVertical();
+
+        GUILayout.Space(12);
+
+        // Right Column: Modifiers / Sliders
+        GUILayout.BeginVertical(GUILayout.Width(290));
+
+        GUILayout.Label(Localization.T("player.details"), sectionHeaderStyle);
+
+        if (ConfigManager.JumpMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawCheckbox(ConfigManager.NoFallDmg, Localization.T("player.no_fall_dmg"));
+            DrawSliderFloat(ConfigManager.JumpAmount, Localization.T("player.jump_mult"), 10.0f, 500.0f, "{0:F0}");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        if (ConfigManager.SpeedMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawSliderFloat(ConfigManager.SpeedAmount, Localization.T("player.move_speed"), 1.0f, 20.0f, "{0:F1}x");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        if (ConfigManager.ClimbMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawSliderFloat(ConfigManager.ClimbAmount, Localization.T("player.climb_speed"), 1.0f, 20.0f, "{0:F1}x");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        if (ConfigManager.VineClimbMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawSliderFloat(ConfigManager.VineClimbAmount, Localization.T("player.vine_speed"), 1.0f, 20.0f, "{0:F1}x");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        if (ConfigManager.RopeClimbMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawSliderFloat(ConfigManager.RopeClimbAmount, Localization.T("player.rope_speed"), 1.0f, 20.0f, "{0:F1}x");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        if (ConfigManager.FlyMod.Value)
+        {
+            GUILayout.BeginVertical(cardBoxStyle);
+            DrawSliderFloat(ConfigManager.FlySpeed, Localization.T("player.fly_speed"), 10f, 100f, "{0:F0}");
+            DrawSliderFloat(ConfigManager.FlyAcceleration, Localization.T("player.fly_acceleration"), 10f, 300f, "{0:F0}");
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+        }
+
+        GUILayout.EndVertical();
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndScrollView();
+    }
+
+    // ==========================================
+    // TAB 2: ITEMS
+    // ==========================================
+    private void DrawItemsTab()
+    {
+        if (Globals.itemNames.Count == 0)
+        {
+            Utilities.UpdateItems();
+        }
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
+        if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(100), GUILayout.Height(22)))
+        {
+            Utilities.UpdateItems();
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(4);
+
+        // 3 columns for slots 0, 1, 2
+        GUILayout.BeginHorizontal();
+
+        for (int slot = 0; slot < 3; slot++)
+        {
+            GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(200));
+
+            // Slot header
+            GUILayout.Label(string.Format("{0} {1}", Localization.T("items.slot"), slot + 1), boldLabelStyle);
+
+            // Current item
+            string currentItemName = Localization.T("items.none");
+            if (Player.localPlayer != null && Player.localPlayer.itemSlots != null &&
+                Player.localPlayer.itemSlots.Length > slot && Player.localPlayer.itemSlots[slot] != null &&
+                Player.localPlayer.itemSlots[slot].prefab != null)
+            {
+                currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
+            }
+            GUILayout.Label(string.Format("{0}: {1}", Localization.T("items.current"), currentItemName), tipLabelStyle);
+
+            GUILayout.Space(2);
+
+            // Search filter
+            Globals.itemSearchBuffers[slot] = GUILayout.TextField(Globals.itemSearchBuffers[slot], GUILayout.Height(20));
+
+            // Item list
+            Globals.slotScrolls[slot] = GUILayout.BeginScrollView(Globals.slotScrolls[slot], GUILayout.Height(150));
+            string search = Globals.itemSearchBuffers[slot];
+            bool hasItem = false;
+
+            for (int i = 0; i < Globals.itemNames.Count; i++)
+            {
+                string name = Globals.itemNames[i];
+                if (!string.IsNullOrEmpty(search) && name.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                hasItem = true;
+                bool isSelected = (Globals.selectedItems[slot] == i);
+                GUIStyle btnStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
+
+                if (GUILayout.Button(name, btnStyle))
+                {
+                    Globals.selectedItems[slot] = i;
+                    Utilities.AssignInventoryItem(slot, i);
+                }
+            }
+
+            if (!hasItem)
+            {
+                GUILayout.Label("No matches", tipLabelStyle);
+            }
+            GUILayout.EndScrollView();
+
+            GUILayout.Space(4);
+
+            // Recharge section
+            ConfigEntry<float> rechargeConfig = (slot == 0) ? ConfigManager.RechargeAmountSlot1 :
+                (slot == 1 ? ConfigManager.RechargeAmountSlot2 : ConfigManager.RechargeAmountSlot3);
+
+            DrawSliderFloat(rechargeConfig, Localization.T("items.recharge"), 0f, 100f, "{0:F0}");
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
+            {
+                Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
+            }
+
+            if (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count)
+            {
+                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
+                {
+                    Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.EndVertical();
+
+            if (slot < 2) GUILayout.Space(4);
+        }
+
+        GUILayout.EndHorizontal();
+    }
+
+    // ==========================================
+    // TAB 3: LOBBY
+    // ==========================================
+    private void DrawLobbyTab()
+    {
+        if (Globals.allPlayers.Count == 0)
+        {
+            Utilities.RefreshPlayerList();
+        }
+
+        GUILayout.BeginHorizontal();
+
+        // Left Column: Player List & Batch Actions
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(290));
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("lobby.players"), sectionHeaderStyle);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button(Localization.T("lobby.refresh_players"), GUILayout.Height(20)))
+        {
+            Utilities.RefreshPlayerList();
+        }
+        GUILayout.EndHorizontal();
+
+        // Scrollable player list
+        Globals.lobbyPlayerScroll = GUILayout.BeginScrollView(Globals.lobbyPlayerScroll, GUILayout.Height(160));
+        if (Globals.playerNames.Count == 0)
+        {
+            GUILayout.Label(Localization.T("lobby.no_player_selected"), tipLabelStyle);
+        }
+        else
+        {
+            for (int i = 0; i < Globals.playerNames.Count; i++)
+            {
+                bool isSelected = (Globals.selectedPlayer == i);
+                GUIStyle pStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
+                if (GUILayout.Button(Globals.playerNames[i], pStyle))
+                {
+                    Globals.selectedPlayer = i;
+                }
+            }
+        }
+        GUILayout.EndScrollView();
+
+        GUILayout.Space(6);
+        GUILayout.Label(Localization.T("lobby.all_players"), subHeaderStyle);
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(Localization.T("lobby.revive_all"), primaryBtnStyle, GUILayout.Height(24)))
+            Utilities.ReviveAllPlayers();
+
+        if (GUILayout.Button(Localization.T("lobby.kill_all"), dangerBtnStyle, GUILayout.Height(24)))
+            Utilities.KillAllPlayers();
+        GUILayout.EndHorizontal();
+
+        Globals.excludeSelfFromAllActions = GUILayout.Toggle(Globals.excludeSelfFromAllActions, Localization.T("lobby.exclude_self"));
+
+        GUILayout.Space(4);
+        if (GUILayout.Button(Localization.T("lobby.warp_all_to_me"), GUILayout.Height(24)))
+            Utilities.WarpAllPlayersToMe();
+
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
+        // Right Column: Selected Player Actions
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(310));
+
+        GUILayout.Label(Localization.T("lobby.actions"), sectionHeaderStyle);
+
+        if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
+        {
+            string selName = Globals.playerNames[Globals.selectedPlayer];
+            GUILayout.Label(string.Format("Target: {0}", selName), boldLabelStyle);
+
+            GUILayout.Space(4);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.revive"), primaryBtnStyle, GUILayout.Height(26)))
+                Utilities.ReviveSelectedPlayer();
+
+            if (GUILayout.Button(Localization.T("lobby.kill"), dangerBtnStyle, GUILayout.Height(26)))
+                Utilities.KillSelectedPlayer();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(4);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.warp_to"), GUILayout.Height(26)))
+                Utilities.WarpToSelectedPlayer();
+
+            if (GUILayout.Button(Localization.T("lobby.warp_to_me"), GUILayout.Height(26)))
+                Utilities.WarpSelectedPlayerToMe();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            GUILayout.Label(Localization.T("lobby.special_actions"), subHeaderStyle);
+
+            if (GUILayout.Button(Localization.T("lobby.spawn_scoutmaster"), dangerBtnStyle, GUILayout.Height(26)))
+            {
+                Utilities.SpawnScoutmasterForPlayer(Globals.selectedPlayer);
+            }
+            GUILayout.Label(Localization.T("tip.spawn_scoutmaster"), tipLabelStyle);
+        }
+        else
+        {
+            GUILayout.Label(Localization.T("lobby.no_player_selected"), tipLabelStyle);
+        }
+
+        GUILayout.EndVertical();
+
+        GUILayout.EndHorizontal();
+    }
+
+    // ==========================================
+    // TAB 4: WORLD (Updated Map & Containers)
+    // ==========================================
+    private void DrawWorldTab()
+    {
+        Utilities.EnsureLuggageListInitialized();
+
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+
+        // --- Map / Segment Jump Section ---
+        GUILayout.BeginVertical(cardBoxStyle);
+        string currentSegName = "Unknown";
+        Segment currentSeg = Segment.Beach;
+        bool hasCurrentSeg = false;
+        try
+        {
+            if (MapHandler.Exists)
+            {
+                currentSeg = MapHandler.CurrentSegmentNumber;
+                hasCurrentSeg = true;
+                currentSegName = currentSeg.ToString();
+            }
+        }
+        catch { }
+
+        GUILayout.Label(string.Format("{0} {1}", Localization.T("world.current_segment"), currentSegName), boldLabelStyle);
+        GUILayout.Space(4);
+
+        GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
+
+        Segment[] allSegments = new Segment[] {
+            Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
+        };
+        string[] segmentNames = new string[] {
+            Localization.T("world.segment_beach"),
+            Localization.T("world.segment_tropics"),
+            Localization.T("world.segment_alpine"),
+            Localization.T("world.segment_caldera"),
+            Localization.T("world.segment_thekiln"),
+            Localization.T("world.segment_peak")
+        };
+
+        GUILayout.BeginHorizontal();
+        for (int i = 0; i < 3; i++)
+        {
+            Segment seg = allSegments[i];
+            bool isCurrent = hasCurrentSeg && (currentSeg == seg);
+            GUIStyle bStyle = isCurrent ? sidebarActiveBtnStyle : primaryBtnStyle;
+            string bText = isCurrent ? string.Format("[{0}]", segmentNames[i]) : segmentNames[i];
+            if (GUILayout.Button(bText, bStyle, GUILayout.Height(26)))
+            {
+                Utilities.JumpToSegment(seg);
+            }
+            if (i < 2) GUILayout.Space(4);
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(4);
+
+        GUILayout.BeginHorizontal();
+        for (int i = 3; i < 6; i++)
+        {
+            Segment seg = allSegments[i];
+            bool isCurrent = hasCurrentSeg && (currentSeg == seg);
+            GUIStyle bStyle = isCurrent ? sidebarActiveBtnStyle : primaryBtnStyle;
+            string bText = isCurrent ? string.Format("[{0}]", segmentNames[i]) : segmentNames[i];
+            if (GUILayout.Button(bText, bStyle, GUILayout.Height(26)))
+            {
+                Utilities.JumpToSegment(seg);
+            }
+            if (i < 5) GUILayout.Space(4);
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
+        // --- Containers / Luggage Section ---
+        GUILayout.BeginHorizontal();
+
+        // Left: Luggage List
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(340));
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("world.containers"), sectionHeaderStyle);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button(Localization.T("world.refresh_luggage"), GUILayout.Height(20)))
+        {
+            Utilities.hasInitializedLuggageList = false;
+            Utilities.RefreshLuggageList();
+        }
+        GUILayout.EndHorizontal();
+
+        Globals.luggageScroll = GUILayout.BeginScrollView(Globals.luggageScroll, GUILayout.Height(130));
+        if (Globals.luggageLabels.Count == 0)
+        {
+            GUILayout.Label(Localization.T("world.no_containers"), tipLabelStyle);
+        }
+        else
+        {
+            for (int i = 0; i < Globals.luggageLabels.Count; i++)
+            {
+                bool isSelected = (Globals.selectedLuggageIndex == i);
+                GUIStyle lStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
+                if (GUILayout.Button(Globals.luggageLabels[i], lStyle))
+                {
+                    Globals.selectedLuggageIndex = i;
+                }
+            }
+        }
+        GUILayout.EndScrollView();
+
+        GUILayout.Space(4);
+        if (GUILayout.Button(Localization.T("world.open_all_nearby"), dangerBtnStyle, GUILayout.Height(24)))
+        {
+            Utilities.OpenAllNearbyLuggage();
+        }
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
+        // Right: Luggage Actions
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(260));
+        GUILayout.Label(Localization.T("lobby.actions"), sectionHeaderStyle);
+
+        if (Globals.selectedLuggageIndex >= 0 && Globals.selectedLuggageIndex < Globals.luggageObject.Count)
+        {
+            var lug = Globals.luggageObject[Globals.selectedLuggageIndex];
+            string name = (lug != null) ? lug.displayName : "None";
+            GUILayout.Label(string.Format("Target: {0}", name), boldLabelStyle);
+
+            GUILayout.Space(6);
+
+            if (GUILayout.Button(Localization.T("world.warp_to_luggage"), primaryBtnStyle, GUILayout.Height(26)))
+            {
+                if (lug != null)
+                {
+                    Vector3 luggageCoords = lug.Center();
+                    luggageCoords.y += 1.5f;
+                    Utilities.TeleportToCoords(luggageCoords.x, luggageCoords.y, luggageCoords.z);
+                }
+            }
+
+            GUILayout.Space(4);
+
+            if (GUILayout.Button(Localization.T("world.open_luggage"), GUILayout.Height(26)))
+            {
+                Utilities.OpenLuggage(Globals.selectedLuggageIndex);
+            }
+        }
+        else
+        {
+            GUILayout.Label(Localization.T("world.no_luggage_selected"), tipLabelStyle);
+        }
+
+        GUILayout.EndVertical();
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndScrollView();
+    }
+
+    // ==========================================
+    // TAB 5: ABOUT
+    // ==========================================
+    private void DrawAboutTab()
+    {
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+
+        GUILayout.Label(Localization.T("about.title"), sectionHeaderStyle);
+        GUILayout.Label(Localization.T("about.version"), boldLabelStyle);
+        GUILayout.Label(Localization.T("about.author"), tipLabelStyle);
+
+        GUILayout.Space(6);
+        GUILayout.Label(Localization.T("about.description"), labelStyle);
+
+        GUILayout.Space(8);
+        GUILayout.Label(Localization.T("about.key_features"), subHeaderStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature1"), labelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature2"), labelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature3"), labelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature4"), labelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature5"), labelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.feature6"), labelStyle);
+
+        GUILayout.Space(8);
+        GUILayout.Label(Localization.T("about.thanks"), subHeaderStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.thanks1"), tipLabelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.thanks2"), tipLabelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.thanks3"), tipLabelStyle);
+        GUILayout.Label("\u2022 " + Localization.T("about.thanks4"), tipLabelStyle);
+
+        GUILayout.Space(8);
+        GUILayout.Label(Localization.T("about.disclaimer"), tipLabelStyle);
+
+        GUILayout.EndScrollView();
+    }
+
+    // ==========================================
+    // TAB 6: LANGUAGE
+    // ==========================================
+    private void DrawLanguageTab()
+    {
+        GUILayout.Label(Localization.T("lang.title"), sectionHeaderStyle);
+        GUILayout.Label(Localization.T("lang.current"), boldLabelStyle);
+        GUILayout.Space(6);
+        GUILayout.Label(Localization.T("lang.select"), subHeaderStyle);
+
+        for (int i = 0; i < Localization.LanguageNames.Length; i++)
+        {
+            bool isActive = ((int)Localization.CurrentLanguage == i);
+            GUIStyle btnStyle = isActive ? primaryBtnStyle : customSkin.button;
+
+            if (GUILayout.Button(Localization.LanguageNames[i], btnStyle, GUILayout.Height(30)))
+            {
+                Localization.SetLanguage(i);
+                ConfigManager.LanguageIndex.Value = i;
+            }
+            GUILayout.Space(3);
+        }
+    }
+
+    // ==========================================
+    // TAB 7: DEBUG
+    // ==========================================
+    private void DrawDebugTab()
+    {
+        GUILayout.Label("Debug Utilities", sectionHeaderStyle);
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Debug Slot (0-2):", GUILayout.Width(110));
+        Globals.debugSlotBuffer = GUILayout.TextField(Globals.debugSlotBuffer, GUILayout.Width(60));
+        if (GUILayout.Button("Inspect Slot", primaryBtnStyle, GUILayout.Width(110), GUILayout.Height(24)))
+        {
+            int slotNum;
+            if (int.TryParse(Globals.debugSlotBuffer, out slotNum))
+            {
+                Utilities.GetItemsLogs(slotNum);
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(8);
+
+        if (GUILayout.Button("Teleport to Origin (0, 0, 0)", GUILayout.Height(24)))
+        {
+            Utilities.TeleportToCoords(0f, 0f, 0f);
+        }
+    }
+
+    // ==========================================
+    // HELPER DRAWING METHODS
+    // ==========================================
+    private void DrawCheckbox(ConfigEntry<bool> config, string label, Action<bool> onChange = null)
+    {
+        bool current = config.Value;
+        bool next = GUILayout.Toggle(current, label, toggleStyle);
+        if (next != current)
+        {
+            config.Value = next;
+            if (onChange != null)
+                onChange.Invoke(next);
+        }
+    }
+
+    private void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(label, GUILayout.Width(120));
+        float current = config.Value;
+        float next = GUILayout.HorizontalSlider(current, min, max);
+        if (Math.Abs(next - current) > 0.001f)
+        {
+            config.Value = next;
+        }
+        GUILayout.Space(4);
+        GUILayout.Label(string.Format(format, next), GUILayout.Width(50));
+        GUILayout.EndHorizontal();
+    }
 }

@@ -820,17 +820,138 @@ public static class Localization
             { Language.Korean, "현재 언어: 한국어" },
             { Language.Italian, "Lingua Corrente: Italiano" }
         }},
+
+        // New feature keys: Map / Segment Jump
+        { "world.segment_teleport", new Dictionary<Language, string> {
+            { Language.English, "Map / Segment Jump" },
+            { Language.SimplifiedChinese, "地图 / 区域跳转" },
+            { Language.TraditionalChinese, "地圖 / 區域跳轉" },
+            { Language.Japanese, "マップ / セグメントワープ" },
+            { Language.Korean, "지도 / 세그먼트 이동" },
+            { Language.Italian, "Mappa / Salto Segmento" }
+        }},
+        { "world.current_segment", new Dictionary<Language, string> {
+            { Language.English, "Current Segment:" },
+            { Language.SimplifiedChinese, "当前区域:" },
+            { Language.TraditionalChinese, "當前區域:" },
+            { Language.Japanese, "現在のセグメント:" },
+            { Language.Korean, "현재 세그먼트:" },
+            { Language.Italian, "Segmento Corrente:" }
+        }},
+        { "world.jump_to_segment", new Dictionary<Language, string> {
+            { Language.English, "Jump to Segment" },
+            { Language.SimplifiedChinese, "跳转到区域" },
+            { Language.TraditionalChinese, "跳轉到區域" },
+            { Language.Japanese, "セグメントに移動" },
+            { Language.Korean, "세그먼트로 이동" },
+            { Language.Italian, "Vai al Segmento" }
+        }},
+        { "world.segment_beach", new Dictionary<Language, string> {
+            { Language.English, "Beach" },
+            { Language.SimplifiedChinese, "海滩 (Beach)" },
+            { Language.TraditionalChinese, "海灘 (Beach)" },
+            { Language.Japanese, "ビーチ (Beach)" },
+            { Language.Korean, "해변 (Beach)" },
+            { Language.Italian, "Spiaggia (Beach)" }
+        }},
+        { "world.segment_tropics", new Dictionary<Language, string> {
+            { Language.English, "Tropics" },
+            { Language.SimplifiedChinese, "热带雨林 (Tropics)" },
+            { Language.TraditionalChinese, "熱帶雨林 (Tropics)" },
+            { Language.Japanese, "熱帯 (Tropics)" },
+            { Language.Korean, "열대 (Tropics)" },
+            { Language.Italian, "Tropici (Tropics)" }
+        }},
+        { "world.segment_alpine", new Dictionary<Language, string> {
+            { Language.English, "Alpine" },
+            { Language.SimplifiedChinese, "高山 (Alpine)" },
+            { Language.TraditionalChinese, "高山 (Alpine)" },
+            { Language.Japanese, "高山 (Alpine)" },
+            { Language.Korean, "고산 (Alpine)" },
+            { Language.Italian, "Alpino (Alpine)" }
+        }},
+        { "world.segment_caldera", new Dictionary<Language, string> {
+            { Language.English, "Caldera" },
+            { Language.SimplifiedChinese, "火山口 (Caldera)" },
+            { Language.TraditionalChinese, "火山口 (Caldera)" },
+            { Language.Japanese, "カルデラ (Caldera)" },
+            { Language.Korean, "칼데라 (Caldera)" },
+            { Language.Italian, "Caldera (Caldera)" }
+        }},
+        { "world.segment_thekiln", new Dictionary<Language, string> {
+            { Language.English, "The Kiln" },
+            { Language.SimplifiedChinese, "熔炉 (The Kiln)" },
+            { Language.TraditionalChinese, "熔爐 (The Kiln)" },
+            { Language.Japanese, "窯 (The Kiln)" },
+            { Language.Korean, "가마 (The Kiln)" },
+            { Language.Italian, "La Fornace (The Kiln)" }
+        }},
+        { "world.segment_peak", new Dictionary<Language, string> {
+            { Language.English, "The Peak" },
+            { Language.SimplifiedChinese, "顶峰 (The Peak)" },
+            { Language.TraditionalChinese, "頂峰 (The Peak)" },
+            { Language.Japanese, "頂上 (The Peak)" },
+            { Language.Korean, "정상 (The Peak)" },
+            { Language.Italian, "La Vetta (The Peak)" }
+        }},
+
+        // Player afflictions
+        { "player.clear_afflictions", new Dictionary<Language, string> {
+            { Language.English, "Clear All Afflictions" },
+            { Language.SimplifiedChinese, "清除所有异常状态" },
+            { Language.TraditionalChinese, "清除所有異常狀態" },
+            { Language.Japanese, "全状態異常を解除" },
+            { Language.Korean, "모든 상태이상 치료" },
+            { Language.Italian, "Rimuovi Tutte le Afflizioni" }
+        }},
+        { "tip.clear_afflictions", new Dictionary<Language, string> {
+            { Language.English, "Removes injury, poison, cold, curse, thorns, spores, web, and other afflictions" },
+            { Language.SimplifiedChinese, "清除受伤、中毒、寒冷、诅咒、荆棘、孢子、蛛网等所有异常状态" },
+            { Language.TraditionalChinese, "清除受傷、中毒、寒冷、詛咒、荊棘、孢子、蛛網等所有異常狀態" },
+            { Language.Japanese, "怪我、毒、寒さ、呪い、トゲ、胞子、クモの巣などの状態異常を全解除" },
+            { Language.Korean, "부상, 독, 추위, 저주, 가시, 포자, 거미줄 등 모든 상태이상 제거" },
+            { Language.Italian, "Rimuove ferite, veleno, freddo, maledizione, spine, spore, ragnatele e altre afflizioni" }
+        }},
+
+        // Items spawn
+        { "items.spawn_item", new Dictionary<Language, string> {
+            { Language.English, "Spawn in World" },
+            { Language.SimplifiedChinese, "生成到世界" },
+            { Language.TraditionalChinese, "生成到世界" },
+            { Language.Japanese, "ワールドに出現" },
+            { Language.Korean, "월드에 소환" },
+            { Language.Italian, "Genera nel Mondo" }
+        }},
+        { "tip.spawn_item", new Dictionary<Language, string> {
+            { Language.English, "Spawns the selected item into the world in front of the player" },
+            { Language.SimplifiedChinese, "在玩家前方将选中的物品生成到游戏世界中" },
+            { Language.TraditionalChinese, "在玩家前方將選中的物品生成到遊戲世界中" },
+            { Language.Japanese, "選択したアイテムをプレイヤーの前方に生成します" },
+            { Language.Korean, "선택한 아이템을 플레이어 앞 월드에 소환합니다" },
+            { Language.Italian, "Genera l'oggetto selezionato nel mondo davanti al giocatore" }
+        }},
+        { "items.loaded_count", new Dictionary<Language, string> {
+            { Language.English, "Loaded Items: {0}" },
+            { Language.SimplifiedChinese, "已加载物品数: {0}" },
+            { Language.TraditionalChinese, "已加載物品數: {0}" },
+            { Language.Japanese, "ロード済みアイテム: {0}" },
+            { Language.Korean, "로드된 아이템: {0}" },
+            { Language.Italian, "Oggetti Caricati: {0}" }
+        }},
     };
 
-    public static readonly string[] LanguageNames = { "English", "简体中文", "日本語", "한국어", "Italiano", "繁體中文" };
+    public static readonly string[] LanguageNames = new string[] { "English", "简体中文", "日本語", "한국어", "Italiano", "繁體中文" };
 
     public static string T(string key)
     {
-        if (Strings.TryGetValue(key, out var translations))
+        Dictionary<Language, string> translations;
+        if (Strings.TryGetValue(key, out translations))
         {
-            if (translations.TryGetValue(CurrentLanguage, out var text))
+            string text;
+            if (translations.TryGetValue(CurrentLanguage, out text))
                 return text;
-            if (translations.TryGetValue(Language.English, out var fallback))
+            string fallback;
+            if (translations.TryGetValue(Language.English, out fallback))
                 return fallback;
         }
         return key;

@@ -85,7 +85,7 @@ public static class ConfigManager
         RechargeAmountSlot3 = config.Bind("Inventory", "RechargeAmountSlot3", 100f, new ConfigDescription("Recharge amount for slot 3", new AcceptableValueRange<float>(0f, 999f)));
 
         // Language
-        LanguageIndex = config.Bind("UI", "Language", 0, new ConfigDescription("Language: 0=English, 1=简体中文, 2=日本語, 3=한국어", new AcceptableValueRange<int>(0, 3)));
+        LanguageIndex = config.Bind("UI", "Language", 0, new ConfigDescription("Language: 0=English, 1=简体中文, 2=日本語, 3=한국어, 4=Italiano, 5=繁體中文", new AcceptableValueRange<int>(0, 5)));
         Localization.SetLanguage(LanguageIndex.Value);
 
         Logger.LogInfo("[PEAK AIO][ConfigManager] Config Loaded.");

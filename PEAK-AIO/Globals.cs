@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -74,8 +74,16 @@ public static class Globals
     public static List<string> luggageLabels = new List<string>();
     public static List<Luggage> luggageObject = new List<Luggage>();
     public static List<Luggage> allOpenedLuggage = new List<Luggage>();
-
+    public static int selectedSegment = 0;
 
     // Debug
     public static string debugSlotBuffer = "0";
+
+    // GUI State
+    public static Rect windowRect = new Rect(40f, 40f, 780f, 520f);
+    public static Vector2 sidebarScroll = Vector2.zero;
+    public static Vector2 mainScroll = Vector2.zero;
+    public static Vector2[] slotScrolls = new Vector2[3] { Vector2.zero, Vector2.zero, Vector2.zero };
+    public static Vector2 lobbyPlayerScroll = Vector2.zero;
+    public static Vector2 luggageScroll = Vector2.zero;
 }

@@ -22,14 +22,21 @@ public class EventComponent : MonoBehaviour
             if (movement != null)
             {
                 if (ConfigManager.SpeedMod.Value)
-                    ConstantFields.GetMovementModifierField()?.SetValue(movement, ConfigManager.SpeedAmount.Value);
+                {
+                    var f = ConstantFields.GetMovementModifierField();
+                    if (f != null) f.SetValue(movement, ConfigManager.SpeedAmount.Value);
+                }
 
                 if (ConfigManager.JumpMod.Value)
                 {
-                    ConstantFields.GetJumpGravityField()?.SetValue(movement, ConfigManager.JumpAmount.Value);
+                    var jf = ConstantFields.GetJumpGravityField();
+                    if (jf != null) jf.SetValue(movement, ConfigManager.JumpAmount.Value);
 
                     if (ConfigManager.NoFallDmg.Value)
-                        ConstantFields.GetFallDamageTimeField()?.SetValue(movement, 999f);
+                    {
+                        var ff = ConstantFields.GetFallDamageTimeField();
+                        if (ff != null) ff.SetValue(movement, 999f);
+                    }
                 }
             }
         }
@@ -38,21 +45,30 @@ public class EventComponent : MonoBehaviour
         {
             var climb = GameHelpers.GetClimbingComponent();
             if (climb != null)
-                ConstantFields.GetClimbSpeedModField()?.SetValue(climb, ConfigManager.ClimbAmount.Value);
+            {
+                var f = ConstantFields.GetClimbSpeedModField();
+                if (f != null) f.SetValue(climb, ConfigManager.ClimbAmount.Value);
+            }
         }
 
         if (ConfigManager.VineClimbMod.Value)
         {
             var vine = GameHelpers.GetVineClimbComponent();
             if (vine != null)
-                ConstantFields.GetVineClimbSpeedModField()?.SetValue(vine, ConfigManager.VineClimbAmount.Value);
+            {
+                var f = ConstantFields.GetVineClimbSpeedModField();
+                if (f != null) f.SetValue(vine, ConfigManager.VineClimbAmount.Value);
+            }
         }
 
         if (ConfigManager.RopeClimbMod.Value)
         {
             var rope = GameHelpers.GetRopeClimbComponent();
             if (rope != null)
-                ConstantFields.GetRopeClimbSpeedModField()?.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
+            {
+                var f = ConstantFields.GetRopeClimbSpeedModField();
+                if (f != null) f.SetValue(rope, ConfigManager.RopeClimbAmount.Value);
+            }
         }
 
         stateTimer += Time.deltaTime;
@@ -60,16 +76,30 @@ public class EventComponent : MonoBehaviour
             return;
         stateTimer = 0f;
 
-        if (ConfigManager.InfiniteStamina.Value || ConfigManager.LockStatus.Value)
+        if (ConfigManager.InfiniteStamina.Value || ConfigManager.LockStatus.Value || ConfigManager.NoWeight.Value)
         {
             var character = GameHelpers.GetCharacterComponent();
             if (character != null)
             {
                 if (ConfigManager.InfiniteStamina.Value)
-                    ConstantFields.GetInfiniteStaminaProperty()?.SetValue(character, true);
+                {
+                    var p = ConstantFields.GetInfiniteStaminaProperty();
+                    if (p != null) p.SetValue(character, true, null);
+                }
 
                 if (ConfigManager.LockStatus.Value)
-                    ConstantFields.GetStatusLockProperty()?.SetValue(character, true);
+                {
+                    var p = ConstantFields.GetStatusLockProperty();
+                    if (p != null) p.SetValue(character, true, null);
+                }
+
+                if (ConfigManager.NoWeight.Value)
+                {
+                    if (character.refs != null && character.refs.afflictions != null)
+                    {
+                        character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Weight, 0f, false);
+                    }
+                }
             }
         }
     }
