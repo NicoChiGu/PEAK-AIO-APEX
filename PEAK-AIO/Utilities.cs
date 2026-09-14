@@ -52,88 +52,162 @@ public static class Utilities
             Globals.playerObj = Player.localPlayer;
     }
 
-    public static void UpdateItems()
+    public static bool hasAttemptedItemLoad = false;
+    private static bool isUpdatingItems = false;
+
+    public static void UpdateItems(bool force = false)
     {
-        UnityMainThreadDispatcher.Enqueue(() =>
+        if (isUpdatingItems) return;
+        if (!force && hasAttemptedItemLoad && Globals.items.Count > 0) return;
+
+        Action doUpdate = () =>
         {
-            Globals.items.Clear();
-            Globals.itemNames.Clear();
-            for (int i = 0; i < 3; i++) Globals.selectedItems[i] = -1;
+            if (isUpdatingItems) return;
+            isUpdatingItems = true;
+            hasAttemptedItemLoad = true;
 
-            var itemSet = new HashSet<string>();
-            var collectedItems = new List<Item>();
-
-            // 1. Try to load from ItemDatabase singleton asset
             try
             {
-                var db = SingletonAsset<ItemDatabase>.Instance;
-                if (db != null && db.Objects != null && db.Objects.Count > 0)
+                var itemSet = new HashSet<string>();
+                var collectedItems = new List<Item>();
+
+                // 1. Try to load from ItemDatabase singleton asset
+                try
                 {
-                    for (int i = 0; i < db.Objects.Count; i++)
+                    var db = SingletonAsset<ItemDatabase>.Instance;
+                    if (db != null && db.Objects != null && db.Objects.Count > 0)
                     {
-                        var item = db.Objects[i];
-                        if (item != null && !string.IsNullOrEmpty(item.name))
+                        for (int i = 0; i < db.Objects.Count; i++)
                         {
-                            string key = item.GetName();
-                            if (string.IsNullOrEmpty(key)) key = item.name;
-                            if (!itemSet.Contains(key))
+                            try
                             {
-                                itemSet.Add(key);
-                                collectedItems.Add(item);
+                                var item = db.Objects[i];
+                                if (item != null && !string.IsNullOrEmpty(item.name))
+                                {
+                                    string key = null;
+                                    try { key = item.GetName(); } catch { }
+                                    if (string.IsNullOrEmpty(key)) key = item.name;
+                                    if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
+                                    {
+                                        itemSet.Add(key);
+                                        collectedItems.Add(item);
+                                    }
+                                }
                             }
+                            catch { }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                if (Logger != null)
-                    Logger.LogWarning("[PEAK AIO] Could not query ItemDatabase: " + ex.Message);
-            }
-
-            // 2. Fallback or augment with FindObjectsOfTypeAll
-            try
-            {
-                UnityEngine.Object[] allItems = Resources.FindObjectsOfTypeAll(typeof(Item));
-                for (int i = 0; i < allItems.Length; i++)
+                catch (Exception ex)
                 {
-                    var item = allItems[i] as Item;
-                    if (item != null && item.gameObject.scene.handle == 0 && string.IsNullOrEmpty(item.gameObject.scene.name))
+                    if (Logger != null)
+                        Logger.LogWarning("[PEAK AIO] Could not query ItemDatabase: " + ex.Message);
+                }
+
+                // 2. Fallback or augment with FindObjectsOfTypeAll
+                try
+                {
+                    UnityEngine.Object[] allItems = Resources.FindObjectsOfTypeAll(typeof(Item));
+                    if (allItems != null)
                     {
-                        string key = item.GetName();
-                        if (string.IsNullOrEmpty(key)) key = item.name;
-                        if (!itemSet.Contains(key))
+                        for (int i = 0; i < allItems.Length; i++)
                         {
-                            itemSet.Add(key);
-                            collectedItems.Add(item);
+                            try
+                            {
+                                var item = allItems[i] as Item;
+                                if (item != null && item.gameObject != null)
+                                {
+                                    bool isAsset = false;
+                                    try
+                                    {
+                                        isAsset = (item.gameObject.scene.handle == 0 && string.IsNullOrEmpty(item.gameObject.scene.name));
+                                    }
+                                    catch { }
+
+                                    if (isAsset)
+                                    {
+                                        string key = null;
+                                        try { key = item.GetName(); } catch { }
+                                        if (string.IsNullOrEmpty(key)) key = item.name;
+                                        if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
+                                        {
+                                            itemSet.Add(key);
+                                            collectedItems.Add(item);
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    if (Logger != null)
+                        Logger.LogWarning("[PEAK AIO] Could not query Resources for Items: " + ex.Message);
+                }
+
+                // Sort alphabetically by name
+                try
+                {
+                    collectedItems.Sort((a, b) =>
+                    {
+                        if (a == null && b == null) return 0;
+                        if (a == null) return 1;
+                        if (b == null) return -1;
+                        string nameA = null;
+                        string nameB = null;
+                        try { nameA = a.GetName(); } catch { }
+                        try { nameB = b.GetName(); } catch { }
+                        if (string.IsNullOrEmpty(nameA)) nameA = a.name ?? "";
+                        if (string.IsNullOrEmpty(nameB)) nameB = b.name ?? "";
+                        return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
+                    });
+                }
+                catch { }
+
+                Globals.items.Clear();
+                Globals.itemNames.Clear();
+                for (int i = 0; i < 3; i++)
+                {
+                    if (Globals.selectedItems != null && i < Globals.selectedItems.Length)
+                        Globals.selectedItems[i] = -1;
+                }
+
+                for (int i = 0; i < collectedItems.Count; i++)
+                {
+                    var item = collectedItems[i];
+                    if (item == null) continue;
+                    string displayName = null;
+                    try { displayName = item.GetName(); } catch { }
+                    if (string.IsNullOrEmpty(displayName)) displayName = item.name;
+                    if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+                    Globals.items.Add(item);
+                    Globals.itemNames.Add(displayName);
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[PEAK AIO] Loaded {0} unique items.", Globals.items.Count));
             }
             catch (Exception ex)
             {
                 if (Logger != null)
-                    Logger.LogWarning("[PEAK AIO] Could not query Resources for Items: " + ex.Message);
+                    Logger.LogError("[PEAK AIO] UpdateItems error: " + ex);
             }
-
-            // Sort alphabetically by name
-            collectedItems.Sort((a, b) =>
+            finally
             {
-                string nameA = a.GetName();
-                string nameB = b.GetName();
-                return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
-            });
-
-            for (int i = 0; i < collectedItems.Count; i++)
-            {
-                var item = collectedItems[i];
-                Globals.items.Add(item);
-                Globals.itemNames.Add(item.GetName());
+                isUpdatingItems = false;
             }
+        };
 
-            if (Logger != null)
-                Logger.LogInfo(string.Format("[PEAK AIO] Loaded {0} unique items.", Globals.items.Count));
-        });
+        if (Event.current != null || System.Threading.Thread.CurrentThread.ManagedThreadId == 1)
+        {
+            doUpdate();
+        }
+        else
+        {
+            UnityMainThreadDispatcher.Enqueue(doUpdate);
+        }
     }
 
     private static MethodInfo _cachedToManagedArrayMethod;

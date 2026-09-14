@@ -11,6 +11,7 @@ public class PeakMod : BaseUnityPlugin
     public static bool IsMenuOpen = false;
     private bool showMenu = false;
     private int selectedTab = 1;
+    private int pendingTab = 1;
 
     // Coordinate inputs
     private string coordXStr = "0";
@@ -363,6 +364,15 @@ public class PeakMod : BaseUnityPlugin
 
     private void DrawWindow(int windowId)
     {
+        if (Event.current.type == EventType.Layout)
+        {
+            if (selectedTab != pendingTab)
+            {
+                selectedTab = pendingTab;
+                Globals.mainScroll = Vector2.zero;
+            }
+        }
+
         // Close button at top right
         if (GUI.Button(new Rect(Globals.windowRect.width - 26, 3, 22, 20), "X", dangerBtnStyle))
         {
@@ -381,8 +391,20 @@ public class PeakMod : BaseUnityPlugin
 
         // 2. Main Content Area
         GUILayout.BeginVertical(cardBoxStyle);
-        DrawMainArea();
-        GUILayout.EndVertical();
+        try
+        {
+            DrawMainArea();
+        }
+        catch (Exception ex)
+        {
+            GUILayout.Label("Error rendering tab: " + ex.Message, labelStyle);
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] Error in DrawMainArea: " + ex);
+        }
+        finally
+        {
+            GUILayout.EndVertical();
+        }
 
         GUILayout.EndHorizontal();
 
@@ -399,16 +421,15 @@ public class PeakMod : BaseUnityPlugin
         for (int i = 0; i < sidebarKeys.Length; i++)
         {
             int tabIndex = i + 1;
-            bool isSelected = (selectedTab == tabIndex);
+            bool isSelected = (pendingTab == tabIndex);
             string label = Localization.T(sidebarKeys[i]);
 
             GUIStyle style = isSelected ? sidebarActiveBtnStyle : sidebarBtnStyle;
             if (GUILayout.Button(label, style))
             {
-                if (selectedTab != tabIndex)
+                if (pendingTab != tabIndex)
                 {
-                    selectedTab = tabIndex;
-                    Globals.mainScroll = Vector2.zero;
+                    pendingTab = tabIndex;
                 }
             }
             GUILayout.Space(2);
@@ -649,9 +670,30 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     private void DrawItemsTab()
     {
-        if (Globals.itemNames.Count == 0)
+        if (Globals.itemNames.Count == 0 && !Utilities.hasAttemptedItemLoad)
         {
             Utilities.UpdateItems();
+        }
+
+        // Safety check for search buffers
+        if (Globals.itemSearchBuffers == null || Globals.itemSearchBuffers.Length < 3)
+        {
+            Globals.itemSearchBuffers = new string[3] { "", "", "" };
+        }
+        for (int s = 0; s < 3; s++)
+        {
+            if (Globals.itemSearchBuffers[s] == null)
+                Globals.itemSearchBuffers[s] = "";
+        }
+
+        if (Globals.slotScrolls == null || Globals.slotScrolls.Length < 3)
+        {
+            Globals.slotScrolls = new Vector2[3] { Vector2.zero, Vector2.zero, Vector2.zero };
+        }
+
+        if (Globals.selectedItems == null || Globals.selectedItems.Length < 3)
+        {
+            Globals.selectedItems = new int[3] { -1, -1, -1 };
         }
 
         GUILayout.BeginHorizontal();
@@ -660,7 +702,7 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
         if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(100), GUILayout.Height(22)))
         {
-            Utilities.UpdateItems();
+            Utilities.UpdateItems(true);
         }
         GUILayout.EndHorizontal();
 
@@ -678,27 +720,39 @@ public class PeakMod : BaseUnityPlugin
 
             // Current item
             string currentItemName = Localization.T("items.none");
-            if (Player.localPlayer != null && Player.localPlayer.itemSlots != null &&
-                Player.localPlayer.itemSlots.Length > slot && Player.localPlayer.itemSlots[slot] != null &&
-                Player.localPlayer.itemSlots[slot].prefab != null)
+            try
             {
-                currentItemName = Player.localPlayer.itemSlots[slot].prefab.GetName();
+                if (Player.localPlayer != null && Player.localPlayer.itemSlots != null &&
+                    Player.localPlayer.itemSlots.Length > slot && Player.localPlayer.itemSlots[slot] != null &&
+                    Player.localPlayer.itemSlots[slot].prefab != null)
+                {
+                    string n = Player.localPlayer.itemSlots[slot].prefab.GetName();
+                    if (string.IsNullOrEmpty(n)) n = Player.localPlayer.itemSlots[slot].prefab.name;
+                    if (!string.IsNullOrEmpty(n)) currentItemName = n;
+                }
             }
+            catch { }
             GUILayout.Label(string.Format("{0}: {1}", Localization.T("items.current"), currentItemName), tipLabelStyle);
 
             GUILayout.Space(2);
 
             // Search filter
-            Globals.itemSearchBuffers[slot] = GUILayout.TextField(Globals.itemSearchBuffers[slot], GUILayout.Height(20));
+            string curSearch = Globals.itemSearchBuffers[slot] ?? "";
+            string newSearch = GUILayout.TextField(curSearch, GUILayout.Height(20));
+            Globals.itemSearchBuffers[slot] = newSearch ?? "";
+            string search = Globals.itemSearchBuffers[slot];
 
             // Item list
             Globals.slotScrolls[slot] = GUILayout.BeginScrollView(Globals.slotScrolls[slot], GUILayout.Height(150));
-            string search = Globals.itemSearchBuffers[slot];
             bool hasItem = false;
 
-            for (int i = 0; i < Globals.itemNames.Count; i++)
+            int itemCount = Math.Min(Globals.items.Count, Globals.itemNames.Count);
+            for (int i = 0; i < itemCount; i++)
             {
                 string name = Globals.itemNames[i];
+                if (string.IsNullOrEmpty(name))
+                    continue;
+
                 if (!string.IsNullOrEmpty(search) && name.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
 
@@ -715,7 +769,7 @@ public class PeakMod : BaseUnityPlugin
 
             if (!hasItem)
             {
-                GUILayout.Label("No matches", tipLabelStyle);
+                GUILayout.Label(string.IsNullOrEmpty(search) ? "No items available" : "No matches", tipLabelStyle);
             }
             GUILayout.EndScrollView();
 
@@ -725,10 +779,13 @@ public class PeakMod : BaseUnityPlugin
             ConfigEntry<float> rechargeConfig = (slot == 0) ? ConfigManager.RechargeAmountSlot1 :
                 (slot == 1 ? ConfigManager.RechargeAmountSlot2 : ConfigManager.RechargeAmountSlot3);
 
-            DrawSliderFloat(rechargeConfig, Localization.T("items.recharge"), 0f, 100f, "{0:F0}");
+            if (rechargeConfig != null)
+            {
+                DrawSliderFloat(rechargeConfig, Localization.T("items.recharge"), 0f, 100f, "{0:F0}", 60f, 35f);
+            }
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
+            if (rechargeConfig != null && GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
             {
                 Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
             }
@@ -1129,10 +1186,14 @@ public class PeakMod : BaseUnityPlugin
         }
     }
 
-    private void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format)
+    private void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format, float labelWidth = 120f, float valueWidth = 50f)
     {
+        if (config == null) return;
         GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(120));
+        if (labelWidth > 0)
+            GUILayout.Label(label, GUILayout.Width(labelWidth));
+        else
+            GUILayout.Label(label);
         float current = config.Value;
         float next = GUILayout.HorizontalSlider(current, min, max);
         if (Math.Abs(next - current) > 0.001f)
@@ -1140,7 +1201,7 @@ public class PeakMod : BaseUnityPlugin
             config.Value = next;
         }
         GUILayout.Space(4);
-        GUILayout.Label(string.Format(format, next), GUILayout.Width(50));
+        GUILayout.Label(string.Format(format, next), GUILayout.Width(valueWidth));
         GUILayout.EndHorizontal();
     }
 }

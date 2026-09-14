@@ -52,7 +52,7 @@ public static class Globals
     public static List<string> itemNames = new List<string>();
     public static int[] selectedItems = new int[] { -1, -1, -1 };
     public static string[] itemDisplayNames = new string[] { "None", "None", "None" };
-    public static string[] itemSearchBuffers = new string[3];
+    public static string[] itemSearchBuffers = new string[3] { "", "", "" };
 
     // Player
     public static Player playerObj;
