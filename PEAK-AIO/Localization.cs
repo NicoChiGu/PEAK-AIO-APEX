@@ -428,6 +428,46 @@ public static class Localization
             { Language.Korean, "누락되거나 업데이트된 경우 사용 가능한 아이템 목록을 다시 불러옵니다." },
             { Language.Italian, "Ricarica l'elenco degli oggetti disponibili nel caso qualcosa sia stato perso o aggiornato." }
         }},
+        { "items.loaded_count", new Dictionary<Language, string> {
+            { Language.English, "Items: {0}" },
+            { Language.SimplifiedChinese, "物品数: {0}" },
+            { Language.TraditionalChinese, "物品數: {0}" },
+            { Language.Japanese, "アイテム数: {0}" },
+            { Language.Korean, "아이템 수: {0}" },
+            { Language.Italian, "Oggetti: {0}" }
+        }},
+        { "items.current", new Dictionary<Language, string> {
+            { Language.English, "Current" },
+            { Language.SimplifiedChinese, "当前" },
+            { Language.TraditionalChinese, "當前" },
+            { Language.Japanese, "現在" },
+            { Language.Korean, "현재" },
+            { Language.Italian, "Attuale" }
+        }},
+        { "items.spawn_item", new Dictionary<Language, string> {
+            { Language.English, "Spawn in World" },
+            { Language.SimplifiedChinese, "生成到世界" },
+            { Language.TraditionalChinese, "生成到世界" },
+            { Language.Japanese, "ワールドに生成" },
+            { Language.Korean, "월드에 생성" },
+            { Language.Italian, "Genera nel mondo" }
+        }},
+        { "items.none_available", new Dictionary<Language, string> {
+            { Language.English, "No items available" },
+            { Language.SimplifiedChinese, "无可用物品" },
+            { Language.TraditionalChinese, "無可用物品" },
+            { Language.Japanese, "利用可能なアイテムなし" },
+            { Language.Korean, "사용 가능한 아이템 없음" },
+            { Language.Italian, "Nessun oggetto disponibile" }
+        }},
+        { "items.no_matches", new Dictionary<Language, string> {
+            { Language.English, "No matches" },
+            { Language.SimplifiedChinese, "无匹配项" },
+            { Language.TraditionalChinese, "無相符項" },
+            { Language.Japanese, "一致なし" },
+            { Language.Korean, "일치 항목 없음" },
+            { Language.Italian, "Nessuna corrispondenza" }
+        }},
 
         // Lobby tab
         { "lobby.players", new Dictionary<Language, string> {
@@ -893,6 +933,134 @@ public static class Localization
             { Language.Japanese, "頂上 (The Peak)" },
             { Language.Korean, "정상 (The Peak)" },
             { Language.Italian, "La Vetta (The Peak)" }
+        }},
+        { "world.segment_mesa", new Dictionary<Language, string> {
+            { Language.English, "Mesa" },
+            { Language.SimplifiedChinese, "台地 (Mesa)" },
+            { Language.TraditionalChinese, "台地 (Mesa)" },
+            { Language.Japanese, "メサ (Mesa)" },
+            { Language.Korean, "메사 (Mesa)" },
+            { Language.Italian, "Mesa (Mesa)" }
+        }},
+        { "world.segment_roots", new Dictionary<Language, string> {
+            { Language.English, "Roots" },
+            { Language.SimplifiedChinese, "树根 (Roots)" },
+            { Language.TraditionalChinese, "樹根 (Roots)" },
+            { Language.Japanese, "木の根 (Roots)" },
+            { Language.Korean, "뿌리 (Roots)" },
+            { Language.Italian, "Radici (Roots)" }
+        }},
+        { "world.route_header", new Dictionary<Language, string> {
+            { Language.English, "Mountain Route (Full Route)" },
+            { Language.SimplifiedChinese, "登山完整路线" },
+            { Language.TraditionalChinese, "登山完整路線" },
+            { Language.Japanese, "登山ルート全体" },
+            { Language.Korean, "전체 등반 경로" },
+            { Language.Italian, "Percorso Completo della Montagna" }
+        }},
+        { "world.teleport_next_campfire", new Dictionary<Language, string> {
+            { Language.English, "Teleport to Campfire Before Next Area" },
+            { Language.SimplifiedChinese, "传送到下一个区域前的篝火" },
+            { Language.TraditionalChinese, "傳送到下一個區域前的營火" },
+            { Language.Japanese, "次のエリア手前の焚き火にテレポート" },
+            { Language.Korean, "다음 구역 앞 모닥불로 순간이동" },
+            { Language.Italian, "Teletrasporta al Falò dell'Area Successiva" }
+        }},
+        { "world.teleport_campfire", new Dictionary<Language, string> {
+            { Language.English, "Teleport to End Campfire" },
+            { Language.SimplifiedChinese, "传送到终点篝火" },
+            { Language.TraditionalChinese, "傳送到終點營火" },
+            { Language.Japanese, "終点の焚き火にテレポート" },
+            { Language.Korean, "종점 모닥불로 순간이동" },
+            { Language.Italian, "Teletrasporta al Falò Finale" }
+        }},
+        { "world.jump_to_start", new Dictionary<Language, string> {
+            { Language.English, "Jump to Start" },
+            { Language.SimplifiedChinese, "跳转到起点" },
+            { Language.TraditionalChinese, "跳轉到起點" },
+            { Language.Japanese, "開始地点へ移動" },
+            { Language.Korean, "시작 지점으로 이동" },
+            { Language.Italian, "Vai all'Inizio" }
+        }},
+        { "world.current_altitude", new Dictionary<Language, string> {
+            { Language.English, "Altitude:" },
+            { Language.SimplifiedChinese, "当前海拔:" },
+            { Language.TraditionalChinese, "當前海拔:" },
+            { Language.Japanese, "現在の標高:" },
+            { Language.Korean, "현재 고도:" },
+            { Language.Italian, "Altitudine Corrente:" }
+        }},
+        { "world.level_label", new Dictionary<Language, string> {
+            { Language.English, "Level {0}" },
+            { Language.SimplifiedChinese, "第 {0} 区域" },
+            { Language.TraditionalChinese, "第 {0} 區域" },
+            { Language.Japanese, "第 {0} エリア" },
+            { Language.Korean, "제 {0} 구역" },
+            { Language.Italian, "Livello {0}" }
+        }},
+        { "world.at_peak", new Dictionary<Language, string> {
+            { Language.English, "Already at The Peak" },
+            { Language.SimplifiedChinese, "已到达顶峰" },
+            { Language.TraditionalChinese, "已到達頂峰" },
+            { Language.Japanese, "すでに頂上に到達" },
+            { Language.Korean, "이미 정상에 도달함" },
+            { Language.Italian, "Già alla Vetta" }
+        }},
+        { "world.summon_helicopter", new Dictionary<Language, string> {
+            { Language.English, "Summon Helicopter" },
+            { Language.SimplifiedChinese, "召唤直升机" },
+            { Language.TraditionalChinese, "召喚直升機" },
+            { Language.Japanese, "ヘリコプターを呼ぶ" },
+            { Language.Korean, "헬리콥터 호출" },
+            { Language.Italian, "Chiama Elicottero" }
+        }},
+        { "world.teleport_to_peak", new Dictionary<Language, string> {
+            { Language.English, "Jump to Peak" },
+            { Language.SimplifiedChinese, "跳转到顶峰" },
+            { Language.TraditionalChinese, "跳轉到頂峰" },
+            { Language.Japanese, "頂上へ移動" },
+            { Language.Korean, "정상으로 이동" },
+            { Language.Italian, "Vai alla Vetta" }
+        }},
+        { "world.next_area_label", new Dictionary<Language, string> {
+            { Language.English, "Next Area:" },
+            { Language.SimplifiedChinese, "下一区域:" },
+            { Language.TraditionalChinese, "下一區域:" },
+            { Language.Japanese, "次のエリア:" },
+            { Language.Korean, "다음 구역:" },
+            { Language.Italian, "Area Successiva:" }
+        }},
+        { "world.at_campfire_tag", new Dictionary<Language, string> {
+            { Language.English, "[At Campfire]" },
+            { Language.SimplifiedChinese, "[已到达篝火]" },
+            { Language.TraditionalChinese, "[已到達營火]" },
+            { Language.Japanese, "[焚き火に到達]" },
+            { Language.Korean, "[모닥불 도착]" },
+            { Language.Italian, "[Al Falò]" }
+        }},
+        { "world.light_campfire", new Dictionary<Language, string> {
+            { Language.English, "Light Campfire (To Level {0})" },
+            { Language.SimplifiedChinese, "点燃篝火 (开启第 {0} 区域)" },
+            { Language.TraditionalChinese, "點燃營火 (開啟第 {0} 區域)" },
+            { Language.Japanese, "焚き火を点火 (第 {0} エリアへ)" },
+            { Language.Korean, "모닥불 점화 (제 {0} 구역 진입)" },
+            { Language.Italian, "Accendi Falò (Verso Livello {0})" }
+        }},
+        { "world.light_action", new Dictionary<Language, string> {
+            { Language.English, "Light" },
+            { Language.SimplifiedChinese, "点燃" },
+            { Language.TraditionalChinese, "點燃" },
+            { Language.Japanese, "点火" },
+            { Language.Korean, "점화" },
+            { Language.Italian, "Accendi" }
+        }},
+        { "world.teleport_next_area_campfire", new Dictionary<Language, string> {
+            { Language.English, "Teleport to Next Area's Campfire (Level {0})" },
+            { Language.SimplifiedChinese, "传送到下一个区域的终点篝火 (第 {0} 区域)" },
+            { Language.TraditionalChinese, "傳送到下一個區域的終點營火 (第 {0} 區域)" },
+            { Language.Japanese, "次のエリアの焚き火へ (第 {0} エリア)" },
+            { Language.Korean, "다음 구역 종점 모닥불로 (제 {0} 구역)" },
+            { Language.Italian, "Al Falò dell'Area Successiva (Livello {0})" }
         }},
 
         // Player afflictions

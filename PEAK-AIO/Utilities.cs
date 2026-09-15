@@ -54,57 +54,92 @@ public static class Utilities
 
     public static bool hasAttemptedItemLoad = false;
     private static bool isUpdatingItems = false;
+    public static bool pendingItemRefresh = false;
 
     public static void UpdateItems(bool force = false)
     {
         if (isUpdatingItems) return;
         if (!force && hasAttemptedItemLoad && Globals.items.Count > 0) return;
 
-        Action doUpdate = () =>
+        if (force)
         {
-            if (isUpdatingItems) return;
-            isUpdatingItems = true;
-            hasAttemptedItemLoad = true;
+            pendingItemRefresh = true;
+            hasAttemptedItemLoad = false;
+        }
 
+        // If inside OnGUI, only perform synchronous update during EventType.Layout
+        if (Event.current != null)
+        {
+            if (Event.current.type == EventType.Layout)
+            {
+                pendingItemRefresh = false;
+                UpdateItemsSync();
+            }
+            else
+            {
+                // Defer to next Layout event so IMGUI control count remains consistent across Layout and Repaint
+                pendingItemRefresh = true;
+            }
+            return;
+        }
+
+        // Outside OnGUI: if on main thread, run sync; else dispatch
+        if (System.Threading.Thread.CurrentThread.ManagedThreadId == 1)
+        {
+            UpdateItemsSync();
+        }
+        else
+        {
+            UnityMainThreadDispatcher.Enqueue(UpdateItemsSync);
+        }
+    }
+
+    public static void UpdateItemsSync()
+    {
+        if (isUpdatingItems) return;
+        isUpdatingItems = true;
+
+        try
+        {
+            var itemSet = new HashSet<string>();
+            var collectedItems = new List<Item>();
+
+            // 1. Try to load from ItemDatabase singleton asset
             try
             {
-                var itemSet = new HashSet<string>();
-                var collectedItems = new List<Item>();
-
-                // 1. Try to load from ItemDatabase singleton asset
-                try
+                var db = SingletonAsset<ItemDatabase>.Instance;
+                if (db != null && db.Objects != null && db.Objects.Count > 0)
                 {
-                    var db = SingletonAsset<ItemDatabase>.Instance;
-                    if (db != null && db.Objects != null && db.Objects.Count > 0)
+                    for (int i = 0; i < db.Objects.Count; i++)
                     {
-                        for (int i = 0; i < db.Objects.Count; i++)
+                        try
                         {
-                            try
+                            var item = db.Objects[i];
+                            if (item != null && !string.IsNullOrEmpty(item.name))
                             {
-                                var item = db.Objects[i];
-                                if (item != null && !string.IsNullOrEmpty(item.name))
+                                string key = null;
+                                try { key = item.GetName(); } catch { }
+                                if (string.IsNullOrEmpty(key)) key = item.name;
+                                if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
                                 {
-                                    string key = null;
-                                    try { key = item.GetName(); } catch { }
-                                    if (string.IsNullOrEmpty(key)) key = item.name;
-                                    if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
-                                    {
-                                        itemSet.Add(key);
-                                        collectedItems.Add(item);
-                                    }
+                                    itemSet.Add(key);
+                                    collectedItems.Add(item);
                                 }
                             }
-                            catch { }
                         }
+                        catch { }
                     }
                 }
-                catch (Exception ex)
-                {
-                    if (Logger != null)
-                        Logger.LogWarning("[PEAK AIO] Could not query ItemDatabase: " + ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] Could not query ItemDatabase: " + ex.Message);
+            }
 
-                // 2. Fallback or augment with FindObjectsOfTypeAll
+            // 2. Fallback to FindObjectsOfTypeAll only if ItemDatabase gave 0 items
+            if (collectedItems.Count == 0)
+            {
                 try
                 {
                     UnityEngine.Object[] allItems = Resources.FindObjectsOfTypeAll(typeof(Item));
@@ -120,7 +155,7 @@ public static class Utilities
                                     bool isAsset = false;
                                     try
                                     {
-                                        isAsset = (item.gameObject.scene.handle == 0 && string.IsNullOrEmpty(item.gameObject.scene.name));
+                                        isAsset = !item.gameObject.scene.IsValid() || item.gameObject.scene.handle == 0 || string.IsNullOrEmpty(item.gameObject.scene.name);
                                     }
                                     catch { }
 
@@ -146,67 +181,63 @@ public static class Utilities
                     if (Logger != null)
                         Logger.LogWarning("[PEAK AIO] Could not query Resources for Items: " + ex.Message);
                 }
+            }
 
-                // Sort alphabetically by name
-                try
-                {
-                    collectedItems.Sort((a, b) =>
-                    {
-                        if (a == null && b == null) return 0;
-                        if (a == null) return 1;
-                        if (b == null) return -1;
-                        string nameA = null;
-                        string nameB = null;
-                        try { nameA = a.GetName(); } catch { }
-                        try { nameB = b.GetName(); } catch { }
-                        if (string.IsNullOrEmpty(nameA)) nameA = a.name ?? "";
-                        if (string.IsNullOrEmpty(nameB)) nameB = b.name ?? "";
-                        return string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
-                    });
-                }
-                catch { }
+            // Extract display names and sort alphabetically
+            var itemEntries = new List<KeyValuePair<Item, string>>(collectedItems.Count);
+            for (int i = 0; i < collectedItems.Count; i++)
+            {
+                var item = collectedItems[i];
+                if (item == null) continue;
+                string displayName = null;
+                try { displayName = item.GetName(); } catch { }
+                if (string.IsNullOrEmpty(displayName)) displayName = item.name;
+                if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+                itemEntries.Add(new KeyValuePair<Item, string>(item, displayName));
+            }
 
-                Globals.items.Clear();
-                Globals.itemNames.Clear();
-                for (int i = 0; i < 3; i++)
+            try
+            {
+                itemEntries.Sort((a, b) => string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase));
+            }
+            catch { }
+
+            var newItems = new List<Item>(itemEntries.Count);
+            var newItemNames = new List<string>(itemEntries.Count);
+            for (int i = 0; i < itemEntries.Count; i++)
+            {
+                newItems.Add(itemEntries[i].Key);
+                newItemNames.Add(itemEntries[i].Value);
+            }
+
+            // Atomic assignment
+            Globals.items = newItems;
+            Globals.itemNames = newItemNames;
+
+            // Mark load attempt only if we got items (otherwise keep false so we can retry on next game scene)
+            hasAttemptedItemLoad = (newItems.Count > 0);
+
+            // Clamp selected items if out of bounds
+            if (Globals.selectedItems != null)
+            {
+                for (int i = 0; i < Globals.selectedItems.Length; i++)
                 {
-                    if (Globals.selectedItems != null && i < Globals.selectedItems.Length)
+                    if (Globals.selectedItems[i] >= newItems.Count)
                         Globals.selectedItems[i] = -1;
                 }
-
-                for (int i = 0; i < collectedItems.Count; i++)
-                {
-                    var item = collectedItems[i];
-                    if (item == null) continue;
-                    string displayName = null;
-                    try { displayName = item.GetName(); } catch { }
-                    if (string.IsNullOrEmpty(displayName)) displayName = item.name;
-                    if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
-                    Globals.items.Add(item);
-                    Globals.itemNames.Add(displayName);
-                }
-
-                if (Logger != null)
-                    Logger.LogInfo(string.Format("[PEAK AIO] Loaded {0} unique items.", Globals.items.Count));
             }
-            catch (Exception ex)
-            {
-                if (Logger != null)
-                    Logger.LogError("[PEAK AIO] UpdateItems error: " + ex);
-            }
-            finally
-            {
-                isUpdatingItems = false;
-            }
-        };
 
-        if (Event.current != null || System.Threading.Thread.CurrentThread.ManagedThreadId == 1)
-        {
-            doUpdate();
+            if (Logger != null)
+                Logger.LogInfo(string.Format("[PEAK AIO] Loaded {0} unique items.", Globals.items.Count));
         }
-        else
+        catch (Exception ex)
         {
-            UnityMainThreadDispatcher.Enqueue(doUpdate);
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] UpdateItems error: " + ex);
+        }
+        finally
+        {
+            isUpdatingItems = false;
         }
     }
 
@@ -284,7 +315,10 @@ public static class Utilities
                     );
                     byte[] syncData = SerializeSyncData(syncObj);
 
-                    Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                    if (Globals.playerObj.photonView != null)
+                    {
+                        Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                    }
                     if (Logger != null)
                         Logger.LogInfo(string.Format("[Inventory] Assigned {0} to slot {1}", Globals.itemNames[itemIndex], slot + 1));
                 }
@@ -319,8 +353,12 @@ public static class Utilities
                         ItemDatabase.Add(item);
                     }
 
+                    string itemName = null;
+                    try { itemName = item.GetName(); } catch { }
+                    if (string.IsNullOrEmpty(itemName)) itemName = item.name;
+
                     if (Logger != null)
-                        Logger.LogInfo(string.Format("[Inventory] Spawned {0} into world.", item.GetName()));
+                        Logger.LogInfo(string.Format("[Inventory] Spawned {0} into world.", itemName));
                 }
             }
             catch (Exception ex)
@@ -384,7 +422,10 @@ public static class Utilities
                             Globals.playerObj.tempFullSlot
                         );
                         byte[] syncData = SerializeSyncData(syncObj);
-                        Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                        if (Globals.playerObj.photonView != null)
+                        {
+                            Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -824,6 +865,478 @@ public static class Utilities
             {
                 if (Logger != null)
                     Logger.LogError("[PEAK AIO] JumpToSegment error: " + ex.Message);
+            }
+        });
+    }
+
+    public struct RouteSegmentInfo
+    {
+        public int level;
+        public Segment segment;
+        public Biome.BiomeType biomeType;
+        public string displayName;
+        public bool isCurrent;
+        public bool hasCampfire;
+        public float altitude;
+        public bool isAtCampfire;
+    }
+
+    public static string GetBiomeDisplayName(Biome.BiomeType bt, Segment seg)
+    {
+        if (seg == Segment.TheKiln)
+            return Localization.T("world.segment_thekiln");
+        if (seg == Segment.Peak)
+            return Localization.T("world.segment_peak");
+
+        switch (bt)
+        {
+            case Biome.BiomeType.Shore:
+                return Localization.T("world.segment_beach");
+            case Biome.BiomeType.Tropics:
+                return Localization.T("world.segment_tropics");
+            case Biome.BiomeType.Roots:
+                return Localization.T("world.segment_roots");
+            case Biome.BiomeType.Alpine:
+                return Localization.T("world.segment_alpine");
+            case Biome.BiomeType.Volcano:
+                return Localization.T("world.segment_caldera");
+            case Biome.BiomeType.Mesa:
+                return Localization.T("world.segment_mesa");
+            case Biome.BiomeType.Peak:
+                return Localization.T("world.segment_peak");
+            default:
+                switch (seg)
+                {
+                    case Segment.Beach: return Localization.T("world.segment_beach");
+                    case Segment.Tropics: return Localization.T("world.segment_tropics");
+                    case Segment.Alpine: return Localization.T("world.segment_alpine");
+                    case Segment.Caldera: return Localization.T("world.segment_caldera");
+                    case Segment.TheKiln: return Localization.T("world.segment_thekiln");
+                    case Segment.Peak: return Localization.T("world.segment_peak");
+                    default: return seg.ToString();
+                }
+        }
+    }
+
+    public static Campfire GetSegmentCampfire(int segmentIndex)
+    {
+        if (!MapHandler.Exists || MapHandler.Instance == null)
+            return null;
+
+        var mh = MapHandler.Instance;
+        Campfire targetCampfire = null;
+
+        if (mh.segments != null && segmentIndex >= 0 && segmentIndex < mh.segments.Length)
+        {
+            var seg = mh.segments[segmentIndex];
+            if (seg != null && seg.segmentCampfire != null)
+            {
+                targetCampfire = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+            }
+        }
+
+        if (targetCampfire == null && (int)MapHandler.CurrentSegmentNumber == segmentIndex)
+        {
+            targetCampfire = MapHandler.CurrentCampfire;
+        }
+
+        if (targetCampfire == null)
+        {
+            Segment nextSeg = (Segment)(segmentIndex + 1);
+            Campfire[] all = Resources.FindObjectsOfTypeAll<Campfire>();
+            if (all != null)
+            {
+                foreach (var cf in all)
+                {
+                    if (cf != null && cf.advanceToSegment == nextSeg)
+                    {
+                        targetCampfire = cf;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return targetCampfire;
+    }
+
+    public static bool IsPlayerNearCampfire(int segmentIndex, float maxDist = 12f)
+    {
+        Character local = Character.localCharacter;
+        if (local == null) return false;
+
+        Campfire cf = GetSegmentCampfire(segmentIndex);
+        if (cf == null) return false;
+
+        return Vector3.Distance(local.transform.position, cf.transform.position) <= maxDist;
+    }
+
+    public static Segment DetectCurrentPlayerSegment()
+    {
+        if (!MapHandler.Exists || MapHandler.Instance == null)
+            return Segment.Beach;
+
+        Character local = Character.localCharacter;
+        if (local == null)
+            return MapHandler.CurrentSegmentNumber;
+
+        Vector3 pPos = local.transform.position;
+        var mh = MapHandler.Instance;
+        Segment officialSeg = MapHandler.CurrentSegmentNumber;
+
+        try
+        {
+            // 1. Check if at The Peak
+            if (officialSeg == Segment.Peak)
+            {
+                return Segment.Peak;
+            }
+            if (mh.respawnThePeak != null && mh.respawnThePeak.position.y > 50f)
+            {
+                if (pPos.y >= mh.respawnThePeak.position.y - 25f || Vector3.Distance(pPos, mh.respawnThePeak.position) < 80f)
+                {
+                    return Segment.Peak;
+                }
+            }
+
+            // 2. Check if player is standing near any segment's campfire
+            for (int i = 0; i < 5; i++)
+            {
+                if (IsPlayerNearCampfire(i, 12f))
+                {
+                    return (Segment)i;
+                }
+            }
+
+            // 3. Check altitude bands across segments (descending)
+            if (mh.segments != null && mh.segments.Length > 0)
+            {
+                for (int i = mh.segments.Length - 1; i >= 0; i--)
+                {
+                    var seg = mh.segments[i];
+                    if (seg != null && seg.reconnectSpawnPos != null)
+                    {
+                        float spawnY = seg.reconnectSpawnPos.position.y;
+                        // Higher segments must have a realistic positive altitude (> 10m) to avoid uninitialized (0,0,0) false positives
+                        if (i == 0 || spawnY > 10f)
+                        {
+                            if (pPos.y >= spawnY - 2f)
+                            {
+                                return (Segment)i;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
+        return officialSeg;
+    }
+
+    public static float GetCurrentPlayerAltitude()
+    {
+        Character local = Character.localCharacter;
+        if (local != null)
+        {
+            return local.transform.position.y;
+        }
+        return 0f;
+    }
+
+    public static List<RouteSegmentInfo> GetFullRoute()
+    {
+        var route = new List<RouteSegmentInfo>(6);
+        Segment currentSeg = DetectCurrentPlayerSegment();
+
+        Segment[] defaultSegments = new Segment[] {
+            Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
+        };
+
+        bool mapExists = MapHandler.Exists && MapHandler.Instance != null;
+
+        for (int i = 0; i < 6; i++)
+        {
+            int levelNum = i + 1;
+            Segment seg = defaultSegments[i];
+            Biome.BiomeType bt = (Biome.BiomeType)(-1);
+            float altitude = 0f;
+
+            if (mapExists && MapHandler.Instance.segments != null && i < MapHandler.Instance.segments.Length)
+            {
+                var mapSeg = MapHandler.Instance.segments[i];
+                if (mapSeg != null)
+                {
+                    try
+                    {
+                        bt = mapSeg.biome;
+                    }
+                    catch { }
+
+                    if (mapSeg.reconnectSpawnPos != null)
+                    {
+                        altitude = mapSeg.reconnectSpawnPos.position.y;
+                    }
+                }
+            }
+            else if (i == 5)
+            {
+                bt = Biome.BiomeType.Peak;
+                if (mapExists && MapHandler.Instance.respawnThePeak != null)
+                {
+                    altitude = MapHandler.Instance.respawnThePeak.position.y;
+                }
+            }
+
+            string displayName = GetBiomeDisplayName(bt, seg);
+            bool isCurrent = mapExists && (currentSeg == seg);
+            bool isAtCamp = (i < 5) && isCurrent && IsPlayerNearCampfire(i, 12f);
+
+            route.Add(new RouteSegmentInfo
+            {
+                level = levelNum,
+                segment = seg,
+                biomeType = bt,
+                displayName = displayName,
+                isCurrent = isCurrent,
+                hasCampfire = (i < 5),
+                altitude = altitude,
+                isAtCampfire = isAtCamp
+            });
+        }
+
+        return route;
+    }
+
+    public static bool LightCampfire(int segmentIndex)
+    {
+        try
+        {
+            Campfire cf = GetSegmentCampfire(segmentIndex);
+            if (cf == null)
+            {
+                if (Logger != null)
+                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire for segment {0} not found.", segmentIndex));
+                return false;
+            }
+
+            if (!cf.gameObject.activeInHierarchy)
+            {
+                if (cf.transform.parent != null)
+                    cf.transform.parent.gameObject.SetActive(true);
+                cf.gameObject.SetActive(true);
+            }
+
+            UnityMainThreadDispatcher.Enqueue(() =>
+            {
+                try
+                {
+                    cf.DebugLight();
+                    if (Logger != null)
+                        Logger.LogInfo(string.Format("[PEAK AIO] Lit campfire for segment {0}.", segmentIndex));
+                }
+                catch (Exception ex)
+                {
+                    if (Logger != null)
+                        Logger.LogError("[PEAK AIO] Error lighting campfire: " + ex.Message);
+                }
+            });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] LightCampfire exception: " + ex.Message);
+            return false;
+        }
+    }
+
+    public static bool LightCurrentCampfire()
+    {
+        int curIdx = (int)DetectCurrentPlayerSegment();
+        if (curIdx < 5)
+        {
+            return LightCampfire(curIdx);
+        }
+        return false;
+    }
+
+    public static bool TeleportToNextCampfire()
+    {
+        if (!MapHandler.Exists || MapHandler.Instance == null)
+        {
+            if (Logger != null)
+                Logger.LogWarning("[PEAK AIO] MapHandler does not exist.");
+            return false;
+        }
+
+        int curIdx = (int)DetectCurrentPlayerSegment();
+        if (curIdx >= 5)
+        {
+            if (Logger != null)
+                Logger.LogInfo("[PEAK AIO] Already at The Peak, no next campfire.");
+            return false;
+        }
+
+        // If player is already standing at the current segment's campfire, advance to next segment's campfire!
+        if (IsPlayerNearCampfire(curIdx, 12f))
+        {
+            int nextIdx = curIdx + 1;
+            if (nextIdx < 5)
+            {
+                JumpToSegmentCampfire((Segment)nextIdx);
+                return true;
+            }
+            else
+            {
+                JumpToSegment(Segment.Peak);
+                return true;
+            }
+        }
+
+        return TeleportToCampfire(curIdx);
+    }
+
+    public static bool TeleportToCampfire(int segmentIndex)
+    {
+        try
+        {
+            Character localCharacter = Character.localCharacter;
+            if (localCharacter == null || localCharacter.data.dead)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] Local character is null or dead.");
+                return false;
+            }
+
+            if (!MapHandler.Exists || MapHandler.Instance == null)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] MapHandler does not exist.");
+                return false;
+            }
+
+            var mh = MapHandler.Instance;
+
+            // Ensure parent and campfire GameObjects are active so colliders/transforms are fully valid
+            if (mh.segments != null && segmentIndex >= 0 && segmentIndex < mh.segments.Length)
+            {
+                var seg = mh.segments[segmentIndex];
+                if (seg != null)
+                {
+                    if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
+                        seg.segmentParent.SetActive(true);
+                    if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
+                        seg.segmentCampfire.SetActive(true);
+                }
+            }
+
+            Campfire targetCampfire = GetSegmentCampfire(segmentIndex);
+
+            if (targetCampfire == null)
+            {
+                if (Logger != null)
+                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire before segment {0} not found.", (Segment)(segmentIndex + 1)));
+                return false;
+            }
+
+            if (!targetCampfire.gameObject.activeInHierarchy)
+            {
+                if (targetCampfire.transform.parent != null)
+                    targetCampfire.transform.parent.gameObject.SetActive(true);
+                targetCampfire.gameObject.SetActive(true);
+            }
+
+            Vector3 cfPos = targetCampfire.transform.position;
+            Vector3 forward = targetCampfire.transform.forward;
+            if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
+            Vector3 safePos = cfPos + forward * 1.8f + Vector3.up * 0.4f;
+
+            if (localCharacter.photonView != null)
+            {
+                localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { safePos, true });
+            }
+            else
+            {
+                localCharacter.WarpPlayerRPC(safePos, true);
+            }
+
+            if (Logger != null)
+                Logger.LogInfo(string.Format("[PEAK AIO] Teleported to campfire before segment {0} at {1}", (Segment)(segmentIndex + 1), safePos));
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] TeleportToCampfire error: " + ex.Message);
+            return false;
+        }
+    }
+
+    public static void JumpToSegmentCampfire(Segment segment)
+    {
+        int segIdx = (int)segment;
+        if (segIdx >= 5)
+        {
+            JumpToSegment(segment);
+            return;
+        }
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (MapHandler.Exists)
+                {
+                    int currentSeg = (int)MapHandler.CurrentSegmentNumber;
+                    if (currentSeg == segIdx)
+                    {
+                        TeleportToCampfire(segIdx);
+                    }
+                    else
+                    {
+                        MapHandler.JumpToSegment(segment);
+
+                        // Allow host sync and terrain initialization before warping to campfire
+                        EventComponent.QueueDelayedAction(() =>
+                        {
+                            TeleportToCampfire(segIdx);
+                        }, 0.5f);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] JumpToSegmentCampfire error: " + ex.Message);
+            }
+        });
+    }
+
+    public static void SummonHelicopter()
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (Singleton<PeakHandler>.Instance != null)
+                {
+                    Singleton<PeakHandler>.Instance.SummonHelicopter();
+                    if (Logger != null)
+                        Logger.LogInfo("[PEAK AIO] Helicopter summoned at Peak.");
+                }
+                else
+                {
+                    if (Logger != null)
+                        Logger.LogWarning("[PEAK AIO] PeakHandler instance not found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] SummonHelicopter error: " + ex.Message);
             }
         });
     }

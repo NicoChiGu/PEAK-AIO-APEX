@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class EventComponent : MonoBehaviour
@@ -7,8 +9,47 @@ public class EventComponent : MonoBehaviour
     private const float STATE_INTERVAL = 0.1f;
     private const float VALIDATION_INTERVAL = 1f;
 
+    private struct DelayedAction
+    {
+        public Action action;
+        public float time;
+    }
+
+    private static readonly List<DelayedAction> delayedActions = new List<DelayedAction>();
+
+    public static void QueueDelayedAction(Action action, float delaySeconds)
+    {
+        if (action == null) return;
+        lock (delayedActions)
+        {
+            delayedActions.Add(new DelayedAction
+            {
+                action = action,
+                time = Time.time + delaySeconds
+            });
+        }
+    }
+
     private void Update()
     {
+        lock (delayedActions)
+        {
+            for (int i = delayedActions.Count - 1; i >= 0; i--)
+            {
+                if (Time.time >= delayedActions[i].time)
+                {
+                    var act = delayedActions[i].action;
+                    delayedActions.RemoveAt(i);
+                    try { act(); }
+                    catch (Exception ex)
+                    {
+                        if (ConfigManager.Logger != null)
+                            ConfigManager.Logger.LogError("DelayedAction error: " + ex);
+                    }
+                }
+            }
+        }
+
         validationTimer += Time.deltaTime;
         if (validationTimer >= VALIDATION_INTERVAL)
         {

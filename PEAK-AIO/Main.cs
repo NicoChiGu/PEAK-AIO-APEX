@@ -670,9 +670,13 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     private void DrawItemsTab()
     {
-        if (Globals.itemNames.Count == 0 && !Utilities.hasAttemptedItemLoad)
+        if (Event.current != null && Event.current.type == EventType.Layout)
         {
-            Utilities.UpdateItems();
+            if (Utilities.pendingItemRefresh || (Globals.items.Count == 0 && !Utilities.hasAttemptedItemLoad))
+            {
+                Utilities.pendingItemRefresh = false;
+                Utilities.UpdateItemsSync();
+            }
         }
 
         // Safety check for search buffers
@@ -697,24 +701,44 @@ public class PeakMod : BaseUnityPlugin
         }
 
         GUILayout.BeginHorizontal();
-        GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
-        GUILayout.FlexibleSpace();
-        GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
-        if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(100), GUILayout.Height(22)))
+        try
         {
-            Utilities.UpdateItems(true);
+            GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
+            if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(120), GUILayout.Height(22)))
+            {
+                Utilities.pendingItemRefresh = true;
+            }
         }
-        GUILayout.EndHorizontal();
+        finally
+        {
+            GUILayout.EndHorizontal();
+        }
 
         GUILayout.Space(4);
 
         // 3 columns for slots 0, 1, 2
         GUILayout.BeginHorizontal();
-
-        for (int slot = 0; slot < 3; slot++)
+        try
         {
-            GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(200));
+            for (int slot = 0; slot < 3; slot++)
+            {
+                DrawItemSlotColumn(slot);
+                if (slot < 2) GUILayout.Space(4);
+            }
+        }
+        finally
+        {
+            GUILayout.EndHorizontal();
+        }
+    }
 
+    private void DrawItemSlotColumn(int slot)
+    {
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(200));
+        try
+        {
             // Slot header
             GUILayout.Label(string.Format("{0} {1}", Localization.T("items.slot"), slot + 1), boldLabelStyle);
 
@@ -744,34 +768,39 @@ public class PeakMod : BaseUnityPlugin
 
             // Item list
             Globals.slotScrolls[slot] = GUILayout.BeginScrollView(Globals.slotScrolls[slot], GUILayout.Height(150));
-            bool hasItem = false;
-
-            int itemCount = Math.Min(Globals.items.Count, Globals.itemNames.Count);
-            for (int i = 0; i < itemCount; i++)
+            try
             {
-                string name = Globals.itemNames[i];
-                if (string.IsNullOrEmpty(name))
-                    continue;
-
-                if (!string.IsNullOrEmpty(search) && name.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
-
-                hasItem = true;
-                bool isSelected = (Globals.selectedItems[slot] == i);
-                GUIStyle btnStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
-
-                if (GUILayout.Button(name, btnStyle))
+                bool hasItem = false;
+                int itemCount = Math.Min(Globals.items.Count, Globals.itemNames.Count);
+                for (int i = 0; i < itemCount; i++)
                 {
-                    Globals.selectedItems[slot] = i;
-                    Utilities.AssignInventoryItem(slot, i);
+                    string name = Globals.itemNames[i];
+                    if (string.IsNullOrEmpty(name))
+                        continue;
+
+                    if (!string.IsNullOrEmpty(search) && name.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+
+                    hasItem = true;
+                    bool isSelected = (Globals.selectedItems[slot] == i);
+                    GUIStyle btnStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
+
+                    if (GUILayout.Button(name, btnStyle))
+                    {
+                        Globals.selectedItems[slot] = i;
+                        Utilities.AssignInventoryItem(slot, i);
+                    }
+                }
+
+                if (!hasItem)
+                {
+                    GUILayout.Label(string.IsNullOrEmpty(search) ? Localization.T("items.none_available") : Localization.T("items.no_matches"), tipLabelStyle);
                 }
             }
-
-            if (!hasItem)
+            finally
             {
-                GUILayout.Label(string.IsNullOrEmpty(search) ? "No items available" : "No matches", tipLabelStyle);
+                GUILayout.EndScrollView();
             }
-            GUILayout.EndScrollView();
 
             GUILayout.Space(4);
 
@@ -785,26 +814,34 @@ public class PeakMod : BaseUnityPlugin
             }
 
             GUILayout.BeginHorizontal();
-            if (rechargeConfig != null && GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
+            try
             {
-                Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
-            }
+                if (rechargeConfig != null && GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
+                {
+                    Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
+                }
 
-            if (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count)
-            {
+                bool canSpawn = (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count);
+                bool prevEnabled = GUI.enabled;
+                GUI.enabled = canSpawn;
                 if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
                 {
-                    Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
+                    if (canSpawn)
+                    {
+                        Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
+                    }
                 }
+                GUI.enabled = prevEnabled;
             }
-            GUILayout.EndHorizontal();
-
-            GUILayout.EndVertical();
-
-            if (slot < 2) GUILayout.Space(4);
+            finally
+            {
+                GUILayout.EndHorizontal();
+            }
         }
-
-        GUILayout.EndHorizontal();
+        finally
+        {
+            GUILayout.EndVertical();
+        }
     }
 
     // ==========================================
@@ -930,70 +967,195 @@ public class PeakMod : BaseUnityPlugin
 
         Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
 
-        // --- Map / Segment Jump Section ---
+        // --- Map / Segment Jump & Route Section ---
         GUILayout.BeginVertical(cardBoxStyle);
-        string currentSegName = "Unknown";
-        Segment currentSeg = Segment.Beach;
-        bool hasCurrentSeg = false;
-        try
-        {
-            if (MapHandler.Exists)
-            {
-                currentSeg = MapHandler.CurrentSegmentNumber;
-                hasCurrentSeg = true;
-                currentSegName = currentSeg.ToString();
-            }
-        }
-        catch { }
 
-        GUILayout.Label(string.Format("{0} {1}", Localization.T("world.current_segment"), currentSegName), boldLabelStyle);
+        // Header
+        GUILayout.Label(Localization.T("world.segment_teleport"), sectionHeaderStyle);
         GUILayout.Space(4);
 
+        // Current Area Detection
+        Segment detectedSeg = Utilities.DetectCurrentPlayerSegment();
+        int currentLevel = (int)detectedSeg + 1;
+        float altitude = Utilities.GetCurrentPlayerAltitude();
+        List<Utilities.RouteSegmentInfo> route = Utilities.GetFullRoute();
+        bool isAtCampfire = (currentLevel <= 5) && Utilities.IsPlayerNearCampfire((int)detectedSeg);
+
+        string currentSegDisplayName = "Unknown";
+        for (int i = 0; i < route.Count; i++)
+        {
+            if (route[i].segment == detectedSeg)
+            {
+                currentSegDisplayName = route[i].displayName;
+                break;
+            }
+        }
+
+        GUILayout.BeginHorizontal();
+        string statusText = string.Format("{0} {1} - {2}",
+            Localization.T("world.current_segment"),
+            string.Format(Localization.T("world.level_label"), currentLevel),
+            currentSegDisplayName);
+        if (isAtCampfire)
+        {
+            statusText += "  " + Localization.T("world.at_campfire_tag");
+        }
+        GUILayout.Label(statusText, boldLabelStyle);
+
+        GUILayout.FlexibleSpace();
+        if (altitude != 0f)
+        {
+            GUILayout.Label(string.Format("{0} {1:F1} m", Localization.T("world.current_altitude"), altitude), tipLabelStyle);
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+
+        // Prominent Button(s): Teleport to Campfire / Light Campfire
+        if (currentLevel < 6)
+        {
+            int nextLevel = currentLevel + 1;
+            string nextName = (currentLevel < route.Count) ? route[currentLevel].displayName : "";
+
+            if (!isAtCampfire)
+            {
+                string btnText = string.Format("{0} ({1} {2})",
+                    Localization.T("world.teleport_next_campfire"),
+                    string.Format(Localization.T("world.level_label"), nextLevel),
+                    nextName);
+
+                if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
+                {
+                    Utilities.TeleportToNextCampfire();
+                }
+            }
+            else
+            {
+                // Player is already at the transition campfire!
+                GUILayout.BeginHorizontal();
+                string lightText = string.Format(Localization.T("world.light_campfire"), nextLevel);
+                if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
+                {
+                    Utilities.LightCurrentCampfire();
+                }
+
+                GUILayout.Space(6);
+
+                int afterNextLevel = nextLevel + 1;
+                string nextCampText = (nextLevel < 6)
+                    ? string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel)
+                    : Localization.T("world.teleport_to_peak");
+
+                if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
+                {
+                    Utilities.TeleportToNextCampfire();
+                }
+                GUILayout.EndHorizontal();
+            }
+        }
+        else
+        {
+            // At Peak
+            GUILayout.BeginHorizontal();
+            GUI.enabled = false;
+            GUILayout.Button(Localization.T("world.at_peak"), primaryBtnStyle, GUILayout.Height(32));
+            GUI.enabled = true;
+            GUILayout.Space(6);
+            if (GUILayout.Button(Localization.T("world.summon_helicopter"), dangerBtnStyle, GUILayout.Height(32), GUILayout.Width(160)))
+            {
+                Utilities.SummonHelicopter();
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        GUILayout.Space(8);
+
+        // Full Route Visualization (Breadcrumbs)
+        GUILayout.Label(Localization.T("world.route_header") + ":", subHeaderStyle);
+        GUILayout.Space(2);
+
+        GUILayout.BeginHorizontal();
+        for (int i = 0; i < route.Count; i++)
+        {
+            var r = route[i];
+            bool isCur = (r.segment == detectedSeg);
+            GUIStyle stepStyle = isCur ? sidebarActiveBtnStyle : sidebarBtnStyle;
+            string stepText = string.Format("{0}. {1}", r.level, r.displayName);
+            if (isCur && r.isAtCampfire)
+            {
+                stepText += " 🔥";
+            }
+            if (GUILayout.Button(stepText, stepStyle, GUILayout.Height(24)))
+            {
+                Utilities.JumpToSegment(r.segment);
+            }
+            if (i < route.Count - 1)
+            {
+                GUILayout.Label("➔", boldLabelStyle, GUILayout.Width(16));
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(8);
+
+        // Detailed Area & Campfire Jump Controls
         GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
+        GUILayout.Space(2);
 
-        Segment[] allSegments = new Segment[] {
-            Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
-        };
-        string[] segmentNames = new string[] {
-            Localization.T("world.segment_beach"),
-            Localization.T("world.segment_tropics"),
-            Localization.T("world.segment_alpine"),
-            Localization.T("world.segment_caldera"),
-            Localization.T("world.segment_thekiln"),
-            Localization.T("world.segment_peak")
-        };
-
-        GUILayout.BeginHorizontal();
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < route.Count; i++)
         {
-            Segment seg = allSegments[i];
-            bool isCurrent = hasCurrentSeg && (currentSeg == seg);
-            GUIStyle bStyle = isCurrent ? sidebarActiveBtnStyle : primaryBtnStyle;
-            string bText = isCurrent ? string.Format("[{0}]", segmentNames[i]) : segmentNames[i];
-            if (GUILayout.Button(bText, bStyle, GUILayout.Height(26)))
-            {
-                Utilities.JumpToSegment(seg);
-            }
-            if (i < 2) GUILayout.Space(4);
-        }
-        GUILayout.EndHorizontal();
+            var r = route[i];
+            bool isCur = (r.segment == detectedSeg);
 
-        GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
 
-        GUILayout.BeginHorizontal();
-        for (int i = 3; i < 6; i++)
-        {
-            Segment seg = allSegments[i];
-            bool isCurrent = hasCurrentSeg && (currentSeg == seg);
-            GUIStyle bStyle = isCurrent ? sidebarActiveBtnStyle : primaryBtnStyle;
-            string bText = isCurrent ? string.Format("[{0}]", segmentNames[i]) : segmentNames[i];
-            if (GUILayout.Button(bText, bStyle, GUILayout.Height(26)))
+            // Label for Level and Biome name
+            string segLabel = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), r.level), r.displayName);
+            if (isCur)
             {
-                Utilities.JumpToSegment(seg);
+                segLabel += r.isAtCampfire ? "  [🔥]" : "  [✓]";
             }
-            if (i < 5) GUILayout.Space(4);
+            GUILayout.Label(segLabel, isCur ? boldLabelStyle : labelStyle, GUILayout.Width(200));
+
+            // Button 1: Jump to Start of segment
+            GUIStyle jumpBtnStyle = isCur ? sidebarActiveBtnStyle : primaryBtnStyle;
+            string jumpStartText = string.Format("{0}", Localization.T("world.jump_to_start"));
+            if (GUILayout.Button(jumpStartText, jumpBtnStyle, GUILayout.Height(24), GUILayout.Width(95)))
+            {
+                Utilities.JumpToSegment(r.segment);
+            }
+
+            GUILayout.Space(4);
+
+            // Button 2: Teleport to Campfire (or Peak action)
+            if (r.hasCampfire)
+            {
+                if (GUILayout.Button(Localization.T("world.teleport_campfire"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
+                {
+                    Utilities.JumpToSegmentCampfire(r.segment);
+                }
+
+                GUILayout.Space(3);
+
+                // Button 3: Light Campfire
+                if (GUILayout.Button(Localization.T("world.light_action"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(50)))
+                {
+                    Utilities.LightCampfire(i);
+                }
+            }
+            else
+            {
+                if (GUILayout.Button(Localization.T("world.teleport_to_peak"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
+                {
+                    Utilities.JumpToSegment(r.segment);
+                }
+            }
+
+            GUILayout.EndHorizontal();
+
+            if (i < route.Count - 1)
+                GUILayout.Space(3);
         }
-        GUILayout.EndHorizontal();
 
         GUILayout.EndVertical();
 
