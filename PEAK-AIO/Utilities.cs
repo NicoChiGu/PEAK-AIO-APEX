@@ -1378,49 +1378,116 @@ public static class Utilities
         return false;
     }
 
-    public static bool TryGetPeakAMapCustomMap(out int customMapIndex, out string sceneName, out string biomeId)
+    public static bool TryGetCustomMapOrPlaylist(out int customMapIndex, out string sceneName, out string biomeId, out string playlistInfo, out string sourceName)
     {
         customMapIndex = -1;
         sceneName = "";
         biomeId = "";
+        playlistInfo = "";
+        sourceName = "";
 
         try
         {
-            Type customMapsType = Type.GetType("PeakAMap.Core.CustomMaps, PeakAMap");
-            if (customMapsType == null)
+            Assembly[] asms = AppDomain.CurrentDomain.GetAssemblies();
+            for (int i = 0; i < asms.Length; i++)
             {
-                Assembly[] asms = AppDomain.CurrentDomain.GetAssemblies();
-                for (int i = 0; i < asms.Length; i++)
+                string asmName = asms[i].GetName().Name;
+                if (asmName == "PeakAMap" ||
+                    asmName.IndexOf("CustomMap", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    asmName.IndexOf("Playlist", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    if (asms[i].GetName().Name == "PeakAMap")
-                    {
-                        customMapsType = asms[i].GetType("PeakAMap.Core.CustomMaps");
-                        if (customMapsType != null) break;
-                    }
-                }
-            }
+                    Type[] types;
+                    try { types = asms[i].GetTypes(); } catch { continue; }
 
-            if (customMapsType != null)
-            {
-                PropertyInfo instProp = customMapsType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-                object instance = instProp != null ? instProp.GetValue(null, null) : null;
-                if (instance != null)
-                {
-                    FieldInfo modeField = customMapsType.GetField("loadMode", BindingFlags.Public | BindingFlags.Instance);
-                    if (modeField != null)
+                    for (int t = 0; t < types.Length; t++)
                     {
-                        object modeVal = modeField.GetValue(instance);
-                        if (modeVal != null && modeVal.ToString().Equals("Custom", StringComparison.OrdinalIgnoreCase))
+                        Type type = types[t];
+                        if (type.Name.Equals("CustomMaps", StringComparison.OrdinalIgnoreCase) ||
+                            type.Name.IndexOf("Playlist", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            type.Name.IndexOf("MapSelector", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            PropertyInfo indexProp = customMapsType.GetProperty("CustomMapIndex", BindingFlags.Public | BindingFlags.Instance);
-                            if (indexProp != null)
+                            PropertyInfo instProp = type.GetProperty("Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+                            FieldInfo instField = instProp == null ? type.GetField("Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy) : null;
+                            object instance = instProp != null ? instProp.GetValue(null, null) : (instField != null ? instField.GetValue(null) : null);
+
+                            if (instance != null)
                             {
-                                customMapIndex = (int)indexProp.GetValue(instance, null);
-                                var baker = SingletonAsset<MapBaker>.Instance;
-                                if (baker != null && customMapIndex >= 0)
+                                FieldInfo modeField = type.GetField("loadMode", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                                PropertyInfo modeProp = modeField == null ? type.GetProperty("loadMode", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance) : null;
+                                object modeVal = modeField != null ? modeField.GetValue(instance) : (modeProp != null ? modeProp.GetValue(instance, null) : null);
+
+                                bool isActive = false;
+                                if (modeVal != null)
                                 {
-                                    sceneName = baker.GetLevel(customMapIndex);
-                                    biomeId = baker.GetBiomeID(customMapIndex);
+                                    string modeStr = modeVal.ToString();
+                                    if (!modeStr.Equals("Vanilla", StringComparison.OrdinalIgnoreCase) &&
+                                        !modeStr.Equals("Default", StringComparison.OrdinalIgnoreCase) &&
+                                        !modeStr.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                                        !modeStr.Equals("Disabled", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        isActive = true;
+                                        sourceName = asmName + " (" + modeStr + ")";
+                                    }
+                                }
+
+                                FieldInfo enabledField = type.GetField("enabled", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                if (enabledField != null && enabledField.FieldType == typeof(bool))
+                                {
+                                    if ((bool)enabledField.GetValue(instance))
+                                    {
+                                        isActive = true;
+                                        if (string.IsNullOrEmpty(sourceName)) sourceName = asmName;
+                                    }
+                                }
+
+                                if (isActive)
+                                {
+                                    PropertyInfo sceneProp = type.GetProperty("CustomSceneName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("SceneName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("CurrentScene", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (sceneProp != null)
+                                    {
+                                        object val = sceneProp.GetValue(instance, null);
+                                        if (val != null) sceneName = val.ToString();
+                                    }
+
+                                    PropertyInfo indexProp = type.GetProperty("CustomMapIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("MapIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("CurrentIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (indexProp != null)
+                                    {
+                                        object val = indexProp.GetValue(instance, null);
+                                        if (val is int) customMapIndex = (int)val;
+                                    }
+
+                                    PropertyInfo biomeProp = type.GetProperty("BiomeID", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("CustomBiomeID", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (biomeProp != null)
+                                    {
+                                        object val = biomeProp.GetValue(instance, null);
+                                        if (val != null) biomeId = val.ToString();
+                                    }
+
+                                    PropertyInfo playlistProp = type.GetProperty("Playlist", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("MapList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (playlistProp != null)
+                                    {
+                                        object pVal = playlistProp.GetValue(instance, null);
+                                        System.Collections.ICollection coll = pVal as System.Collections.ICollection;
+                                        if (coll != null)
+                                        {
+                                            playlistInfo = string.Format("{0} maps", coll.Count);
+                                        }
+                                    }
+
+                                    var baker = SingletonAsset<MapBaker>.Instance;
+                                    if (baker != null && customMapIndex >= 0 && string.IsNullOrEmpty(sceneName))
+                                    {
+                                        sceneName = baker.GetLevel(customMapIndex);
+                                        if (string.IsNullOrEmpty(biomeId))
+                                            biomeId = baker.GetBiomeID(customMapIndex);
+                                    }
+
                                     return true;
                                 }
                             }
@@ -1432,6 +1499,12 @@ public static class Utilities
         catch { }
 
         return false;
+    }
+
+    public static bool TryGetPeakAMapCustomMap(out int customMapIndex, out string sceneName, out string biomeId)
+    {
+        string pInfo, srcName;
+        return TryGetCustomMapOrPlaylist(out customMapIndex, out sceneName, out biomeId, out pInfo, out srcName);
     }
 
     public static Segment DetectCurrentPlayerSegment()
@@ -1657,6 +1730,14 @@ public static class Utilities
         public static int nextLevelNumber = 2;
         public static bool isInAirport = true;
 
+        // Custom Map & Playlist Support
+        public static bool isCustomScene = false;
+        public static string customMapSourceName = "";
+        public static string playlistInfo = "";
+        public static string pendingAnnouncedScene = "";
+        public static int pendingAnnouncedAscent = -1;
+        public static float pendingAnnouncedTime = -100f;
+
         // Daily Island Info
         public static int todayLevelIndex = 0;
         public static string todaySceneName = "";
@@ -1672,6 +1753,40 @@ public static class Utilities
 
         private static float s_LastUpdateTime = -10f;
         public const float UPDATE_INTERVAL = 0.5f;
+
+        public static void OnBeginIslandLoadAnnounced(string sceneName, int ascent)
+        {
+            pendingAnnouncedScene = sceneName;
+            pendingAnnouncedAscent = ascent;
+            pendingAnnouncedTime = Time.realtimeSinceStartup;
+            todaySceneName = sceneName;
+
+            var baker = SingletonAsset<MapBaker>.Instance;
+            bool foundInBaker = false;
+            if (baker != null && baker.ScenePaths != null)
+            {
+                for (int k = 0; k < baker.ScenePaths.Length; k++)
+                {
+                    if (baker.GetLevel(k).Equals(sceneName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        todayLevelIndex = k;
+                        todayBiomeID = baker.GetBiomeID(k);
+                        todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                        foundInBaker = true;
+                        isCustomScene = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundInBaker)
+            {
+                isCustomScene = true;
+                todayLevelIndex = -1;
+            }
+
+            Invalidate();
+        }
 
         public static void Invalidate()
         {
@@ -1701,7 +1816,9 @@ public static class Utilities
             int customMapIdx = -1;
             string customSceneName = "";
             string customBiomeId = "";
-            bool hasCustomMap = TryGetPeakAMapCustomMap(out customMapIdx, out customSceneName, out customBiomeId);
+            string extPlaylistInfo = "";
+            string extSourceName = "";
+            bool hasCustomMap = TryGetCustomMapOrPlaylist(out customMapIdx, out customSceneName, out customBiomeId, out extPlaylistInfo, out extSourceName);
 
             try
             {
@@ -1739,13 +1856,25 @@ public static class Utilities
             }
             catch { }
 
-            // PeakAMap custom map override
-            if (hasCustomMap && baker != null)
+            // Custom map / playlist mod override
+            if (hasCustomMap)
             {
-                todayLevelIndex = customMapIdx;
-                todaySceneName = customSceneName;
-                todayBiomeID = customBiomeId;
-                todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                isCustomScene = true;
+                customMapSourceName = extSourceName;
+                playlistInfo = extPlaylistInfo;
+                if (!string.IsNullOrEmpty(customSceneName))
+                    todaySceneName = customSceneName;
+                if (customMapIdx >= 0)
+                    todayLevelIndex = customMapIdx;
+                if (!string.IsNullOrEmpty(customBiomeId))
+                {
+                    todayBiomeID = customBiomeId;
+                    todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                }
+            }
+            else if (isInAirport && Time.realtimeSinceStartup - pendingAnnouncedTime < 30f && !string.IsNullOrEmpty(pendingAnnouncedScene))
+            {
+                todaySceneName = pendingAnnouncedScene;
             }
 
             if (!isInAirport)
@@ -1759,6 +1888,7 @@ public static class Utilities
                         if (!string.IsNullOrEmpty(activeScene) && !activeScene.Equals("Airport", StringComparison.OrdinalIgnoreCase))
                         {
                             todaySceneName = activeScene;
+                            bool matchedVanilla = false;
                             if (baker.ScenePaths != null)
                             {
                                 for (int k = 0; k < baker.ScenePaths.Length; k++)
@@ -1768,9 +1898,17 @@ public static class Utilities
                                         todayLevelIndex = k;
                                         todayBiomeID = baker.GetBiomeID(k);
                                         todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                                        matchedVanilla = true;
+                                        isCustomScene = false;
                                         break;
                                     }
                                 }
+                            }
+
+                            if (!matchedVanilla)
+                            {
+                                isCustomScene = true;
+                                todayLevelIndex = -1;
                             }
                         }
                     }
@@ -1782,6 +1920,17 @@ public static class Utilities
                 altitude = GetCurrentPlayerAltitude();
                 route = GetFullRoute();
                 isAtCampfire = (currentLevelNumber <= 4) && IsPlayerNearCampfire((int)currentSegment, 12f);
+
+                // If on custom scene, construct todayBiomeRoute directly from route segments!
+                if (isCustomScene && route != null && route.Count > 0)
+                {
+                    List<string> segNames = new List<string>(route.Count);
+                    for (int i = 0; i < route.Count; i++)
+                    {
+                        segNames.Add(route[i].displayName);
+                    }
+                    todayBiomeRoute = string.Join(" ➔ ", segNames.ToArray());
+                }
 
                 currentSegDisplayName = "Unknown";
                 for (int i = 0; i < route.Count; i++)

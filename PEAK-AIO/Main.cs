@@ -1361,13 +1361,43 @@ public class PeakMod : BaseUnityPlugin
             }
             GUILayout.EndHorizontal();
 
-            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.todayBiomeRoute))
+            // Check if recently announced island loading
+            if (Time.realtimeSinceStartup - Utilities.WorldDataCache.pendingAnnouncedTime < 25f &&
+                !string.IsNullOrEmpty(Utilities.WorldDataCache.pendingAnnouncedScene))
             {
-                GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.daily_route_info"), Utilities.WorldDataCache.todayBiomeRoute), subHeaderStyle);
+                string announceText = string.Format("🚀 {0}: {1} (Ascent: {2})",
+                    Localization.T("world.loading_announced"),
+                    Utilities.WorldDataCache.pendingAnnouncedScene,
+                    Utilities.WorldDataCache.pendingAnnouncedAscent);
+                GUILayout.Label(announceText, boldLabelStyle);
             }
-            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.nextBiomeRoute))
+
+            if (Utilities.WorldDataCache.isCustomScene)
             {
-                GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.next_rotation_info"), Utilities.WorldDataCache.nextBiomeRoute), tipLabelStyle);
+                string customTitle = string.Format("✨ [{0}] {1}",
+                    Localization.T("world.custom_map_tag"),
+                    Utilities.WorldDataCache.todaySceneName);
+                if (!string.IsNullOrEmpty(Utilities.WorldDataCache.playlistInfo))
+                {
+                    customTitle += " (" + Utilities.WorldDataCache.playlistInfo + ")";
+                }
+                GUILayout.Label(customTitle, boldLabelStyle);
+
+                if (!string.IsNullOrEmpty(Utilities.WorldDataCache.todayBiomeRoute))
+                {
+                    GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.custom_route_info"), Utilities.WorldDataCache.todayBiomeRoute), subHeaderStyle);
+                }
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(Utilities.WorldDataCache.todayBiomeRoute))
+                {
+                    GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.daily_route_info"), Utilities.WorldDataCache.todayBiomeRoute), subHeaderStyle);
+                }
+                if (!string.IsNullOrEmpty(Utilities.WorldDataCache.nextBiomeRoute))
+                {
+                    GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.next_rotation_info"), Utilities.WorldDataCache.nextBiomeRoute), tipLabelStyle);
+                }
             }
         }
         else
@@ -1380,6 +1410,10 @@ public class PeakMod : BaseUnityPlugin
             if (isAtCampfire)
             {
                 statusText += "  " + Localization.T("world.at_campfire_tag");
+            }
+            if (Utilities.WorldDataCache.isCustomScene)
+            {
+                statusText += "  [✨ " + Localization.T("world.custom_map_tag") + "]";
             }
             GUILayout.Label(statusText, boldLabelStyle);
 
@@ -1400,11 +1434,20 @@ public class PeakMod : BaseUnityPlugin
                     nextSegDisplayName), tipLabelStyle);
             }
             GUILayout.FlexibleSpace();
-            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.countdownFormatted))
+            if (Utilities.WorldDataCache.isCustomScene && !string.IsNullOrEmpty(Utilities.WorldDataCache.todaySceneName))
+            {
+                GUILayout.Label(string.Format(Localization.T("world.custom_scene_active"), Utilities.WorldDataCache.todaySceneName), tipLabelStyle);
+            }
+            else if (!string.IsNullOrEmpty(Utilities.WorldDataCache.countdownFormatted))
             {
                 GUILayout.Label(string.Format("{0} {1}", Localization.T("world.rotation_timer"), Utilities.WorldDataCache.countdownFormatted), tipLabelStyle);
             }
             GUILayout.EndHorizontal();
+
+            if (Utilities.WorldDataCache.isCustomScene && !string.IsNullOrEmpty(Utilities.WorldDataCache.todayBiomeRoute))
+            {
+                GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.custom_route_info"), Utilities.WorldDataCache.todayBiomeRoute), tipLabelStyle);
+            }
         }
 
         GUILayout.Space(6);

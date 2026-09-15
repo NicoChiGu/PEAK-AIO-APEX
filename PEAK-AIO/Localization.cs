@@ -1039,6 +1039,54 @@ public static class Localization
             { Language.Korean, "공항 로비로 귀환" },
             { Language.Italian, "Torna all'Aeroporto" }
         }},
+        { "world.custom_map_tag", new Dictionary<Language, string> {
+            { Language.English, "Custom Map" },
+            { Language.SimplifiedChinese, "自定义地图" },
+            { Language.TraditionalChinese, "自定義地圖" },
+            { Language.Japanese, "カスタムマップ" },
+            { Language.Korean, "커스텀 맵" },
+            { Language.Italian, "Mappa Personalizzata" }
+        }},
+        { "world.custom_route_info", new Dictionary<Language, string> {
+            { Language.English, "Custom Flight Route" },
+            { Language.SimplifiedChinese, "自定义登岛航线" },
+            { Language.TraditionalChinese, "自定義登島航線" },
+            { Language.Japanese, "カスタム搭乗航路" },
+            { Language.Korean, "커스텀 탑승 항로" },
+            { Language.Italian, "Rotta Personalizzata" }
+        }},
+        { "world.loading_announced", new Dictionary<Language, string> {
+            { Language.English, "Target Island Confirmed (Departing Soon)" },
+            { Language.SimplifiedChinese, "已确认登岛航线 (即将出发)" },
+            { Language.TraditionalChinese, "已確認登島航線 (即將出發)" },
+            { Language.Japanese, "目的地確定 (まもなく搭乗)" },
+            { Language.Korean, "목적지 확정 (곧 출발)" },
+            { Language.Italian, "Destinazione Confermata (In Partenza)" }
+        }},
+        { "world.waiting_for_host", new Dictionary<Language, string> {
+            { Language.English, "Waiting for Host to select island at check-in kiosk..." },
+            { Language.SimplifiedChinese, "等待房主在前台柜台选定航线..." },
+            { Language.TraditionalChinese, "等待房主在前台櫃台選定航線..." },
+            { Language.Japanese, "ホストの搭乗手続きを待機中..." },
+            { Language.Korean, "호스트의 탑승 수속 대기 중..." },
+            { Language.Italian, "In attesa che l'host confermi il volo..." }
+        }},
+        { "world.custom_scene_active", new Dictionary<Language, string> {
+            { Language.English, "Current Scene: {0} (External Custom Map)" },
+            { Language.SimplifiedChinese, "当前场景: {0} (外部自定义场景)" },
+            { Language.TraditionalChinese, "當前場景: {0} (外部自定義場景)" },
+            { Language.Japanese, "現在のシーン: {0} (外部カスタムマップ)" },
+            { Language.Korean, "현재 씬: {0} (外部 커스텀 맵)" },
+            { Language.Italian, "Scena Attuale: {0} (Mappa Personalizzata)" }
+        }},
+        { "world.playlist_queue", new Dictionary<Language, string> {
+            { Language.English, "Playlist Queue" },
+            { Language.SimplifiedChinese, "播放列表队列" },
+            { Language.TraditionalChinese, "播放列表隊列" },
+            { Language.Japanese, "プレイリストキュー" },
+            { Language.Korean, "플레이리스트 큐" },
+            { Language.Italian, "Coda Playlist" }
+        }},
         { "world.route_header", new Dictionary<Language, string> {
             { Language.English, "Mountain Route (Full Route)" },
             { Language.SimplifiedChinese, "登山完整路线" },

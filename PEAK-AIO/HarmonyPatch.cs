@@ -210,3 +210,19 @@ public class Patch_CharacterDie
     }
 }
 
+[HarmonyPatch(typeof(AirportCheckInKiosk), "BeginIslandLoadRPC")]
+public class Patch_AirportCheckInKiosk_BeginIslandLoadRPC
+{
+    static void Prefix(string sceneName, int ascent)
+    {
+        try
+        {
+            Utilities.WorldDataCache.OnBeginIslandLoadAnnounced(sceneName, ascent);
+        }
+        catch (Exception ex)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogError("[Patch_AirportCheckInKiosk_BeginIslandLoadRPC] Error: " + ex);
+        }
+    }
+}
