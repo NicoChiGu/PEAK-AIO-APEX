@@ -844,13 +844,7 @@ public static class Utilities
                     return;
 
                 Vector3 myPos = Character.localCharacter.transform.position;
-                Vector3 rayStart = myPos + Vector3.up * 5f;
-                Vector3 safeTarget;
-                RaycastHit hit;
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
-                    safeTarget = hit.point + Vector3.up * 1.5f;
-                else
-                    safeTarget = myPos + Vector3.up * 3f;
+                Vector3 safeTarget = ResolveSafeGroundPosition(myPos);
 
                 for (int i = 0; i < characters.Count; i++)
                 {
@@ -969,13 +963,7 @@ public static class Utilities
                 if (target == null) return;
 
                 Vector3 targetPos = target.transform.position;
-                Vector3 rayStart = targetPos + Vector3.up * 5f;
-                Vector3 safePos;
-                RaycastHit hit;
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
-                    safePos = hit.point + Vector3.up * 1.5f;
-                else
-                    safePos = targetPos + Vector3.up * 3f;
+                Vector3 safePos = ResolveSafeGroundPosition(targetPos);
 
                 Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                     safePos, true
@@ -1006,13 +994,7 @@ public static class Utilities
                 if (target == null) return;
 
                 Vector3 myPos = Character.localCharacter.transform.position;
-                Vector3 rayStart = myPos + Vector3.up * 5f;
-                Vector3 safePos;
-                RaycastHit hit;
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
-                    safePos = hit.point + Vector3.up * 1.5f;
-                else
-                    safePos = myPos + Vector3.up * 3f;
+                Vector3 safePos = ResolveSafeGroundPosition(myPos);
 
                 target.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                     safePos, true
@@ -1084,6 +1066,331 @@ public static class Utilities
         });
     }
 
+    private static readonly FieldInfo s_respawnTheKilnField = typeof(MapHandler).GetField("respawnTheKiln", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+    private static readonly PropertyInfo s_respawnTheKilnProp = typeof(MapHandler).GetProperty("respawnTheKiln", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+    private static readonly FieldInfo s_lavaRisingField = typeof(MapHandler).GetField("lavaRising", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+    private static readonly PropertyInfo s_lavaRisingProp = typeof(MapHandler).GetProperty("lavaRising", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+    private static readonly FieldInfo s_variantBiomeField = typeof(MapHandler.MapSegment).GetField("variantBiome", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+        ?? typeof(MapHandler.MapSegment).GetField("_variantBiome", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+    private static readonly PropertyInfo s_variantBiomeProp = typeof(MapHandler.MapSegment).GetProperty("variantBiome", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+    public static Transform GetRespawnTheKiln(MapHandler mh)
+    {
+        if (mh == null) return null;
+        if (s_respawnTheKilnField != null)
+            return s_respawnTheKilnField.GetValue(mh) as Transform;
+        if (s_respawnTheKilnProp != null)
+            return s_respawnTheKilnProp.GetValue(mh, null) as Transform;
+        return null;
+    }
+
+    public static LavaRising GetLavaRising(MapHandler mh)
+    {
+        if (mh != null)
+        {
+            if (s_lavaRisingField != null)
+            {
+                var lr = s_lavaRisingField.GetValue(mh) as LavaRising;
+                if (lr != null) return lr;
+            }
+            if (s_lavaRisingProp != null)
+            {
+                var lr = s_lavaRisingProp.GetValue(mh, null) as LavaRising;
+                if (lr != null) return lr;
+            }
+        }
+        return UnityEngine.Object.FindObjectOfType<LavaRising>();
+    }
+
+    public static bool TryGetVariantSegment(MapHandler mh, MapHandler.MapSegment seg, out MapHandler.MapSegment variantSeg)
+    {
+        variantSeg = null;
+        if (mh == null || seg == null || !seg.hasVariant) return false;
+
+        try
+        {
+            Biome.BiomeType vBiome = (Biome.BiomeType)(-1);
+            if (s_variantBiomeProp != null)
+                vBiome = (Biome.BiomeType)s_variantBiomeProp.GetValue(seg, null);
+            else if (s_variantBiomeField != null)
+                vBiome = (Biome.BiomeType)s_variantBiomeField.GetValue(seg);
+
+            if (vBiome != (Biome.BiomeType)(-1) && mh.BiomeIsPresent(vBiome))
+            {
+                variantSeg = mh.GetVariantSegmentFromBiome((int)vBiome);
+                if (variantSeg != null) return true;
+            }
+        }
+        catch { }
+
+        if (mh.variantSegments != null)
+        {
+            for (int i = 0; i < mh.variantSegments.Length; i++)
+            {
+                var v = mh.variantSegments[i];
+                if (v != null && mh.BiomeIsPresent(v.biome))
+                {
+                    variantSeg = v;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static Vector3 ResolveSafeGroundPosition(Vector3 rawPos)
+    {
+        if (float.IsNaN(rawPos.x) || float.IsInfinity(rawPos.x) ||
+            float.IsNaN(rawPos.y) || float.IsInfinity(rawPos.y) ||
+            float.IsNaN(rawPos.z) || float.IsInfinity(rawPos.z))
+        {
+            return rawPos;
+        }
+
+        int terrainMapMask = LayerMask.GetMask("Terrain", "Map");
+        if (terrainMapMask == 0)
+            terrainMapMask = LayerMask.GetMask("Terrain", "Map", "Default");
+        if (terrainMapMask == 0)
+            terrainMapMask = HelperFunctions.AllPhysicalExceptCharacter.value;
+
+        // 1. 向上探测是否有岩壁屋顶、洞穴穹顶或拱桥天花板（避免从洞穴/拱门上方下落射线导致传送到山顶/穹顶极高处）
+        RaycastHit ceilHit;
+        bool hasCeiling = Physics.Raycast(
+            rawPos + Vector3.up * 0.2f,
+            Vector3.up,
+            out ceilHit,
+            3.0f,
+            terrainMapMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        // 如果头顶有天花板，将向上发射起点限制在天花板距离的一半且不超过0.8m；若无天花板，向上探测起点仅取1.2m（绝不钻到上层山体上方）
+        float castOffset = hasCeiling ? Mathf.Clamp(ceilHit.distance * 0.5f, 0.15f, 0.8f) : 1.2f;
+        Vector3 rayStart = rawPos + Vector3.up * castOffset;
+
+        // 2. 向下发射射线寻找真正脚下的坚实地面（过滤掉角色本身和绳索）
+        RaycastHit hit;
+        if (Physics.Raycast(rayStart, Vector3.down, out hit, 20.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.point.y <= rawPos.y + 1.2f)
+            {
+                return hit.point + Vector3.up * 0.15f;
+            }
+        }
+
+        // 3. 若近距离未探测到地面，向下深探 60m 寻找真实地面（防止悬空跌落虚空）
+        RaycastHit deepHit;
+        if (Physics.Raycast(rawPos + Vector3.up * 0.3f, Vector3.down, out deepHit, 60.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
+        {
+            return deepHit.point + Vector3.up * 0.15f;
+        }
+
+        return rawPos + Vector3.up * 0.15f;
+    }
+
+    public static bool TryGetSegmentSpawnPosition(Segment segment, out Vector3 safePos)
+    {
+        safePos = Vector3.zero;
+        if (!MapHandler.Exists || MapHandler.Instance == null)
+            return false;
+
+        var mh = MapHandler.Instance;
+        int segIdx = (int)segment;
+        Vector3 rawPos = Vector3.zero;
+        bool foundPos = false;
+
+        if (segIdx >= 5) // Level 6: Peak
+        {
+            // 1. 确保第 4 段（通向山顶的段落/角斗场）地形及网格被激活
+            if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
+            {
+                if (mh.segments[4].segmentParent != null && !mh.segments[4].segmentParent.activeSelf)
+                    mh.segments[4].segmentParent.SetActive(true);
+            }
+            if (mh.segments != null && mh.segments.Length > 5 && mh.segments[5] != null)
+            {
+                if (mh.segments[5].segmentParent != null && !mh.segments[5].segmentParent.activeSelf)
+                    mh.segments[5].segmentParent.SetActive(true);
+            }
+
+            // 2. 确保 PeakHandler 处于激活状态
+            if (Singleton<PeakHandler>.Instance != null)
+            {
+                if (!Singleton<PeakHandler>.Instance.gameObject.activeSelf)
+                    Singleton<PeakHandler>.Instance.gameObject.SetActive(true);
+                if (Singleton<PeakHandler>.Instance.peakSequence != null && !Singleton<PeakHandler>.Instance.peakSequence.activeSelf)
+                    Singleton<PeakHandler>.Instance.peakSequence.SetActive(true);
+            }
+
+            // 3. 优先取官方山顶重生点 respawnThePeak
+            if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > -50f)
+            {
+                rawPos = mh.respawnThePeak.position;
+                foundPos = true;
+            }
+            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f)
+            {
+                rawPos = Singleton<PeakHandler>.Instance.transform.position;
+                foundPos = true;
+            }
+            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
+            {
+                rawPos = mh.segments[4].reconnectSpawnPos.position;
+                foundPos = true;
+            }
+            else
+            {
+                GameObject go = GameObject.Find("respawnThePeak") ?? GameObject.Find("ThePeak") ?? GameObject.Find("Peak");
+                if (go != null && go.transform.position.sqrMagnitude > 1f)
+                {
+                    rawPos = go.transform.position;
+                    foundPos = true;
+                }
+            }
+        }
+        else if (segIdx == 4) // Level 5: The Kiln
+        {
+            // 1. 激活第 4 段及第 3 段的 wallNext
+            if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
+            {
+                var kSeg = mh.segments[4];
+                if (kSeg.segmentParent != null && !kSeg.segmentParent.activeSelf)
+                    kSeg.segmentParent.SetActive(true);
+                if (kSeg.segmentCampfire != null && !kSeg.segmentCampfire.activeSelf)
+                    kSeg.segmentCampfire.SetActive(true);
+                if (kSeg.wallNext != null && !kSeg.wallNext.activeSelf)
+                    kSeg.wallNext.SetActive(true);
+                if (kSeg.wallPrevious != null && !kSeg.wallPrevious.activeSelf)
+                    kSeg.wallPrevious.SetActive(true);
+            }
+            if (mh.segments != null && mh.segments.Length > 3 && mh.segments[3] != null)
+            {
+                if (mh.segments[3].wallNext != null && !mh.segments[3].wallNext.activeSelf)
+                    mh.segments[3].wallNext.SetActive(true);
+            }
+
+            // 2. 核心：优先取 MapHandler 官方专属字段 respawnTheKiln（彻底解决第 4 到第 5 关传入虚空）
+            Transform kilnSpawn = GetRespawnTheKiln(mh);
+            if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -50f)
+            {
+                rawPos = kilnSpawn.position;
+                foundPos = true;
+                if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos == null)
+                {
+                    mh.segments[4].reconnectSpawnPos = kilnSpawn;
+                }
+            }
+            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null && mh.segments[4].reconnectSpawnPos.position.sqrMagnitude > 1f)
+            {
+                rawPos = mh.segments[4].reconnectSpawnPos.position;
+                foundPos = true;
+            }
+            else
+            {
+                GameObject go = GameObject.Find("respawnTheKiln") ?? GameObject.Find("TheKiln") ?? GameObject.Find("Kiln");
+                if (go != null && go.transform.position.sqrMagnitude > 1f)
+                {
+                    rawPos = go.transform.position;
+                    foundPos = true;
+                }
+                else
+                {
+                    LavaRising lr = GetLavaRising(mh);
+                    if (lr != null && lr.transform.position.sqrMagnitude > 1f)
+                    {
+                        rawPos = lr.transform.position + Vector3.up * 8f;
+                        foundPos = true;
+                    }
+                }
+            }
+        }
+        else if (mh.segments != null && segIdx >= 0 && segIdx < mh.segments.Length)
+        {
+            var seg = mh.segments[segIdx];
+            if (seg != null)
+            {
+                MapHandler.MapSegment activeSeg = seg;
+                // 核心：处理 Caldera（第 4 关）等含有变体地形（Volcano/Mesa/Swamp/Roots）的段落重定向
+                MapHandler.MapSegment vSeg;
+                if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null)
+                {
+                    activeSeg = vSeg;
+                    if (vSeg.segmentParent != null && !vSeg.segmentParent.activeSelf)
+                        vSeg.segmentParent.SetActive(true);
+                    if (vSeg.segmentCampfire != null && !vSeg.segmentCampfire.activeSelf)
+                        vSeg.segmentCampfire.SetActive(true);
+                    if (vSeg.wallNext != null && !vSeg.wallNext.activeSelf)
+                        vSeg.wallNext.SetActive(true);
+                    if (vSeg.wallPrevious != null && !vSeg.wallPrevious.activeSelf)
+                        vSeg.wallPrevious.SetActive(true);
+
+                    if (vSeg.reconnectSpawnPos != null && (seg.reconnectSpawnPos == null || seg.reconnectSpawnPos.position.sqrMagnitude < 1f))
+                    {
+                        seg.reconnectSpawnPos = vSeg.reconnectSpawnPos;
+                    }
+                }
+
+                if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
+                    seg.segmentParent.SetActive(true);
+                if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
+                    seg.segmentCampfire.SetActive(true);
+                if (seg.wallNext != null && !seg.wallNext.activeSelf)
+                    seg.wallNext.SetActive(true);
+                if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
+                    seg.wallPrevious.SetActive(true);
+
+                // 候选 1：生效变体段落的 reconnectSpawnPos
+                if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
+                {
+                    rawPos = activeSeg.reconnectSpawnPos.position;
+                    foundPos = true;
+                }
+                // 候选 2：生效变体段落的营火位置
+                else if (activeSeg.segmentCampfire != null)
+                {
+                    Campfire cf = activeSeg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
+                    {
+                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
+
+                // 候选 3：基础段落的 reconnectSpawnPos
+                if (!foundPos && seg.reconnectSpawnPos != null && seg.reconnectSpawnPos.position.sqrMagnitude > 1f && seg.reconnectSpawnPos.position.y > -50f)
+                {
+                    rawPos = seg.reconnectSpawnPos.position;
+                    foundPos = true;
+                }
+                // 候选 4：基础段落的营火位置
+                if (!foundPos && seg.segmentCampfire != null)
+                {
+                    Campfire cf = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
+                    {
+                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
+                // 候选 5：海滩初生点
+                if (!foundPos && segIdx == 0 && SpawnPoint.LocalSpawnPoint != null)
+                {
+                    rawPos = SpawnPoint.LocalSpawnPoint.transform.position;
+                    foundPos = true;
+                }
+            }
+        }
+
+        if (!foundPos || rawPos.sqrMagnitude < 0.1f || rawPos.y < -50f)
+        {
+            return false;
+        }
+
+        safePos = ResolveSafeGroundPosition(rawPos);
+        return true;
+    }
+
     public static void JumpToSegmentStartSafe(Segment segment)
     {
         UnityMainThreadDispatcher.Enqueue(() =>
@@ -1096,89 +1403,27 @@ public static class Utilities
                     return;
                 }
 
-                var mh = MapHandler.Instance;
-                int segIdx = (int)segment;
-                Vector3 spawnPos = Vector3.zero;
-                bool foundPos = false;
-
-                if (segIdx >= 5) // Peak
+                Vector3 finalPos;
+                if (!TryGetSegmentSpawnPosition(segment, out finalPos))
                 {
-                    if (mh.respawnThePeak != null)
-                    {
-                        spawnPos = mh.respawnThePeak.position;
-                        foundPos = true;
-                    }
-                }
-                else if (segIdx == 4) // The Kiln
-                {
-                    if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
-                    {
-                        var kSeg = mh.segments[4];
-                        if (kSeg.reconnectSpawnPos != null)
-                        {
-                            spawnPos = kSeg.reconnectSpawnPos.position;
-                            foundPos = true;
-                        }
-                        else if (kSeg.segmentParent != null)
-                        {
-                            spawnPos = kSeg.segmentParent.transform.position;
-                            foundPos = true;
-                        }
-                    }
-                }
-                else if (mh.segments != null && segIdx >= 0 && segIdx < mh.segments.Length)
-                {
-                    var seg = mh.segments[segIdx];
-                    if (seg != null)
-                    {
-                        if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
-                            seg.segmentParent.SetActive(true);
-                        if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
-                            seg.segmentCampfire.SetActive(true);
-                        if (seg.wallNext != null && !seg.wallNext.activeSelf)
-                            seg.wallNext.SetActive(true);
-                        if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
-                            seg.wallPrevious.SetActive(true);
-
-                        if (seg.reconnectSpawnPos != null)
-                        {
-                            spawnPos = seg.reconnectSpawnPos.position;
-                            foundPos = true;
-                        }
-                        else if (seg.segmentParent != null)
-                        {
-                            spawnPos = seg.segmentParent.transform.position;
-                            foundPos = true;
-                        }
-                    }
-                }
-
-                if (!foundPos)
-                {
-                    Globals.GlobalNotifier.ShowError(string.Format("未找到区域 {0} 的起点出生点！", segment));
+                    Globals.GlobalNotifier.ShowError(string.Format("未找到区域 {0} 的安全出生点！", segment));
                     return;
                 }
 
-                Vector3 rayStart = spawnPos + Vector3.up * 5.0f;
-                Vector3 finalPos;
-                RaycastHit hit;
-                if (Physics.Raycast(rayStart, Vector3.down, out hit, 15.0f, ~0, QueryTriggerInteraction.Ignore))
-                {
-                    finalPos = hit.point + Vector3.up * 1.5f;
-                }
-                else
-                {
-                    finalPos = spawnPos + Vector3.up * 2.0f;
-                }
+                int segIdx = (int)segment;
 
-                // If host, sync official segment transition
+                // 若房主跳转，同步官方段落切换
                 if (Photon.Pun.PhotonNetwork.IsMasterClient && (int)MapHandler.CurrentSegmentNumber != segIdx)
                 {
                     try
                     {
                         MapHandler.JumpToSegment(segment);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        if (Logger != null)
+                            Logger.LogWarning("[PEAK AIO] MapHandler.JumpToSegment error: " + ex.Message);
+                    }
                 }
 
                 if (Character.localCharacter != null)
@@ -1334,15 +1579,21 @@ public static class Utilities
         if (mh.segments != null && segmentIndex < mh.segments.Length)
         {
             var seg = mh.segments[segmentIndex];
-            if (seg != null && seg.segmentCampfire != null)
+            if (seg != null)
             {
-                targetCampfire = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
-            }
-        }
+                // 1. 优先从生效的变体段落查找营火（特别是 Caldera 各种变体，如火山/沼泽等）
+                MapHandler.MapSegment vSeg;
+                if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null && vSeg.segmentCampfire != null)
+                {
+                    targetCampfire = vSeg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                }
 
-        if (targetCampfire == null && (int)MapHandler.CurrentSegmentNumber == segmentIndex)
-        {
-            targetCampfire = MapHandler.CurrentCampfire;
+                // 2. 从基础段落查找营火
+                if (targetCampfire == null && seg.segmentCampfire != null)
+                {
+                    targetCampfire = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                }
+            }
         }
 
         if (targetCampfire != null)
@@ -1535,6 +1786,20 @@ public static class Utilities
                 }
             }
 
+            // 1.5. Check if at The Kiln
+            if (officialSeg == Segment.TheKiln)
+            {
+                return Segment.TheKiln;
+            }
+            Transform kilnRespawn = GetRespawnTheKiln(mh);
+            if (kilnRespawn != null && kilnRespawn.position.y > 10f)
+            {
+                if (Mathf.Abs(pPos.y - kilnRespawn.position.y) < 60f && Vector3.Distance(pPos, kilnRespawn.position) < 150f)
+                {
+                    return Segment.TheKiln;
+                }
+            }
+
             // 2. Determine minimum segment based on lit campfires
             int minSegment = 0;
             for (int i = 3; i >= 0; i--)
@@ -1559,20 +1824,30 @@ public static class Utilities
                 }
             }
 
-            // 4. Check altitude bands across segments (descending from 4 down to 0)
+            // 4. Check altitude bands across segments (descending from 4 down to 0, including variant segments)
             if (mh.segments != null && mh.segments.Length > 0)
             {
                 for (int i = mh.segments.Length - 1; i >= 0; i--)
                 {
                     var seg = mh.segments[i];
-                    if (seg != null && seg.reconnectSpawnPos != null)
+                    if (seg != null)
                     {
-                        float spawnY = seg.reconnectSpawnPos.position.y;
-                        if (i == 0 || spawnY > 10f)
+                        Transform spawnTf = seg.reconnectSpawnPos;
+                        MapHandler.MapSegment vSeg;
+                        if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
                         {
-                            if (pPos.y >= spawnY - 2f)
+                            spawnTf = vSeg.reconnectSpawnPos;
+                        }
+
+                        if (spawnTf != null)
+                        {
+                            float spawnY = spawnTf.position.y;
+                            if (i == 0 || spawnY > 10f)
                             {
-                                return (Segment)Math.Max(minSegment, i);
+                                if (pPos.y >= spawnY - 2f)
+                                {
+                                    return (Segment)Math.Max(minSegment, i);
+                                }
                             }
                         }
                     }
@@ -1680,10 +1955,26 @@ public static class Utilities
                         catch { }
                     }
 
-                    if (mapSeg.reconnectSpawnPos != null)
+                    Transform spawnTf = mapSeg.reconnectSpawnPos;
+                    MapHandler.MapSegment vSeg;
+                    if (TryGetVariantSegment(mh, mapSeg, out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
                     {
-                        altitude = mapSeg.reconnectSpawnPos.position.y;
+                        spawnTf = vSeg.reconnectSpawnPos;
                     }
+
+                    if (spawnTf != null)
+                    {
+                        altitude = spawnTf.position.y;
+                    }
+                }
+            }
+            else if (i == 4)
+            {
+                bt = (Biome.BiomeType)(-1);
+                Transform kilnRespawn = GetRespawnTheKiln(mh);
+                if (mapExists && kilnRespawn != null)
+                {
+                    altitude = kilnRespawn.position.y;
                 }
             }
             else if (i == 5)
@@ -1697,7 +1988,7 @@ public static class Utilities
 
             string displayName = GetBiomeDisplayName(bt, seg);
             bool isCurrent = mapExists && (currentSeg == seg);
-            bool hasCamp = (i < 4);
+            bool hasCamp = (i < 3) || (i == 3 && GetSegmentCampfire(3) != null);
             bool isAtCamp = hasCamp && isCurrent && IsPlayerNearCampfire(i, 12f);
             bool isCampLit = hasCamp && IsCampfireLit(i);
 
@@ -2062,13 +2353,42 @@ public static class Utilities
             return false;
         }
 
-        // If player is already standing at current campfire or current campfire is already lit, advance to next segment!
+        // 如果处于第 5 关 TheKiln，下一关必为第 6 关 The Peak（TheKiln 无营火）
+        if (curIdx == 4)
+        {
+            JumpToSegmentStartSafe(Segment.Peak);
+            return true;
+        }
+
+        // 如果处于第 4 关 Caldera
+        if (curIdx == 3)
+        {
+            // Caldera 变体通常无常规营火，或者营火已点燃/已在营火旁，直接前往第 5 关 TheKiln
+            Campfire c3 = GetSegmentCampfire(3);
+            if (c3 == null || IsCampfireLit(3) || IsPlayerNearCampfire(3, 12f))
+            {
+                JumpToSegmentStartSafe(Segment.TheKiln);
+                return true;
+            }
+            return TeleportToCampfire(3);
+        }
+
+        // 前三关（Beach, Tropics, Alpine）：
+        // 若当前营火已点燃或玩家已在营火旁，前进到下一区域
         if (IsPlayerNearCampfire(curIdx, 12f) || IsCampfireLit(curIdx))
         {
             int nextIdx = curIdx + 1;
-            if (nextIdx < 4)
+            if (nextIdx == 3)
             {
-                JumpToSegmentCampfire((Segment)nextIdx);
+                Campfire c3 = GetSegmentCampfire(3);
+                if (c3 != null)
+                {
+                    JumpToSegmentCampfire(Segment.Caldera);
+                }
+                else
+                {
+                    JumpToSegmentStartSafe(Segment.Caldera);
+                }
                 return true;
             }
             else if (nextIdx == 4)
@@ -2076,13 +2396,19 @@ public static class Utilities
                 JumpToSegmentStartSafe(Segment.TheKiln);
                 return true;
             }
-            else
+            else if (nextIdx >= 5)
             {
                 JumpToSegmentStartSafe(Segment.Peak);
                 return true;
             }
+            else
+            {
+                JumpToSegmentCampfire((Segment)nextIdx);
+                return true;
+            }
         }
 
+        // 若当前关卡营火尚未点燃且玩家尚未到达，先传送到当前关卡营火
         return TeleportToCampfire(curIdx);
     }
 
@@ -2118,16 +2444,33 @@ public static class Utilities
 
             var mh = MapHandler.Instance;
 
-            // Ensure parent and campfire GameObjects are active so colliders/transforms are fully valid
+            // 激活当前段落与变体段落
             if (mh.segments != null && segmentIndex >= 0 && segmentIndex < mh.segments.Length)
             {
                 var seg = mh.segments[segmentIndex];
                 if (seg != null)
                 {
+                    MapHandler.MapSegment vSeg;
+                    if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null)
+                    {
+                        if (vSeg.segmentParent != null && !vSeg.segmentParent.activeSelf)
+                            vSeg.segmentParent.SetActive(true);
+                        if (vSeg.segmentCampfire != null && !vSeg.segmentCampfire.activeSelf)
+                            vSeg.segmentCampfire.SetActive(true);
+                        if (vSeg.wallNext != null && !vSeg.wallNext.activeSelf)
+                            vSeg.wallNext.SetActive(true);
+                        if (vSeg.wallPrevious != null && !vSeg.wallPrevious.activeSelf)
+                            vSeg.wallPrevious.SetActive(true);
+                    }
+
                     if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
                         seg.segmentParent.SetActive(true);
                     if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
                         seg.segmentCampfire.SetActive(true);
+                    if (seg.wallNext != null && !seg.wallNext.activeSelf)
+                        seg.wallNext.SetActive(true);
+                    if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
+                        seg.wallPrevious.SetActive(true);
                 }
             }
 
@@ -2136,7 +2479,7 @@ public static class Utilities
             if (targetCampfire == null)
             {
                 if (Logger != null)
-                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire before segment {0} not found, falling back to segment start.", (Segment)(segmentIndex + 1)));
+                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire for segment {0} not found, safely jumping to segment start.", segmentIndex));
                 JumpToSegmentStartSafe((Segment)segmentIndex);
                 return true;
             }
@@ -2151,7 +2494,8 @@ public static class Utilities
             Vector3 cfPos = targetCampfire.transform.position;
             Vector3 forward = targetCampfire.transform.forward;
             if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
-            Vector3 safePos = cfPos + forward * 1.8f + Vector3.up * 0.4f;
+            Vector3 rawCfPos = cfPos + forward * 1.8f + Vector3.up * 0.2f;
+            Vector3 safePos = ResolveSafeGroundPosition(rawCfPos);
 
             if (localCharacter.photonView != null)
             {
@@ -2163,7 +2507,7 @@ public static class Utilities
             }
 
             if (Logger != null)
-                Logger.LogInfo(string.Format("[PEAK AIO] Teleported to campfire before segment {0} at {1}", (Segment)(segmentIndex + 1), safePos));
+                Logger.LogInfo(string.Format("[PEAK AIO] Teleported to campfire for segment {0} at {1}", segmentIndex, safePos));
 
             WorldDataCache.Invalidate();
             return true;
@@ -2189,6 +2533,15 @@ public static class Utilities
             JumpToSegmentStartSafe(Segment.Peak);
             return;
         }
+        if (segIdx == 3)
+        {
+            Campfire cf = GetSegmentCampfire(3);
+            if (cf == null)
+            {
+                JumpToSegmentStartSafe(Segment.Caldera);
+                return;
+            }
+        }
 
         UnityMainThreadDispatcher.Enqueue(() =>
         {
@@ -2202,6 +2555,19 @@ public static class Utilities
                         var seg = mh.segments[segIdx];
                         if (seg != null)
                         {
+                            MapHandler.MapSegment vSeg;
+                            if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null)
+                            {
+                                if (vSeg.segmentParent != null && !vSeg.segmentParent.activeSelf)
+                                    vSeg.segmentParent.SetActive(true);
+                                if (vSeg.segmentCampfire != null && !vSeg.segmentCampfire.activeSelf)
+                                    vSeg.segmentCampfire.SetActive(true);
+                                if (vSeg.wallNext != null && !vSeg.wallNext.activeSelf)
+                                    vSeg.wallNext.SetActive(true);
+                                if (vSeg.wallPrevious != null && !vSeg.wallPrevious.activeSelf)
+                                    vSeg.wallPrevious.SetActive(true);
+                            }
+
                             if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
                                 seg.segmentParent.SetActive(true);
                             if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
