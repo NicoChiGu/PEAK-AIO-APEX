@@ -626,7 +626,7 @@ public static class Utilities
         }
     }
 
-    public static void ReviveAllPlayers()
+    public static void ReviveAllPlayers(bool restoreItems = false)
     {
         UnityMainThreadDispatcher.Enqueue(() =>
         {
@@ -649,6 +649,15 @@ public static class Utilities
                         character.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
                             revivePos + new Vector3(0f, 4f, 0f), false, -1
                         });
+
+                        if (restoreItems)
+                        {
+                            var targetChar = character;
+                            EventComponent.QueueDelayedAction(() =>
+                            {
+                                RestoreInventorySnapshot(targetChar);
+                            }, 0.3f);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -657,7 +666,7 @@ public static class Utilities
                     }
                 }
                 if (Logger != null)
-                    Logger.LogInfo("[Lobby] Revive All triggered.");
+                    Logger.LogInfo(string.Format("[Lobby] Revive All triggered. RestoreItems: {0}", restoreItems));
             }
             catch (Exception ex)
             {
@@ -753,7 +762,7 @@ public static class Utilities
         });
     }
 
-    public static void ReviveSelectedPlayer()
+    public static void ReviveSelectedPlayer(bool restoreItems = false)
     {
         if (Globals.selectedPlayer < 0 || Globals.selectedPlayer >= Globals.allPlayers.Count)
             return;
@@ -773,8 +782,16 @@ public static class Utilities
                     revivePos + new Vector3(0f, 4f, 0f), false, -1
                 });
 
+                if (restoreItems)
+                {
+                    EventComponent.QueueDelayedAction(() =>
+                    {
+                        RestoreInventorySnapshot(target);
+                    }, 0.3f);
+                }
+
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Revive requested for player index {0}", Globals.selectedPlayer));
+                    Logger.LogInfo(string.Format("[Lobby] Revive requested for player index {0}. RestoreItems: {1}", Globals.selectedPlayer, restoreItems));
             }
             catch (Exception ex)
             {
@@ -1933,5 +1950,412 @@ public static class Utilities
             if (Logger != null)
                 Logger.LogError("[SpawnBackpack] BackpackSlot is null.");
         }
+    }
+
+    public static bool IsBackpackItem(Item item, string name)
+    {
+        if (item == null && string.IsNullOrEmpty(name)) return false;
+        string n = name ?? "";
+        if (item != null && string.IsNullOrEmpty(n))
+        {
+            try { n = item.GetName(); } catch { }
+            if (string.IsNullOrEmpty(n)) n = item.name;
+        }
+        if (string.IsNullOrEmpty(n)) return false;
+
+        return n.IndexOf("backpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("jetpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("rocketpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("rocket pack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("fannypack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("fanny pack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("背包", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               n.IndexOf("腰包", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    public static BackpackSlot.BackpackType GetBackpackTypeForItem(Item item, string name)
+    {
+        string n = name ?? "";
+        if (item != null && string.IsNullOrEmpty(n))
+        {
+            try { n = item.GetName(); } catch { }
+            if (string.IsNullOrEmpty(n)) n = item.name;
+        }
+        n = n.ToLowerInvariant();
+
+        if (n.Contains("jetpack") || n.Contains("喷气"))
+            return BackpackSlot.BackpackType.Jetpack;
+        if (n.Contains("rocket") || n.Contains("火箭"))
+            return BackpackSlot.BackpackType.Rocketpack;
+        if (n.Contains("fanny") || n.Contains("funny") || n.Contains("腰包") || n.Contains("滑稽"))
+            return BackpackSlot.BackpackType.Fannypack;
+
+        return BackpackSlot.BackpackType.Backpack;
+    }
+
+    public static Item FindBackpackPrefab(BackpackSlot.BackpackType type)
+    {
+        string keyword = "backpack";
+        switch (type)
+        {
+            case BackpackSlot.BackpackType.Jetpack: keyword = "jetpack"; break;
+            case BackpackSlot.BackpackType.Rocketpack: keyword = "rocket"; break;
+            case BackpackSlot.BackpackType.Fannypack: keyword = "fanny"; break;
+            case BackpackSlot.BackpackType.Backpack: keyword = "backpack"; break;
+        }
+
+        for (int i = 0; i < Globals.items.Count; i++)
+        {
+            var item = Globals.items[i];
+            if (item == null) continue;
+            string n = "";
+            try { n = item.GetName(); } catch { }
+            if (string.IsNullOrEmpty(n)) n = item.name;
+            if (!string.IsNullOrEmpty(n) && n.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                return item;
+        }
+        return null;
+    }
+
+    public static void DropCurrentBackpack(Player player)
+    {
+        if (player == null) return;
+        BackpackSlot backpackSlot = player.backpackSlot;
+        if (backpackSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+            backpackSlot = player.itemSlots[3] as BackpackSlot;
+
+        if (backpackSlot != null && !backpackSlot.IsEmpty())
+        {
+            Vector3 dropPos;
+            if (Character.localCharacter != null)
+                dropPos = Character.localCharacter.Head + Character.localCharacter.transform.forward * 1.2f + Vector3.up * 0.2f;
+            else
+                dropPos = player.transform.position + Vector3.up * 0.5f;
+
+            if (backpackSlot.prefab != null)
+            {
+                ItemDatabase.Add(backpackSlot.prefab, dropPos);
+            }
+            else
+            {
+                Item foundPrefab = FindBackpackPrefab(backpackSlot.backpackType);
+                if (foundPrefab != null)
+                {
+                    ItemDatabase.Add(foundPrefab, dropPos);
+                }
+            }
+
+            backpackSlot.EmptyOut();
+            backpackSlot.backpackType = BackpackSlot.BackpackType.None;
+
+            if (Logger != null)
+                Logger.LogInfo("[Backpack] Dropped existing backpack to the ground.");
+        }
+    }
+
+    public static void AssignBackpackItem(int itemIndex)
+    {
+        GetPlayer();
+        if (Globals.playerObj == null)
+        {
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] Player is null during backpack assignment");
+            return;
+        }
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var player = Globals.playerObj;
+                BackpackSlot backpackSlot = player.backpackSlot;
+                if (backpackSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+                    backpackSlot = player.itemSlots[3] as BackpackSlot;
+
+                if (backpackSlot == null)
+                {
+                    if (Logger != null) Logger.LogError("[PEAK AIO] BackpackSlot is null");
+                    return;
+                }
+
+                // 1. 如果槽位4已经有东西，先丢下背包
+                if (!backpackSlot.IsEmpty())
+                {
+                    DropCurrentBackpack(player);
+                }
+
+                // 2. 刷出选中的新背包物品
+                Item newItem = (itemIndex >= 0 && itemIndex < Globals.items.Count) ? Globals.items[itemIndex] : null;
+                string itemName = (itemIndex >= 0 && itemIndex < Globals.itemNames.Count) ? Globals.itemNames[itemIndex] : "";
+
+                var bpType = GetBackpackTypeForItem(newItem, itemName);
+                var data = new ItemInstanceData(Guid.NewGuid());
+                ItemInstanceDataHandler.AddInstanceData(data);
+
+                // 如果是喷气背包，默认赋予满燃料
+                if (bpType == BackpackSlot.BackpackType.Jetpack)
+                {
+                    var fuel = data.RegisterNewEntry<FloatItemData>(DataEntryKey.Fuel);
+                    if (fuel != null) fuel.Value = 100f;
+                }
+
+                backpackSlot.backpackType = bpType;
+                backpackSlot.SetItem(newItem, data);
+
+                // 3. 全量网络同步
+                var syncObj = new InventorySyncData(
+                    player.itemSlots,
+                    backpackSlot,
+                    player.tempFullSlot
+                );
+                byte[] syncData = SerializeSyncData(syncObj);
+                if (player.photonView != null)
+                {
+                    player.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Backpack] Equipped {0} ({1}) to Slot 4", itemName, bpType));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] AssignBackpackItem error: " + ex);
+            }
+        });
+    }
+
+    public static void GiveItemToPlayer(int playerIndex, int itemIndex)
+    {
+        if (playerIndex < 0 || playerIndex >= Globals.allPlayers.Count) return;
+        if (itemIndex < 0 || itemIndex >= Globals.items.Count) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var target = Globals.allPlayers[playerIndex];
+                var item = Globals.items[itemIndex];
+                if (target == null || item == null) return;
+
+                Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+                ItemDatabase.Add(item, spawnPos);
+
+                string itemName = null;
+                try { itemName = item.GetName(); } catch { }
+                if (string.IsNullOrEmpty(itemName)) itemName = item.name;
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Lobby] Gave item '{0}' to player '{1}'", itemName, target.characterName));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] GiveItemToPlayer error: " + ex);
+            }
+        });
+    }
+
+    public static void GiveItemToAllPlayers(int itemIndex)
+    {
+        if (itemIndex < 0 || itemIndex >= Globals.items.Count) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var item = Globals.items[itemIndex];
+                if (item == null) return;
+
+                for (int i = 0; i < Globals.allPlayers.Count; i++)
+                {
+                    var target = Globals.allPlayers[i];
+                    if (target == null) continue;
+                    if (Globals.excludeSelfFromAllActions && target.IsLocal) continue;
+
+                    Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+                    ItemDatabase.Add(item, spawnPos);
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Lobby] Gave item to all players. ExcludeSelf: {0}", Globals.excludeSelfFromAllActions));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] GiveItemToAllPlayers error: " + ex);
+            }
+        });
+    }
+
+    public static void GiveQuickBackpackToPlayer(int playerIndex, BackpackSlot.BackpackType type)
+    {
+        if (playerIndex < 0 || playerIndex >= Globals.allPlayers.Count) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var target = Globals.allPlayers[playerIndex];
+                if (target == null) return;
+
+                Item prefab = FindBackpackPrefab(type);
+                Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+
+                if (prefab != null)
+                {
+                    ItemDatabase.Add(prefab, spawnPos);
+                }
+                else
+                {
+                    if (Logger != null)
+                        Logger.LogWarning(string.Format("[Lobby] Could not find prefab for backpack type {0}", type));
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Lobby] Spawned {0} for player '{1}'", type, target.characterName));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] GiveQuickBackpackToPlayer error: " + ex);
+            }
+        });
+    }
+
+    public static void CaptureInventorySnapshot(Character character)
+    {
+        if (character == null || character.photonView == null) return;
+        int photonId = character.photonView.ViewID;
+
+        Player player = character.player;
+        if (player == null && character.IsLocal)
+            player = Player.localPlayer;
+        if (player == null) return;
+
+        var snapshot = new Globals.PlayerInventorySnapshot();
+        snapshot.photonId = photonId;
+        snapshot.snapshotTime = DateTime.UtcNow;
+        snapshot.isConsumed = false;
+
+        // 1. 记录手持槽位 0..2
+        if (player.itemSlots != null)
+        {
+            for (int i = 0; i < Math.Min(3, player.itemSlots.Length); i++)
+            {
+                var slot = player.itemSlots[i];
+                if (slot != null && !slot.IsEmpty() && slot.prefab != null)
+                {
+                    snapshot.mainSlots[i] = new Globals.ItemSlotSnapshot
+                    {
+                        prefab = slot.prefab,
+                        data = slot.data != null ? slot.data.Copy() : null
+                    };
+                }
+            }
+        }
+
+        // 2. 记录背包槽位
+        BackpackSlot bpSlot = player.backpackSlot;
+        if (bpSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+            bpSlot = player.itemSlots[3] as BackpackSlot;
+
+        if (bpSlot != null && !bpSlot.IsEmpty())
+        {
+            snapshot.backpackType = bpSlot.backpackType;
+            snapshot.backpackSlotItem = new Globals.ItemSlotSnapshot
+            {
+                prefab = bpSlot.prefab,
+                data = bpSlot.data != null ? bpSlot.data.Copy() : null
+            };
+        }
+
+        // 存入待恢复池与实时池
+        Globals.liveSnapshots[photonId] = snapshot;
+        Globals.deathSnapshots[photonId] = snapshot;
+
+        if (Logger != null)
+            Logger.LogInfo(string.Format("[InventorySnapshot] Captured snapshot for character {0} (photonId: {1})", character.characterName, photonId));
+    }
+
+    public static void RestoreInventorySnapshot(Character character)
+    {
+        if (character == null || character.photonView == null) return;
+        int photonId = character.photonView.ViewID;
+
+        Globals.PlayerInventorySnapshot snapshot;
+        // 防重复刷新核心逻辑：单次消费锁
+        if (!Globals.deathSnapshots.TryGetValue(photonId, out snapshot) || snapshot == null || snapshot.isConsumed)
+        {
+            if (Logger != null)
+                Logger.LogInfo(string.Format("[RestoreInventory] No active snapshot or already consumed for photonId {0}", photonId));
+            return;
+        }
+
+        // 立即标记为已消费并从待恢复字典移除（原子防刷）
+        snapshot.isConsumed = true;
+        Globals.deathSnapshots.Remove(photonId);
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                Player player = character.player;
+                if (player == null && character.IsLocal)
+                    player = Player.localPlayer;
+                if (player == null) return;
+
+                // 1. 恢复主槽位 0..2
+                if (player.itemSlots != null)
+                {
+                    for (int i = 0; i < Math.Min(3, player.itemSlots.Length); i++)
+                    {
+                        var rec = snapshot.mainSlots[i];
+                        if (rec != null && rec.prefab != null)
+                        {
+                            var instanceData = rec.data != null ? rec.data.Copy() : new ItemInstanceData(Guid.NewGuid());
+                            ItemInstanceDataHandler.AddInstanceData(instanceData);
+                            player.itemSlots[i].SetItem(rec.prefab, instanceData);
+                        }
+                    }
+                }
+
+                // 2. 恢复背包槽位
+                BackpackSlot bpSlot = player.backpackSlot;
+                if (bpSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+                    bpSlot = player.itemSlots[3] as BackpackSlot;
+
+                if (bpSlot != null && snapshot.backpackType != BackpackSlot.BackpackType.None)
+                {
+                    bpSlot.backpackType = snapshot.backpackType;
+                    Item bpPrefab = snapshot.backpackSlotItem != null ? snapshot.backpackSlotItem.prefab : FindBackpackPrefab(snapshot.backpackType);
+                    ItemInstanceData bpData = (snapshot.backpackSlotItem != null && snapshot.backpackSlotItem.data != null)
+                        ? snapshot.backpackSlotItem.data.Copy()
+                        : new ItemInstanceData(Guid.NewGuid());
+                    ItemInstanceDataHandler.AddInstanceData(bpData);
+                    bpSlot.SetItem(bpPrefab, bpData);
+                }
+
+                // 3. 网络全同步
+                var syncObj = new InventorySyncData(
+                    player.itemSlots,
+                    bpSlot,
+                    player.tempFullSlot
+                );
+                byte[] syncData = SerializeSyncData(syncObj);
+                if (player.photonView != null)
+                {
+                    player.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[RestoreInventory] Restored inventory slots and backpack for character '{0}' (photonId: {1})", character.characterName, photonId));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[RestoreInventory] Error restoring inventory: " + ex);
+            }
+        });
     }
 }

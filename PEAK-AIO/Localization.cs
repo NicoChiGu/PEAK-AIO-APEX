@@ -1169,6 +1169,116 @@ public static class Localization
             { Language.Japanese, "選択したアイテムをプレイヤーの前方に生成します" },
             { Language.Korean, "선택한 아이템을 플레이어 앞 월드에 소환합니다" },
             { Language.Italian, "Genera l'oggetto selezionato nel mondo davanti al giocatore" }
+        }},
+
+        // Slot 4 & Backpacks
+        { "items.slot4", new Dictionary<Language, string> {
+            { Language.English, "Slot 4 (Backpack)" },
+            { Language.SimplifiedChinese, "槽位 4 (背包)" },
+            { Language.TraditionalChinese, "槽位 4 (背包)" },
+            { Language.Japanese, "スロット 4 (バックパック)" },
+            { Language.Korean, "슬롯 4 (배낭)" },
+            { Language.Italian, "Slot 4 (Zaino)" }
+        }},
+        { "items.drop_backpack", new Dictionary<Language, string> {
+            { Language.English, "Drop Backpack" },
+            { Language.SimplifiedChinese, "丢下背包" },
+            { Language.TraditionalChinese, "丟下背包" },
+            { Language.Japanese, "バックパックを落とす" },
+            { Language.Korean, "배낭 버리기" },
+            { Language.Italian, "Lascia Zaino" }
+        }},
+        { "items.tip_backpack_slot", new Dictionary<Language, string> {
+            { Language.English, "Only backpack items (Jetpack, Fannypack, Rocketpack, Backpack). Drops current backpack before equipping new." },
+            { Language.SimplifiedChinese, "仅限背包类物品(喷气/滑稽/火箭/普通背包)。刷出前自动丢下当前背包。" },
+            { Language.TraditionalChinese, "僅限背包類物品(噴氣/滑稽/火箭/普通背包)。刷出前自動丟下當前背包。" },
+            { Language.Japanese, "バックパック専用（ジェットパック、ファニーパック等）。装備前に現在の物を落とします。" },
+            { Language.Korean, "배낭류 전용(제트팩, 힙색, 로켓팩 등). 새 장비 장착 전 기존 배낭을 떨어뜨립니다." },
+            { Language.Italian, "Solo zaini (Jetpack, Marsupio, Rocketpack, Zaino). Rilascia lo zaino attuale prima di equipaggiare." }
+        }},
+
+        // Lobby Give Items
+        { "lobby.give_items", new Dictionary<Language, string> {
+            { Language.English, "Give Items" },
+            { Language.SimplifiedChinese, "给予物品" },
+            { Language.TraditionalChinese, "給予物品" },
+            { Language.Japanese, "アイテム付与" },
+            { Language.Korean, "아이템 주기" },
+            { Language.Italian, "Dai Oggetti" }
+        }},
+        { "lobby.give_selected_item", new Dictionary<Language, string> {
+            { Language.English, "Give Item" },
+            { Language.SimplifiedChinese, "给该玩家物品" },
+            { Language.TraditionalChinese, "給該玩家物品" },
+            { Language.Japanese, "プレイヤーに付与" },
+            { Language.Korean, "플레이어에게 주기" },
+            { Language.Italian, "Dai al Giocatore" }
+        }},
+        { "lobby.give_all_item", new Dictionary<Language, string> {
+            { Language.English, "Give to All" },
+            { Language.SimplifiedChinese, "全员发放此物" },
+            { Language.TraditionalChinese, "全員發放此物" },
+            { Language.Japanese, "全員に付与" },
+            { Language.Korean, "모두에게 주기" },
+            { Language.Italian, "Dai a Tutti" }
+        }},
+        { "lobby.give_backpack", new Dictionary<Language, string> {
+            { Language.English, "Give Backpack" },
+            { Language.SimplifiedChinese, "发普通背包" },
+            { Language.TraditionalChinese, "發普通背包" },
+            { Language.Japanese, "バックパック付与" },
+            { Language.Korean, "배낭 지급" },
+            { Language.Italian, "Dai Zaino" }
+        }},
+        { "lobby.give_jetpack", new Dictionary<Language, string> {
+            { Language.English, "Give Jetpack" },
+            { Language.SimplifiedChinese, "发喷气背包" },
+            { Language.TraditionalChinese, "發噴氣背包" },
+            { Language.Japanese, "ジェットパック付与" },
+            { Language.Korean, "제트팩 지급" },
+            { Language.Italian, "Dai Jetpack" }
+        }},
+        { "lobby.give_rocketpack", new Dictionary<Language, string> {
+            { Language.English, "Give Rocketpack" },
+            { Language.SimplifiedChinese, "发火箭背包" },
+            { Language.TraditionalChinese, "發火箭背包" },
+            { Language.Japanese, "ロケットパック付与" },
+            { Language.Korean, "로켓팩 지급" },
+            { Language.Italian, "Dai Rocketpack" }
+        }},
+        { "lobby.give_fannypack", new Dictionary<Language, string> {
+            { Language.English, "Give Fannypack" },
+            { Language.SimplifiedChinese, "发滑稽背包" },
+            { Language.TraditionalChinese, "發滑稽背包" },
+            { Language.Japanese, "ファニーパック付与" },
+            { Language.Korean, "힙색 지급" },
+            { Language.Italian, "Dai Marsupio" }
+        }},
+
+        // Revive & Restore
+        { "lobby.revive_restore", new Dictionary<Language, string> {
+            { Language.English, "Revive (Restore Items)" },
+            { Language.SimplifiedChinese, "复活(恢复物品)" },
+            { Language.TraditionalChinese, "復活(恢復物品)" },
+            { Language.Japanese, "復活(アイテム復元)" },
+            { Language.Korean, "부활(아이템 복구)" },
+            { Language.Italian, "Rianima (Ripristina Oggetti)" }
+        }},
+        { "lobby.revive_all_restore", new Dictionary<Language, string> {
+            { Language.English, "Revive All (Restore)" },
+            { Language.SimplifiedChinese, "全员复活(恢复物品)" },
+            { Language.TraditionalChinese, "全員復活(恢復物品)" },
+            { Language.Japanese, "全員復活(復元)" },
+            { Language.Korean, "전원 부활(복구)" },
+            { Language.Italian, "Rianima Tutti (Ripristina)" }
+        }},
+        { "tip.revive_restore", new Dictionary<Language, string> {
+            { Language.English, "Revives player and restores recorded inventory slots and backpack items (single-use anti-duplication lock)" },
+            { Language.SimplifiedChinese, "复活玩家并恢复其死前记录的所有槽位及背包内物品（单次消耗防刷）" },
+            { Language.TraditionalChinese, "復活玩家並恢復其死前記錄的所有槽位及背包內物品（單次消耗防刷）" },
+            { Language.Japanese, "プレイヤーを復活させ、記録されたスロットとバックパック内のアイテムを復元します（重複付与防止）" },
+            { Language.Korean, "플레이어를 부활시키고 사망 전 기록된 슬롯 및 배낭 아이템을 복구합니다(중복 복구 방지)" },
+            { Language.Italian, "Rianima il giocatore e ripristina slot e zaino registrati (blocco anti-duplicazione monouso)" }
         }}
     };
 

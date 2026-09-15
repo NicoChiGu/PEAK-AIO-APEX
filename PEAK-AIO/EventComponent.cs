@@ -55,6 +55,16 @@ public class EventComponent : MonoBehaviour
         {
             validationTimer = 0f;
             GameHelpers.InvalidateCache();
+
+            try
+            {
+                var localChar = Character.localCharacter;
+                if (localChar != null && localChar.data != null && !localChar.data.dead)
+                {
+                    Utilities.CaptureInventorySnapshot(localChar);
+                }
+            }
+            catch { }
         }
 
         if (ConfigManager.SpeedMod.Value || ConfigManager.JumpMod.Value)

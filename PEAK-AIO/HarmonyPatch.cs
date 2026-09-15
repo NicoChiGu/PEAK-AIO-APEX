@@ -183,3 +183,23 @@ public class Patch_CursorHandler_Update
     }
 }
 
+[HarmonyPatch(typeof(Character), "RPCA_Die")]
+public class Patch_CharacterDie
+{
+    static void Prefix(Character __instance)
+    {
+        try
+        {
+            if (__instance != null)
+            {
+                Utilities.CaptureInventorySnapshot(__instance);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogError("[Patch_CharacterDie] Error: " + ex);
+        }
+    }
+}
+

@@ -50,9 +50,9 @@ public static class Globals
     // Inventory
     public static List<Item> items = new List<Item>();
     public static List<string> itemNames = new List<string>();
-    public static int[] selectedItems = new int[] { -1, -1, -1 };
-    public static string[] itemDisplayNames = new string[] { "None", "None", "None" };
-    public static string[] itemSearchBuffers = new string[3] { "", "", "" };
+    public static int[] selectedItems = new int[] { -1, -1, -1, -1 };
+    public static string[] itemDisplayNames = new string[] { "None", "None", "None", "None" };
+    public static string[] itemSearchBuffers = new string[4] { "", "", "", "" };
 
     // Player
     public static Player playerObj;
@@ -62,6 +62,9 @@ public static class Globals
     public static List<string> playerNames = new List<string>();
     public static int selectedPlayer = -1;
     public static bool excludeSelfFromAllActions = true;
+    public static string lobbyItemSearchBuffer = "";
+    public static int selectedLobbyItem = -1;
+    public static Vector2 lobbyItemScroll = Vector2.zero;
 
     // Teleport
     public static bool teleportToPingEnabled = false;
@@ -83,7 +86,28 @@ public static class Globals
     public static Rect windowRect = new Rect(40f, 40f, 780f, 520f);
     public static Vector2 sidebarScroll = Vector2.zero;
     public static Vector2 mainScroll = Vector2.zero;
-    public static Vector2[] slotScrolls = new Vector2[3] { Vector2.zero, Vector2.zero, Vector2.zero };
+    public static Vector2[] slotScrolls = new Vector2[4] { Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero };
     public static Vector2 lobbyPlayerScroll = Vector2.zero;
     public static Vector2 luggageScroll = Vector2.zero;
+
+    // Inventory Snapshot & Anti-Duplication Revive System
+    public class ItemSlotSnapshot
+    {
+        public Item prefab;
+        public ItemInstanceData data;
+    }
+
+    public class PlayerInventorySnapshot
+    {
+        public int photonId;
+        public ItemSlotSnapshot[] mainSlots = new ItemSlotSnapshot[3];
+        public BackpackSlot.BackpackType backpackType = BackpackSlot.BackpackType.None;
+        public ItemSlotSnapshot backpackSlotItem;
+        public List<ItemSlotSnapshot> innerBackpackItems = new List<ItemSlotSnapshot>();
+        public bool isConsumed = false;
+        public DateTime snapshotTime;
+    }
+
+    public static Dictionary<int, PlayerInventorySnapshot> deathSnapshots = new Dictionary<int, PlayerInventorySnapshot>();
+    public static Dictionary<int, PlayerInventorySnapshot> liveSnapshots = new Dictionary<int, PlayerInventorySnapshot>();
 }
