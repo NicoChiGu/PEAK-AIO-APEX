@@ -23,7 +23,14 @@ public class PointPingPatch
             {
                 if (Character.localCharacter != null && !Character.localCharacter.data.dead)
                 {
-                    Vector3 safePoint = point + Vector3.up;
+                    Vector3 rayStart = point + Vector3.up * 5f;
+                    Vector3 safePoint;
+                    RaycastHit hit;
+                    if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
+                        safePoint = hit.point + Vector3.up * 1.5f;
+                    else
+                        safePoint = point + Vector3.up * 2f;
+
                     Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                         safePoint, true
                     });

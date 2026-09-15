@@ -341,6 +341,12 @@ public static class Utilities
             return;
         }
 
+        if (slot == 3)
+        {
+            AssignBackpackItem(itemIndex);
+            return;
+        }
+
         if (Globals.playerObj != null &&
             Globals.playerObj.itemSlots != null &&
             Globals.playerObj.itemSlots.Length > slot &&
@@ -376,9 +382,105 @@ public static class Utilities
                 {
                     if (Logger != null)
                         Logger.LogError("[PEAK AIO] AssignInventoryItem error: " + ex);
+                    Globals.GlobalNotifier.ShowError("分配物品失败: " + ex.Message);
                 }
             });
         }
+    }
+
+    public static Vector3 CalculateGroundSpawnPosition(Character character, float forwardDist = 2.0f)
+    {
+        if (character == null) return Vector3.zero;
+
+        Vector3 lookDir = Vector3.zero;
+        if (character.data != null && character.data.lookDirection_Flat.sqrMagnitude > 0.001f)
+        {
+            lookDir = character.data.lookDirection_Flat.normalized;
+        }
+        else
+        {
+            lookDir = character.transform.forward;
+            lookDir.y = 0f;
+            if (lookDir.sqrMagnitude > 0.001f)
+                lookDir.Normalize();
+            else
+                lookDir = Vector3.forward;
+        }
+
+        Vector3 center = character.transform.position + Vector3.up * 0.5f;
+        Vector3 targetHorizontal = center + lookDir * forwardDist;
+        Vector3 rayStart = targetHorizontal + Vector3.up * 2.0f;
+
+        RaycastHit hit;
+        if (Physics.Raycast(rayStart, Vector3.down, out hit, 6.0f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            return hit.point + Vector3.up * 0.15f;
+        }
+
+        return targetHorizontal + Vector3.up * 0.15f;
+    }
+
+    public static Vector3 GetSafeRevivePosition(Character target)
+    {
+        if (target == null) return Vector3.zero;
+
+        bool isDead = (target.data != null && target.data.dead) || target.Ghost != null;
+        bool isDowned = (target.data != null && target.data.passedOut);
+
+        // 1. 如果没有死亡且没有倒地（存活状态）或者处于倒地状态，必须【原地复活】，绝不能拉回历史死亡地点
+        if (!isDead)
+        {
+            Vector3 currentPos = target.transform.position;
+            if (isDowned && target.Head != Vector3.zero)
+            {
+                currentPos = target.Head;
+            }
+
+            // 在当前站立/倒地位置正上方微调打射线，紧贴当前地面
+            Vector3 rayStart = currentPos + Vector3.up * 1.5f;
+            RaycastHit hit;
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 4.0f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                return hit.point + Vector3.up * 0.15f;
+            }
+            return currentPos;
+        }
+
+        // 2. 只有在玩家彻底死亡（Dead）且掉入虚空或变为幽灵的情况下，才使用安全快照或幽灵位置
+        Vector3 basePos = Vector3.zero;
+        bool foundSnapshot = false;
+
+        Globals.PlayerLocationSnapshot snapshot;
+        if (target.photonView != null && Globals.playerSafeLocations.TryGetValue(target.photonView.ViewID, out snapshot))
+        {
+            basePos = snapshot.safePosition;
+            foundSnapshot = true;
+        }
+        else
+        {
+            Globals.PlayerLocationSnapshot snapInst;
+            if (Globals.playerSafeLocations.TryGetValue(target.GetInstanceID(), out snapInst))
+            {
+                basePos = snapInst.safePosition;
+                foundSnapshot = true;
+            }
+        }
+
+        if (!foundSnapshot)
+        {
+            basePos = target.Ghost != null ? target.Ghost.transform.position : target.Head;
+            if (basePos == Vector3.zero)
+                basePos = target.transform.position;
+        }
+
+        Vector3 deadRayStart = basePos + Vector3.up * 5.0f;
+        RaycastHit deadHit;
+        if (Physics.Raycast(deadRayStart, Vector3.down, out deadHit, 15.0f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            return deadHit.point + Vector3.up * 1.5f;
+        }
+
+        return basePos + Vector3.up * 1.5f;
     }
 
     public static void SpawnItemInWorld(int itemIndex)
@@ -395,7 +497,7 @@ public static class Utilities
                 {
                     if (Character.localCharacter != null)
                     {
-                        Vector3 spawnPos = Character.localCharacter.Head + Character.localCharacter.transform.forward * 1.5f + Vector3.up * 0.2f;
+                        Vector3 spawnPos = CalculateGroundSpawnPosition(Character.localCharacter, 2.0f);
                         ItemDatabase.Add(item, spawnPos);
                     }
                     else
@@ -408,13 +510,14 @@ public static class Utilities
                     if (string.IsNullOrEmpty(itemName)) itemName = item.name;
 
                     if (Logger != null)
-                        Logger.LogInfo(string.Format("[Inventory] Spawned {0} into world.", itemName));
+                        Logger.LogInfo(string.Format("[Inventory] Spawned {0} into world on ground.", itemName));
                 }
             }
             catch (Exception ex)
             {
                 if (Logger != null)
                     Logger.LogError("[Inventory] SpawnItemInWorld failed: " + ex.Message);
+                Globals.GlobalNotifier.ShowError("生成物品失败: " + ex.Message);
             }
         });
     }
@@ -643,14 +746,24 @@ public static class Utilities
                         var character = characters[i];
                         if (character == null || character.photonView == null) continue;
 
-                        Vector3 revivePos = character.Ghost != null
-                            ? character.Ghost.transform.position
-                            : character.Head;
+                        if (Globals.excludeSelfFromAllActions && character.IsLocal)
+                            continue;
+
+                        bool isDead = (character.data != null && character.data.dead) || character.Ghost != null;
+                        Vector3 revivePos = GetSafeRevivePosition(character);
+
                         character.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
-                            revivePos + new Vector3(0f, 4f, 0f), false, -1
+                            revivePos, false, -1
                         });
 
-                        if (restoreItems)
+                        int viewId = character.photonView.ViewID;
+                        Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
+                        {
+                            safePosition = revivePos,
+                            lastRecordedTime = Time.time
+                        };
+
+                        if (restoreItems && isDead)
                         {
                             var targetChar = character;
                             EventComponent.QueueDelayedAction(() =>
@@ -666,12 +779,13 @@ public static class Utilities
                     }
                 }
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Revive All triggered. RestoreItems: {0}", restoreItems));
+                    Logger.LogInfo(string.Format("[Lobby] Revive All triggered with safe snapshots. RestoreItems: {0}", restoreItems));
             }
             catch (Exception ex)
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("全员复活异常: " + ex.Message);
             }
         });
     }
@@ -729,7 +843,14 @@ public static class Utilities
                 if (characters == null || characters.Count == 0)
                     return;
 
-                Vector3 target = Character.localCharacter.Head + new Vector3(0f, 4f, 0f);
+                Vector3 myPos = Character.localCharacter.transform.position;
+                Vector3 rayStart = myPos + Vector3.up * 5f;
+                Vector3 safeTarget;
+                RaycastHit hit;
+                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
+                    safeTarget = hit.point + Vector3.up * 1.5f;
+                else
+                    safeTarget = myPos + Vector3.up * 3f;
 
                 for (int i = 0; i < characters.Count; i++)
                 {
@@ -741,7 +862,7 @@ public static class Utilities
                             continue;
 
                         character.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
-                            target, true
+                            safeTarget, true
                         });
                     }
                     catch (Exception ex)
@@ -758,6 +879,7 @@ public static class Utilities
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("全员传送到我异常: " + ex.Message);
             }
         });
     }
@@ -774,15 +896,21 @@ public static class Utilities
                 var target = Globals.allPlayers[Globals.selectedPlayer];
                 if (target == null || target.photonView == null) return;
 
-                Vector3 revivePos = target.Ghost != null
-                    ? target.Ghost.transform.position
-                    : target.Head;
+                bool isDead = (target.data != null && target.data.dead) || target.Ghost != null;
+                Vector3 revivePos = GetSafeRevivePosition(target);
 
                 target.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
-                    revivePos + new Vector3(0f, 4f, 0f), false, -1
+                    revivePos, false, -1
                 });
 
-                if (restoreItems)
+                int viewId = target.photonView.ViewID;
+                Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
+                {
+                    safePosition = revivePos,
+                    lastRecordedTime = Time.time
+                };
+
+                if (restoreItems && isDead)
                 {
                     EventComponent.QueueDelayedAction(() =>
                     {
@@ -797,6 +925,7 @@ public static class Utilities
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("复活玩家异常: " + ex.Message);
             }
         });
     }
@@ -839,9 +968,17 @@ public static class Utilities
                 var target = Globals.allPlayers[Globals.selectedPlayer];
                 if (target == null) return;
 
-                Vector3 targetHead = target.Head + new Vector3(0f, 4f, 0f);
+                Vector3 targetPos = target.transform.position;
+                Vector3 rayStart = targetPos + Vector3.up * 5f;
+                Vector3 safePos;
+                RaycastHit hit;
+                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
+                    safePos = hit.point + Vector3.up * 1.5f;
+                else
+                    safePos = targetPos + Vector3.up * 3f;
+
                 Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
-                    targetHead, true
+                    safePos, true
                 });
 
                 if (Logger != null)
@@ -851,6 +988,7 @@ public static class Utilities
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("传送到玩家异常: " + ex.Message);
             }
         });
     }
@@ -867,9 +1005,17 @@ public static class Utilities
                 var target = Globals.allPlayers[Globals.selectedPlayer];
                 if (target == null) return;
 
-                Vector3 myHead = Character.localCharacter.Head + new Vector3(0f, 4f, 0f);
+                Vector3 myPos = Character.localCharacter.transform.position;
+                Vector3 rayStart = myPos + Vector3.up * 5f;
+                Vector3 safePos;
+                RaycastHit hit;
+                if (Physics.Raycast(rayStart, Vector3.down, out hit, 10f, ~0, QueryTriggerInteraction.Ignore))
+                    safePos = hit.point + Vector3.up * 1.5f;
+                else
+                    safePos = myPos + Vector3.up * 3f;
+
                 target.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
-                    myHead, true
+                    safePos, true
                 });
 
                 if (Logger != null)
@@ -879,6 +1025,7 @@ public static class Utilities
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("传送玩家到我异常: " + ex.Message);
             }
         });
     }
@@ -937,6 +1084,128 @@ public static class Utilities
         });
     }
 
+    public static void JumpToSegmentStartSafe(Segment segment)
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (!MapHandler.Exists || MapHandler.Instance == null)
+                {
+                    Globals.GlobalNotifier.ShowError("无法跳转：未在世界地图场景中！");
+                    return;
+                }
+
+                var mh = MapHandler.Instance;
+                int segIdx = (int)segment;
+                Vector3 spawnPos = Vector3.zero;
+                bool foundPos = false;
+
+                if (segIdx >= 5) // Peak
+                {
+                    if (mh.respawnThePeak != null)
+                    {
+                        spawnPos = mh.respawnThePeak.position;
+                        foundPos = true;
+                    }
+                }
+                else if (segIdx == 4) // The Kiln
+                {
+                    if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
+                    {
+                        var kSeg = mh.segments[4];
+                        if (kSeg.reconnectSpawnPos != null)
+                        {
+                            spawnPos = kSeg.reconnectSpawnPos.position;
+                            foundPos = true;
+                        }
+                        else if (kSeg.segmentParent != null)
+                        {
+                            spawnPos = kSeg.segmentParent.transform.position;
+                            foundPos = true;
+                        }
+                    }
+                }
+                else if (mh.segments != null && segIdx >= 0 && segIdx < mh.segments.Length)
+                {
+                    var seg = mh.segments[segIdx];
+                    if (seg != null)
+                    {
+                        if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
+                            seg.segmentParent.SetActive(true);
+                        if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
+                            seg.segmentCampfire.SetActive(true);
+                        if (seg.wallNext != null && !seg.wallNext.activeSelf)
+                            seg.wallNext.SetActive(true);
+                        if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
+                            seg.wallPrevious.SetActive(true);
+
+                        if (seg.reconnectSpawnPos != null)
+                        {
+                            spawnPos = seg.reconnectSpawnPos.position;
+                            foundPos = true;
+                        }
+                        else if (seg.segmentParent != null)
+                        {
+                            spawnPos = seg.segmentParent.transform.position;
+                            foundPos = true;
+                        }
+                    }
+                }
+
+                if (!foundPos)
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("未找到区域 {0} 的起点出生点！", segment));
+                    return;
+                }
+
+                Vector3 rayStart = spawnPos + Vector3.up * 5.0f;
+                Vector3 finalPos;
+                RaycastHit hit;
+                if (Physics.Raycast(rayStart, Vector3.down, out hit, 15.0f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    finalPos = hit.point + Vector3.up * 1.5f;
+                }
+                else
+                {
+                    finalPos = spawnPos + Vector3.up * 2.0f;
+                }
+
+                // If host, sync official segment transition
+                if (Photon.Pun.PhotonNetwork.IsMasterClient && (int)MapHandler.CurrentSegmentNumber != segIdx)
+                {
+                    try
+                    {
+                        MapHandler.JumpToSegment(segment);
+                    }
+                    catch { }
+                }
+
+                if (Character.localCharacter != null)
+                {
+                    if (Character.localCharacter.photonView != null)
+                    {
+                        Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { finalPos, true });
+                    }
+                    else
+                    {
+                        Character.localCharacter.WarpPlayerRPC(finalPos, true);
+                    }
+                }
+
+                WorldDataCache.Invalidate();
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[PEAK AIO] Safely jumped to segment start: {0} at {1}", segment, finalPos));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] JumpToSegmentStartSafe error: " + ex.Message);
+                Globals.GlobalNotifier.ShowError("跳转到起点失败: " + ex.Message);
+            }
+        });
+    }
+
     public struct RouteSegmentInfo
     {
         public int level;
@@ -947,6 +1216,7 @@ public static class Utilities
         public bool hasCampfire;
         public float altitude;
         public bool isAtCampfire;
+        public bool isCampfireLit;
     }
 
     public static string GetBiomeDisplayName(Biome.BiomeType bt, Segment seg)
@@ -1094,6 +1364,76 @@ public static class Utilities
         return Vector3.Distance(local.transform.position, cf.transform.position) <= maxDist;
     }
 
+    public static bool IsCampfireLit(int segmentIndex)
+    {
+        try
+        {
+            Campfire cf = GetSegmentCampfire(segmentIndex);
+            if (cf != null)
+            {
+                return cf.Lit || cf.state == Campfire.FireState.Spent;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public static bool TryGetPeakAMapCustomMap(out int customMapIndex, out string sceneName, out string biomeId)
+    {
+        customMapIndex = -1;
+        sceneName = "";
+        biomeId = "";
+
+        try
+        {
+            Type customMapsType = Type.GetType("PeakAMap.Core.CustomMaps, PeakAMap");
+            if (customMapsType == null)
+            {
+                Assembly[] asms = AppDomain.CurrentDomain.GetAssemblies();
+                for (int i = 0; i < asms.Length; i++)
+                {
+                    if (asms[i].GetName().Name == "PeakAMap")
+                    {
+                        customMapsType = asms[i].GetType("PeakAMap.Core.CustomMaps");
+                        if (customMapsType != null) break;
+                    }
+                }
+            }
+
+            if (customMapsType != null)
+            {
+                PropertyInfo instProp = customMapsType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+                object instance = instProp != null ? instProp.GetValue(null, null) : null;
+                if (instance != null)
+                {
+                    FieldInfo modeField = customMapsType.GetField("loadMode", BindingFlags.Public | BindingFlags.Instance);
+                    if (modeField != null)
+                    {
+                        object modeVal = modeField.GetValue(instance);
+                        if (modeVal != null && modeVal.ToString().Equals("Custom", StringComparison.OrdinalIgnoreCase))
+                        {
+                            PropertyInfo indexProp = customMapsType.GetProperty("CustomMapIndex", BindingFlags.Public | BindingFlags.Instance);
+                            if (indexProp != null)
+                            {
+                                customMapIndex = (int)indexProp.GetValue(instance, null);
+                                var baker = SingletonAsset<MapBaker>.Instance;
+                                if (baker != null && customMapIndex >= 0)
+                                {
+                                    sceneName = baker.GetLevel(customMapIndex);
+                                    biomeId = baker.GetBiomeID(customMapIndex);
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
     public static Segment DetectCurrentPlayerSegment()
     {
         if (!MapHandler.Exists || MapHandler.Instance == null)
@@ -1122,16 +1462,31 @@ public static class Utilities
                 }
             }
 
-            // 2. Check if player is standing near any segment's campfire
-            for (int i = 0; i < 5; i++)
+            // 2. Determine minimum segment based on lit campfires
+            int minSegment = 0;
+            for (int i = 3; i >= 0; i--)
             {
-                if (IsPlayerNearCampfire(i, 12f))
+                if (IsCampfireLit(i))
                 {
-                    return (Segment)i;
+                    minSegment = i + 1;
+                    break;
                 }
             }
 
-            // 3. Check altitude bands across segments (descending)
+            // 3. Check if player is standing near any segment's campfire
+            for (int i = 0; i < 4; i++)
+            {
+                if (IsPlayerNearCampfire(i, 12f))
+                {
+                    if (IsCampfireLit(i))
+                    {
+                        return (Segment)Math.Max(minSegment, i + 1);
+                    }
+                    return (Segment)Math.Max(minSegment, i);
+                }
+            }
+
+            // 4. Check altitude bands across segments (descending from 4 down to 0)
             if (mh.segments != null && mh.segments.Length > 0)
             {
                 for (int i = mh.segments.Length - 1; i >= 0; i--)
@@ -1144,12 +1499,14 @@ public static class Utilities
                         {
                             if (pPos.y >= spawnY - 2f)
                             {
-                                return (Segment)i;
+                                return (Segment)Math.Max(minSegment, i);
                             }
                         }
                     }
                 }
             }
+
+            return (Segment)Math.Max(minSegment, (int)officialSeg);
         }
         catch { }
 
@@ -1222,6 +1579,7 @@ public static class Utilities
         };
 
         bool mapExists = MapHandler.Exists && MapHandler.Instance != null;
+        var mh = mapExists ? MapHandler.Instance : null;
 
         for (int i = 0; i < 6; i++)
         {
@@ -1230,16 +1588,24 @@ public static class Utilities
             Biome.BiomeType bt = (Biome.BiomeType)(-1);
             float altitude = 0f;
 
-            if (mapExists && MapHandler.Instance.segments != null && i < MapHandler.Instance.segments.Length)
+            if (mapExists && mh.biomes != null && i < mh.biomes.Count)
             {
-                var mapSeg = MapHandler.Instance.segments[i];
+                bt = mh.biomes[i];
+            }
+
+            if (mapExists && mh.segments != null && i < mh.segments.Length)
+            {
+                var mapSeg = mh.segments[i];
                 if (mapSeg != null)
                 {
-                    try
+                    if (bt == (Biome.BiomeType)(-1))
                     {
-                        bt = mapSeg.biome;
+                        try
+                        {
+                            bt = mapSeg.biome;
+                        }
+                        catch { }
                     }
-                    catch { }
 
                     if (mapSeg.reconnectSpawnPos != null)
                     {
@@ -1250,15 +1616,17 @@ public static class Utilities
             else if (i == 5)
             {
                 bt = Biome.BiomeType.Peak;
-                if (mapExists && MapHandler.Instance.respawnThePeak != null)
+                if (mapExists && mh.respawnThePeak != null)
                 {
-                    altitude = MapHandler.Instance.respawnThePeak.position.y;
+                    altitude = mh.respawnThePeak.position.y;
                 }
             }
 
             string displayName = GetBiomeDisplayName(bt, seg);
             bool isCurrent = mapExists && (currentSeg == seg);
-            bool isAtCamp = (i < 5) && isCurrent && IsPlayerNearCampfire(i, 12f);
+            bool hasCamp = (i < 4);
+            bool isAtCamp = hasCamp && isCurrent && IsPlayerNearCampfire(i, 12f);
+            bool isCampLit = hasCamp && IsCampfireLit(i);
 
             route.Add(new RouteSegmentInfo
             {
@@ -1267,9 +1635,10 @@ public static class Utilities
                 biomeType = bt,
                 displayName = displayName,
                 isCurrent = isCurrent,
-                hasCampfire = (i < 5),
+                hasCampfire = hasCamp,
                 altitude = altitude,
-                isAtCampfire = isAtCamp
+                isAtCampfire = isAtCamp,
+                isCampfireLit = isCampLit
             });
         }
 
@@ -1308,6 +1677,8 @@ public static class Utilities
         {
             s_LastUpdateTime = -10f;
             ClearCampfireCache();
+            if (route != null)
+                route.Clear();
         }
 
         public static void EnsureUpdated(bool force = false)
@@ -1326,10 +1697,15 @@ public static class Utilities
         {
             isInAirport = (!MapHandler.Exists || MapHandler.Instance == null);
 
+            var baker = SingletonAsset<MapBaker>.Instance;
+            int customMapIdx = -1;
+            string customSceneName = "";
+            string customBiomeId = "";
+            bool hasCustomMap = TryGetPeakAMapCustomMap(out customMapIdx, out customSceneName, out customBiomeId);
+
             try
             {
                 var nextLevelService = GameHandler.GetService<NextLevelService>();
-                var baker = SingletonAsset<MapBaker>.Instance;
                 if (nextLevelService != null && baker != null)
                 {
                     int curIdx = nextLevelService.NextLevelIndexOrFallback;
@@ -1363,13 +1739,49 @@ public static class Utilities
             }
             catch { }
 
+            // PeakAMap custom map override
+            if (hasCustomMap && baker != null)
+            {
+                todayLevelIndex = customMapIdx;
+                todaySceneName = customSceneName;
+                todayBiomeID = customBiomeId;
+                todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+            }
+
             if (!isInAirport)
             {
+                // In game: detect active scene in case custom map was loaded
+                try
+                {
+                    if (MapHandler.Instance != null && baker != null)
+                    {
+                        string activeScene = MapHandler.Instance.gameObject.scene.name;
+                        if (!string.IsNullOrEmpty(activeScene) && !activeScene.Equals("Airport", StringComparison.OrdinalIgnoreCase))
+                        {
+                            todaySceneName = activeScene;
+                            if (baker.ScenePaths != null)
+                            {
+                                for (int k = 0; k < baker.ScenePaths.Length; k++)
+                                {
+                                    if (baker.GetLevel(k).Equals(activeScene, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        todayLevelIndex = k;
+                                        todayBiomeID = baker.GetBiomeID(k);
+                                        todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 currentSegment = DetectCurrentPlayerSegment();
                 currentLevelNumber = (int)currentSegment + 1;
                 altitude = GetCurrentPlayerAltitude();
                 route = GetFullRoute();
-                isAtCampfire = (currentLevelNumber <= 5) && IsPlayerNearCampfire((int)currentSegment, 12f);
+                isAtCampfire = (currentLevelNumber <= 4) && IsPlayerNearCampfire((int)currentSegment, 12f);
 
                 currentSegDisplayName = "Unknown";
                 for (int i = 0; i < route.Count; i++)
@@ -1501,18 +1913,23 @@ public static class Utilities
             return false;
         }
 
-        // If player is already standing at the current segment's campfire, advance to next segment's campfire!
-        if (IsPlayerNearCampfire(curIdx, 12f))
+        // If player is already standing at current campfire or current campfire is already lit, advance to next segment!
+        if (IsPlayerNearCampfire(curIdx, 12f) || IsCampfireLit(curIdx))
         {
             int nextIdx = curIdx + 1;
-            if (nextIdx < 5)
+            if (nextIdx < 4)
             {
                 JumpToSegmentCampfire((Segment)nextIdx);
                 return true;
             }
+            else if (nextIdx == 4)
+            {
+                JumpToSegmentStartSafe(Segment.TheKiln);
+                return true;
+            }
             else
             {
-                JumpToSegment(Segment.Peak);
+                JumpToSegmentStartSafe(Segment.Peak);
                 return true;
             }
         }
@@ -1539,6 +1956,17 @@ public static class Utilities
                 return false;
             }
 
+            if (segmentIndex == 4)
+            {
+                JumpToSegmentStartSafe(Segment.TheKiln);
+                return true;
+            }
+            if (segmentIndex >= 5)
+            {
+                JumpToSegmentStartSafe(Segment.Peak);
+                return true;
+            }
+
             var mh = MapHandler.Instance;
 
             // Ensure parent and campfire GameObjects are active so colliders/transforms are fully valid
@@ -1559,8 +1987,9 @@ public static class Utilities
             if (targetCampfire == null)
             {
                 if (Logger != null)
-                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire before segment {0} not found.", (Segment)(segmentIndex + 1)));
-                return false;
+                    Logger.LogWarning(string.Format("[PEAK AIO] Campfire before segment {0} not found, falling back to segment start.", (Segment)(segmentIndex + 1)));
+                JumpToSegmentStartSafe((Segment)segmentIndex);
+                return true;
             }
 
             if (!targetCampfire.gameObject.activeInHierarchy)
@@ -1601,9 +2030,14 @@ public static class Utilities
     public static void JumpToSegmentCampfire(Segment segment)
     {
         int segIdx = (int)segment;
+        if (segIdx == 4)
+        {
+            JumpToSegmentStartSafe(Segment.TheKiln);
+            return;
+        }
         if (segIdx >= 5)
         {
-            JumpToSegment(segment);
+            JumpToSegmentStartSafe(Segment.Peak);
             return;
         }
 
@@ -1611,24 +2045,31 @@ public static class Utilities
         {
             try
             {
-                if (MapHandler.Exists)
+                if (MapHandler.Exists && MapHandler.Instance != null)
                 {
-                    int currentSeg = (int)MapHandler.CurrentSegmentNumber;
-                    if (currentSeg == segIdx)
+                    var mh = MapHandler.Instance;
+                    if (mh.segments != null && segIdx >= 0 && segIdx < mh.segments.Length)
                     {
-                        TeleportToCampfire(segIdx);
-                    }
-                    else
-                    {
-                        MapHandler.JumpToSegment(segment);
-
-                        // Allow host sync and terrain initialization before warping to campfire
-                        EventComponent.QueueDelayedAction(() =>
+                        var seg = mh.segments[segIdx];
+                        if (seg != null)
                         {
-                            TeleportToCampfire(segIdx);
-                            WorldDataCache.Invalidate();
-                        }, 0.5f);
+                            if (seg.segmentParent != null && !seg.segmentParent.activeSelf)
+                                seg.segmentParent.SetActive(true);
+                            if (seg.segmentCampfire != null && !seg.segmentCampfire.activeSelf)
+                                seg.segmentCampfire.SetActive(true);
+                            if (seg.wallNext != null && !seg.wallNext.activeSelf)
+                                seg.wallNext.SetActive(true);
+                            if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
+                                seg.wallPrevious.SetActive(true);
+                        }
                     }
+
+                    if (Photon.Pun.PhotonNetwork.IsMasterClient && (int)MapHandler.CurrentSegmentNumber != segIdx)
+                    {
+                        try { MapHandler.JumpToSegment(segment); } catch { }
+                    }
+
+                    TeleportToCampfire(segIdx);
                     WorldDataCache.Invalidate();
                 }
             }
@@ -2125,6 +2566,92 @@ public static class Utilities
         });
     }
 
+    public static void EquipBackpackToPlayer(int playerIndex, BackpackSlot.BackpackType type, Item customItem = null)
+    {
+        if (playerIndex < 0 || playerIndex >= Globals.allPlayers.Count) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var character = Globals.allPlayers[playerIndex];
+                if (character == null) return;
+
+                Player player = character.player;
+                if (player == null && character.IsLocal)
+                    player = Player.localPlayer;
+
+                if (player == null)
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("未找到玩家 '{0}' 的 Player 组件", character.characterName));
+                    return;
+                }
+
+                BackpackSlot backpackSlot = player.backpackSlot;
+                if (backpackSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+                    backpackSlot = player.itemSlots[3] as BackpackSlot;
+
+                if (backpackSlot == null)
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("玩家 '{0}' 的4号背包槽位为空", character.characterName));
+                    return;
+                }
+
+                // 1. 如果已有背包先卸下
+                if (!backpackSlot.IsEmpty())
+                {
+                    DropCurrentBackpack(player);
+                }
+
+                // 2. 准备背包物品与类型
+                Item bpPrefab = customItem != null ? customItem : FindBackpackPrefab(type);
+                string bpName = "";
+                try { if (bpPrefab != null) bpName = bpPrefab.GetName(); } catch { }
+                if (string.IsNullOrEmpty(bpName) && bpPrefab != null) bpName = bpPrefab.name;
+                if (string.IsNullOrEmpty(bpName)) bpName = type.ToString();
+
+                if (type == BackpackSlot.BackpackType.None && bpPrefab != null)
+                {
+                    type = GetBackpackTypeForItem(bpPrefab, bpName);
+                }
+
+                var data = new ItemInstanceData(Guid.NewGuid());
+                ItemInstanceDataHandler.AddInstanceData(data);
+
+                if (type == BackpackSlot.BackpackType.Jetpack)
+                {
+                    var fuel = data.RegisterNewEntry<FloatItemData>(DataEntryKey.Fuel);
+                    if (fuel != null) fuel.Value = 100f;
+                }
+
+                backpackSlot.backpackType = type;
+                backpackSlot.SetItem(bpPrefab, data);
+
+                // 3. 网络全量同步（发送给全部客户端使所有人及目标自身都能看到背包）
+                var syncObj = new InventorySyncData(
+                    player.itemSlots,
+                    backpackSlot,
+                    player.tempFullSlot
+                );
+                byte[] syncData = SerializeSyncData(syncObj);
+
+                if (player.photonView != null)
+                {
+                    player.photonView.RPC("SyncInventoryRPC", RpcTarget.All, new object[] { syncData, true });
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Lobby] Equipped {0} ({1}) to Slot 4 for player '{2}'", bpName, type, character.characterName));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] EquipBackpackToPlayer error: " + ex);
+                Globals.GlobalNotifier.ShowError("装备背包到4号槽位失败: " + ex.Message);
+            }
+        });
+    }
+
     public static void GiveItemToPlayer(int playerIndex, int itemIndex)
     {
         if (playerIndex < 0 || playerIndex >= Globals.allPlayers.Count) return;
@@ -2138,7 +2665,7 @@ public static class Utilities
                 var item = Globals.items[itemIndex];
                 if (target == null || item == null) return;
 
-                Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+                Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
                 ItemDatabase.Add(item, spawnPos);
 
                 string itemName = null;
@@ -2146,12 +2673,13 @@ public static class Utilities
                 if (string.IsNullOrEmpty(itemName)) itemName = item.name;
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Gave item '{0}' to player '{1}'", itemName, target.characterName));
+                    Logger.LogInfo(string.Format("[Lobby] Gave item '{0}' to player '{1}' on ground", itemName, target.characterName));
             }
             catch (Exception ex)
             {
                 if (Logger != null)
                     Logger.LogError("[Lobby] GiveItemToPlayer error: " + ex);
+                Globals.GlobalNotifier.ShowError("给予玩家物品失败: " + ex.Message);
             }
         });
     }
@@ -2167,23 +2695,36 @@ public static class Utilities
                 var item = Globals.items[itemIndex];
                 if (item == null) return;
 
+                if (Globals.allPlayers.Count == 0)
+                {
+                    RefreshPlayerList();
+                }
+
+                int count = 0;
                 for (int i = 0; i < Globals.allPlayers.Count; i++)
                 {
                     var target = Globals.allPlayers[i];
                     if (target == null) continue;
                     if (Globals.excludeSelfFromAllActions && target.IsLocal) continue;
 
-                    Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+                    Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
                     ItemDatabase.Add(item, spawnPos);
+                    count++;
+                }
+
+                if (count == 0 && Globals.allPlayers.Count > 0 && Globals.excludeSelfFromAllActions)
+                {
+                    Globals.GlobalNotifier.ShowError("全员发放未生效：当前勾选了'排除自己'且房间内无其他玩家！");
                 }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Gave item to all players. ExcludeSelf: {0}", Globals.excludeSelfFromAllActions));
+                    Logger.LogInfo(string.Format("[Lobby] Gave item to {0} players on ground. ExcludeSelf: {1}", count, Globals.excludeSelfFromAllActions));
             }
             catch (Exception ex)
             {
                 if (Logger != null)
                     Logger.LogError("[Lobby] GiveItemToAllPlayers error: " + ex);
+                Globals.GlobalNotifier.ShowError("全员发放物品失败: " + ex.Message);
             }
         });
     }
@@ -2200,7 +2741,7 @@ public static class Utilities
                 if (target == null) return;
 
                 Item prefab = FindBackpackPrefab(type);
-                Vector3 spawnPos = target.Head + target.transform.forward * 1.0f + Vector3.up * 0.2f;
+                Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
 
                 if (prefab != null)
                 {
@@ -2213,12 +2754,13 @@ public static class Utilities
                 }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Spawned {0} for player '{1}'", type, target.characterName));
+                    Logger.LogInfo(string.Format("[Lobby] Spawned {0} for player '{1}' on ground", type, target.characterName));
             }
             catch (Exception ex)
             {
                 if (Logger != null)
                     Logger.LogError("[Lobby] GiveQuickBackpackToPlayer error: " + ex);
+                Globals.GlobalNotifier.ShowError("生成背包失败: " + ex.Message);
             }
         });
     }

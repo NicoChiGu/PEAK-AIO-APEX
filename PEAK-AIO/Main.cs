@@ -349,10 +349,12 @@ public class PeakMod : BaseUnityPlugin
 
     private void OnGUI()
     {
+        InitStyles();
+
+        DrawGlobalErrorToast();
+
         if (!showMenu)
             return;
-
-        InitStyles();
 
         GUISkin prevSkin = GUI.skin;
         try
@@ -367,6 +369,65 @@ public class PeakMod : BaseUnityPlugin
         }
         finally
         {
+            GUI.skin = prevSkin;
+        }
+    }
+
+    private void DrawGlobalErrorToast()
+    {
+        if (string.IsNullOrEmpty(Globals.GlobalNotifier.CurrentErrorMessage))
+            return;
+
+        float remaining = Globals.GlobalNotifier.ExpireTime - Time.unscaledTime;
+        if (remaining <= 0f)
+        {
+            Globals.GlobalNotifier.Clear();
+            return;
+        }
+
+        float toastW = 460f;
+        float toastH = 70f;
+        float toastX = (Screen.width - toastW) * 0.5f;
+        float toastY = 30f;
+        Rect toastRect = new Rect(toastX, toastY, toastW, toastH);
+
+        GUISkin prevSkin = GUI.skin;
+        int prevDepth = GUI.depth;
+        try
+        {
+            GUI.skin = customSkin;
+            GUI.depth = -10000;
+
+            GUI.Box(toastRect, GUIContent.none, cardBoxStyle);
+
+            GUILayout.BeginArea(toastRect);
+            try
+            {
+                GUILayout.BeginHorizontal();
+                string title = string.Format("<color=#c24338><b>[{0}]</b></color> ({1}: {2:F1}s)",
+                    Localization.T("error.title"),
+                    Localization.T("error.auto_close"),
+                    remaining);
+                GUILayout.Label(title, boldLabelStyle);
+                GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button("✕", dangerBtnStyle, GUILayout.Width(24), GUILayout.Height(20)))
+                {
+                    Globals.GlobalNotifier.Clear();
+                }
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(2);
+                GUILayout.Label(Globals.GlobalNotifier.CurrentErrorMessage, labelStyle);
+            }
+            finally
+            {
+                GUILayout.EndArea();
+            }
+        }
+        finally
+        {
+            GUI.depth = prevDepth;
             GUI.skin = prevSkin;
         }
     }
@@ -771,15 +832,27 @@ public class PeakMod : BaseUnityPlugin
             }
             else
             {
-                // 4 columns for slots 0, 1, 2, 3 (Slot 4 is dedicated to Backpacks)
+                // 2x2 Grid for slots: Row 1 (Slot 0, 1), Row 2 (Slot 2, 3 [Backpack])
                 GUILayout.BeginHorizontal();
                 try
                 {
-                    for (int slot = 0; slot < 4; slot++)
-                    {
-                        DrawItemSlotColumn(slot);
-                        if (slot < 3) GUILayout.Space(4);
-                    }
+                    DrawItemSlotColumn(0);
+                    GUILayout.Space(6);
+                    DrawItemSlotColumn(1);
+                }
+                finally
+                {
+                    GUILayout.EndHorizontal();
+                }
+
+                GUILayout.Space(6);
+
+                GUILayout.BeginHorizontal();
+                try
+                {
+                    DrawItemSlotColumn(2);
+                    GUILayout.Space(6);
+                    DrawItemSlotColumn(3);
                 }
                 finally
                 {
@@ -796,7 +869,7 @@ public class PeakMod : BaseUnityPlugin
     private void DrawItemSlotColumn(int slot)
     {
         bool isBackpackSlot = (slot == 3);
-        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(148));
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.ExpandWidth(true));
         try
         {
             // Slot header
@@ -859,6 +932,10 @@ public class PeakMod : BaseUnityPlugin
             {
                 GUILayout.Label(Localization.T("items.tip_backpack_slot"), tipLabelStyle);
             }
+            else
+            {
+                GUILayout.Space(16);
+            }
 
             GUILayout.Space(2);
 
@@ -896,15 +973,6 @@ public class PeakMod : BaseUnityPlugin
                     if (GUILayout.Button(name, btnStyle))
                     {
                         Globals.selectedItems[slot] = i;
-                        if (isBackpackSlot)
-                        {
-                            // Equipping backpack (automatically drops current backpack if equipped)
-                            Utilities.AssignBackpackItem(i);
-                        }
-                        else
-                        {
-                            Utilities.AssignInventoryItem(slot, i);
-                        }
                     }
                 }
 
@@ -922,22 +990,33 @@ public class PeakMod : BaseUnityPlugin
 
             if (isBackpackSlot)
             {
-                // Slot 4 specific controls
+                // Slot 4 specific controls: Drop backpack button
                 if (GUILayout.Button(Localization.T("items.drop_backpack"), dangerBtnStyle, GUILayout.Height(22)))
                 {
                     Utilities.DropCurrentBackpack(Player.localPlayer);
                 }
 
-                bool canSpawn = (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count);
+                bool canAct = (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count);
                 bool prevEnabled = GUI.enabled;
-                GUI.enabled = canSpawn;
+                GUI.enabled = canAct;
+
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(22)))
+                {
+                    if (canAct)
+                    {
+                        Utilities.AssignBackpackItem(Globals.selectedItems[slot]);
+                    }
+                }
+
                 if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
                 {
-                    if (canSpawn)
+                    if (canAct)
                     {
                         Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
                     }
                 }
+                GUILayout.EndHorizontal();
                 GUI.enabled = prevEnabled;
             }
             else
@@ -946,35 +1025,47 @@ public class PeakMod : BaseUnityPlugin
                 ConfigEntry<float> rechargeConfig = (slot == 0) ? ConfigManager.RechargeAmountSlot1 :
                     (slot == 1 ? ConfigManager.RechargeAmountSlot2 : ConfigManager.RechargeAmountSlot3);
 
+                GUILayout.BeginHorizontal();
                 if (rechargeConfig != null)
                 {
-                    DrawSliderFloat(rechargeConfig, Localization.T("items.recharge"), 0f, 100f, "{0:F0}", 50f, 30f);
-                }
-
-                GUILayout.BeginHorizontal();
-                try
-                {
-                    if (rechargeConfig != null && GUILayout.Button(Localization.T("items.recharge"), GUILayout.Height(22)))
+                    GUILayout.Label(Localization.T("items.recharge"), GUILayout.Width(45));
+                    float current = rechargeConfig.Value;
+                    float next = GUILayout.HorizontalSlider(current, 0f, 100f);
+                    if (Math.Abs(next - current) > 0.001f)
+                    {
+                        rechargeConfig.Value = next;
+                    }
+                    GUILayout.Space(4);
+                    GUILayout.Label(string.Format("{0:F0}%", next), GUILayout.Width(35));
+                    if (GUILayout.Button(Localization.T("items.recharge"), GUILayout.Width(60), GUILayout.Height(22)))
                     {
                         Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
                     }
+                }
+                GUILayout.EndHorizontal();
 
-                    bool canSpawn = (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count);
-                    bool prevEnabled = GUI.enabled;
-                    GUI.enabled = canSpawn;
-                    if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
-                    {
-                        if (canSpawn)
-                        {
-                            Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
-                        }
-                    }
-                    GUI.enabled = prevEnabled;
-                }
-                finally
+                bool canAct = (Globals.selectedItems[slot] >= 0 && Globals.selectedItems[slot] < Globals.items.Count);
+                bool prevEnabled = GUI.enabled;
+                GUI.enabled = canAct;
+
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(22)))
                 {
-                    GUILayout.EndHorizontal();
+                    if (canAct)
+                    {
+                        Utilities.AssignInventoryItem(slot, Globals.selectedItems[slot]);
+                    }
                 }
+
+                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
+                {
+                    if (canAct)
+                    {
+                        Utilities.SpawnItemInWorld(Globals.selectedItems[slot]);
+                    }
+                }
+                GUILayout.EndHorizontal();
+                GUI.enabled = prevEnabled;
             }
         }
         finally
@@ -1048,15 +1139,23 @@ public class PeakMod : BaseUnityPlugin
         if (GUILayout.Button(Localization.T("lobby.warp_all_to_me"), GUILayout.Height(24)))
             Utilities.WarpAllPlayersToMe();
 
-        if (Globals.selectedLobbyItem >= 0 && Globals.selectedLobbyItem < Globals.items.Count)
+        GUILayout.Space(4);
+        bool canGiveAll = (Globals.selectedLobbyItem >= 0 && Globals.selectedLobbyItem < Globals.items.Count);
+        string selAllName = canGiveAll && (Globals.selectedLobbyItem < Globals.itemNames.Count) ? Globals.itemNames[Globals.selectedLobbyItem] : "";
+        string giveAllText = canGiveAll
+            ? string.Format("{0} ({1})", Localization.T("lobby.give_all_item"), selAllName)
+            : string.Format("{0} ({1})", Localization.T("lobby.give_all_item"), Localization.T("lobby.select_item_first"));
+
+        bool prevGA = GUI.enabled;
+        GUI.enabled = canGiveAll;
+        if (GUILayout.Button(giveAllText, primaryBtnStyle, GUILayout.Height(24)))
         {
-            string selItemName = (Globals.selectedLobbyItem < Globals.itemNames.Count) ? Globals.itemNames[Globals.selectedLobbyItem] : "";
-            GUILayout.Space(4);
-            if (GUILayout.Button(string.Format("{0} ({1})", Localization.T("lobby.give_all_item"), selItemName), primaryBtnStyle, GUILayout.Height(24)))
+            if (canGiveAll)
             {
                 Utilities.GiveItemToAllPlayers(Globals.selectedLobbyItem);
             }
         }
+        GUI.enabled = prevGA;
 
         GUILayout.EndVertical();
 
@@ -1135,23 +1234,58 @@ public class PeakMod : BaseUnityPlugin
 
             GUILayout.Space(4);
 
-            // Button: Give selected item to player
+            // Give Selected Item: 1. Spawn in Front, 2. Equip to Slot 4 (Backpack)
             bool canGive = (Globals.selectedLobbyItem >= 0 && Globals.selectedLobbyItem < Globals.items.Count);
             bool prevE = GUI.enabled;
             GUI.enabled = canGive;
             string selDisp = canGive ? Globals.itemNames[Globals.selectedLobbyItem] : Localization.T("items.none");
-            if (GUILayout.Button(string.Format("{0}: {1}", Localization.T("lobby.give_selected_item"), selDisp), primaryBtnStyle, GUILayout.Height(24)))
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(string.Format("{0}: {1}", Localization.T("lobby.spawn_in_front"), selDisp), primaryBtnStyle, GUILayout.Height(24)))
             {
                 if (canGive)
                 {
                     Utilities.GiveItemToPlayer(Globals.selectedPlayer, Globals.selectedLobbyItem);
                 }
             }
+
+            if (GUILayout.Button(Localization.T("lobby.give_to_slot4"), GUILayout.Height(24), GUILayout.Width(130)))
+            {
+                if (canGive)
+                {
+                    Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.None, Globals.items[Globals.selectedLobbyItem]);
+                }
+            }
+            GUILayout.EndHorizontal();
             GUI.enabled = prevE;
+
+            GUILayout.Space(6);
+
+            // Quick Backpack Buttons: Row 1 = Direct Equip to Slot 4; Row 2 = Spawn in Front
+            GUILayout.Label(Localization.T("items.slot4") + " (快捷给予 / 穿戴):", subHeaderStyle);
+
+            // Direct Equip
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.equip_backpack"), primaryBtnStyle, GUILayout.Height(22)))
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Backpack);
+
+            if (GUILayout.Button(Localization.T("lobby.equip_jetpack"), primaryBtnStyle, GUILayout.Height(22)))
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Jetpack);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(2);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.equip_rocketpack"), primaryBtnStyle, GUILayout.Height(22)))
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Rocketpack);
+
+            if (GUILayout.Button(Localization.T("lobby.equip_fannypack"), primaryBtnStyle, GUILayout.Height(22)))
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Fannypack);
+            GUILayout.EndHorizontal();
 
             GUILayout.Space(4);
 
-            // Quick Backpack Buttons: 4 Backpack Types
+            // Spawn on ground
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(Localization.T("lobby.give_backpack"), GUILayout.Height(22)))
                 Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Backpack);
@@ -1283,10 +1417,22 @@ public class PeakMod : BaseUnityPlugin
 
             if (!isAtCampfire)
             {
-                string btnText = string.Format("{0} ({1} {2})",
-                    Localization.T("world.teleport_next_campfire"),
-                    string.Format(Localization.T("world.level_label"), nextLevel),
-                    nextName);
+                string btnText;
+                if (nextLevel < 5)
+                {
+                    btnText = string.Format("{0} ({1} {2})",
+                        Localization.T("world.teleport_next_campfire"),
+                        string.Format(Localization.T("world.level_label"), nextLevel),
+                        nextName);
+                }
+                else if (nextLevel == 5)
+                {
+                    btnText = Localization.T("world.teleport_kiln_safe");
+                }
+                else
+                {
+                    btnText = Localization.T("world.teleport_to_peak");
+                }
 
                 if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
                 {
@@ -1297,7 +1443,7 @@ public class PeakMod : BaseUnityPlugin
             {
                 // Player is already at the transition campfire!
                 GUILayout.BeginHorizontal();
-                string lightText = string.Format(Localization.T("world.light_campfire"), nextLevel);
+                string lightText = string.Format(Localization.T("world.light_campfire"), currentLevel);
                 if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
                 {
                     Utilities.LightCurrentCampfire();
@@ -1305,10 +1451,20 @@ public class PeakMod : BaseUnityPlugin
 
                 GUILayout.Space(6);
 
-                int afterNextLevel = nextLevel + 1;
-                string nextCampText = (nextLevel < 6)
-                    ? string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel)
-                    : Localization.T("world.teleport_to_peak");
+                int afterNextLevel = nextLevel;
+                string nextCampText;
+                if (afterNextLevel < 5)
+                {
+                    nextCampText = string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel);
+                }
+                else if (afterNextLevel == 5)
+                {
+                    nextCampText = Localization.T("world.teleport_kiln_safe");
+                }
+                else
+                {
+                    nextCampText = Localization.T("world.teleport_to_peak");
+                }
 
                 if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
                 {
@@ -1332,39 +1488,17 @@ public class PeakMod : BaseUnityPlugin
             GUILayout.EndHorizontal();
         }
 
-        GUILayout.Space(8);
-
-        // Full Route Visualization (Breadcrumbs)
-        GUILayout.Label(Localization.T("world.route_header") + ":", subHeaderStyle);
-        GUILayout.Space(2);
-
+        // Detailed Area & Campfire Jump Controls with Refresh Button
         GUILayout.BeginHorizontal();
-        for (int i = 0; i < route.Count; i++)
+        GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button(Localization.T("world.refresh_route"), GUILayout.Width(110), GUILayout.Height(22)))
         {
-            var r = route[i];
-            bool isCur = (r.segment == detectedSeg);
-            GUIStyle stepStyle = isCur ? sidebarActiveBtnStyle : sidebarBtnStyle;
-            string stepText = string.Format("{0}. {1}", r.level, r.displayName);
-            if (isCur && r.isAtCampfire)
-            {
-                stepText += " 🔥";
-            }
-            if (GUILayout.Button(stepText, stepStyle, GUILayout.Height(24)))
-            {
-                Utilities.JumpToSegment(r.segment);
-            }
-            if (i < route.Count - 1)
-            {
-                GUILayout.Label("➔", boldLabelStyle, GUILayout.Width(16));
-            }
+            Utilities.WorldDataCache.Invalidate();
+            Utilities.WorldDataCache.EnsureUpdated(force: true);
         }
         GUILayout.EndHorizontal();
-
-        GUILayout.Space(8);
-
-        // Detailed Area & Campfire Jump Controls
-        GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
-        GUILayout.Space(2);
+        GUILayout.Space(4);
 
         for (int i = 0; i < route.Count; i++)
         {
@@ -1375,23 +1509,29 @@ public class PeakMod : BaseUnityPlugin
 
             // Label for Level and Biome name
             string segLabel = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), r.level), r.displayName);
+            if (r.isCampfireLit)
+            {
+                segLabel += "  [✓]";
+            }
             if (isCur)
             {
-                segLabel += r.isAtCampfire ? "  [🔥]" : "  [✓]";
+                segLabel += r.isAtCampfire
+                    ? string.Format("  [{0}]", Localization.T("world.at_campfire_tag"))
+                    : string.Format("  [{0}]", Localization.T("world.current_tag"));
             }
             GUILayout.Label(segLabel, isCur ? boldLabelStyle : labelStyle, GUILayout.Width(200));
 
-            // Button 1: Jump to Start of segment
+            // Button 1: Jump to Start of segment (Safe start jump, does not light campfire)
             GUIStyle jumpBtnStyle = isCur ? sidebarActiveBtnStyle : primaryBtnStyle;
             string jumpStartText = string.Format("{0}", Localization.T("world.jump_to_start"));
             if (GUILayout.Button(jumpStartText, jumpBtnStyle, GUILayout.Height(24), GUILayout.Width(95)))
             {
-                Utilities.JumpToSegment(r.segment);
+                Utilities.JumpToSegmentStartSafe(r.segment);
             }
 
             GUILayout.Space(4);
 
-            // Button 2: Teleport to Campfire (or Peak action)
+            // Button 2: Teleport to Campfire (or Kiln safe point / Peak)
             if (r.hasCampfire)
             {
                 if (GUILayout.Button(Localization.T("world.teleport_campfire"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
@@ -1407,11 +1547,18 @@ public class PeakMod : BaseUnityPlugin
                     Utilities.LightCampfire(i);
                 }
             }
+            else if (r.segment == Segment.TheKiln)
+            {
+                if (GUILayout.Button(Localization.T("world.teleport_kiln_safe"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
+                {
+                    Utilities.JumpToSegmentStartSafe(Segment.TheKiln);
+                }
+            }
             else
             {
-                if (GUILayout.Button(Localization.T("world.teleport_to_peak"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
+                if (GUILayout.Button(Localization.T("world.teleport_to_peak"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
                 {
-                    Utilities.JumpToSegment(r.segment);
+                    Utilities.JumpToSegmentStartSafe(Segment.Peak);
                 }
             }
 

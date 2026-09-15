@@ -6,8 +6,10 @@ public class EventComponent : MonoBehaviour
 {
     private float stateTimer = 0f;
     private float validationTimer = 0f;
+    private float locationSnapshotTimer = 0f;
     private const float STATE_INTERVAL = 0.1f;
     private const float VALIDATION_INTERVAL = 1f;
+    private const float LOCATION_SNAPSHOT_INTERVAL = 2f;
 
     private struct DelayedAction
     {
@@ -62,6 +64,33 @@ public class EventComponent : MonoBehaviour
                 if (localChar != null && localChar.data != null && !localChar.data.dead)
                 {
                     Utilities.CaptureInventorySnapshot(localChar);
+                }
+            }
+            catch { }
+        }
+
+        locationSnapshotTimer += Time.deltaTime;
+        if (locationSnapshotTimer >= LOCATION_SNAPSHOT_INTERVAL)
+        {
+            locationSnapshotTimer = 0f;
+            try
+            {
+                var allChars = Character.AllCharacters;
+                if (allChars != null)
+                {
+                    for (int i = 0; i < allChars.Count; i++)
+                    {
+                        var ch = allChars[i];
+                        if (ch != null && ch.data != null && !ch.data.dead && !ch.data.passedOut && ch.data.isGrounded)
+                        {
+                            int viewId = ch.photonView != null ? ch.photonView.ViewID : ch.GetInstanceID();
+                            Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
+                            {
+                                safePosition = ch.transform.position,
+                                lastRecordedTime = Time.time
+                            };
+                        }
+                    }
                 }
             }
             catch { }

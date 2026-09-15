@@ -404,6 +404,15 @@ public static class Localization
             { Language.Korean, "아이템 목록 새로고침" },
             { Language.Italian, "Aggiorna Lista Oggetti" }
         }},
+
+        { "items.equip_item", new Dictionary<Language, string> {
+            { Language.English, "Equip to Slot" },
+            { Language.SimplifiedChinese, "装备至该槽位" },
+            { Language.TraditionalChinese, "裝備至該槽位" },
+            { Language.Japanese, "スロットに装備" },
+            { Language.Korean, "슬롯에 장착" },
+            { Language.Italian, "Equipaggia nello slot" }
+        }},
         { "tip.item_search", new Dictionary<Language, string> {
             { Language.English, "Search and assign any available item to this slot." },
             { Language.SimplifiedChinese, "搜索并分配任何可用物品到此槽位。" },
@@ -1111,12 +1120,28 @@ public static class Localization
             { Language.Italian, "Area Successiva:" }
         }},
         { "world.at_campfire_tag", new Dictionary<Language, string> {
-            { Language.English, "[At Campfire]" },
-            { Language.SimplifiedChinese, "[已到达篝火]" },
-            { Language.TraditionalChinese, "[已到達營火]" },
-            { Language.Japanese, "[焚き火に到達]" },
-            { Language.Korean, "[모닥불 도착]" },
-            { Language.Italian, "[Al Falò]" }
+            { Language.English, "At Campfire" },
+            { Language.SimplifiedChinese, "营地" },
+            { Language.TraditionalChinese, "營地" },
+            { Language.Japanese, "焚き火" },
+            { Language.Korean, "모닥불" },
+            { Language.Italian, "Al Falò" }
+        }},
+        { "world.current_tag", new Dictionary<Language, string> {
+            { Language.English, "Current" },
+            { Language.SimplifiedChinese, "当前" },
+            { Language.TraditionalChinese, "目前" },
+            { Language.Japanese, "現在地" },
+            { Language.Korean, "현재" },
+            { Language.Italian, "Attuale" }
+        }},
+        { "world.teleport_kiln_safe", new Dictionary<Language, string> {
+            { Language.English, "Teleport to Kiln Point" },
+            { Language.SimplifiedChinese, "传送至熔炉安全点" },
+            { Language.TraditionalChinese, "傳送至熔爐安全點" },
+            { Language.Japanese, "熔炉安全地点へ" },
+            { Language.Korean, "용광로 안전 지점으로" },
+            { Language.Italian, "Teletrasporto al Forno" }
         }},
         { "world.light_campfire", new Dictionary<Language, string> {
             { Language.English, "Light Campfire (To Level {0})" },
@@ -1279,6 +1304,88 @@ public static class Localization
             { Language.Japanese, "プレイヤーを復活させ、記録されたスロットとバックパック内のアイテムを復元します（重複付与防止）" },
             { Language.Korean, "플레이어를 부활시키고 사망 전 기록된 슬롯 및 배낭 아이템을 복구합니다(중복 복구 방지)" },
             { Language.Italian, "Rianima il giocatore e ripristina slot e zaino registrati (blocco anti-duplicazione monouso)" }
+        }},
+
+        // Lobby Extra Controls
+        { "lobby.give_to_slot4", new Dictionary<Language, string> {
+            { Language.English, "Equip to Slot 4 (Backpack)" },
+            { Language.SimplifiedChinese, "直接装备到4号背包栏" },
+            { Language.TraditionalChinese, "直接裝備到4號背包欄" },
+            { Language.Japanese, "スロット4(バックパック)に装備" },
+            { Language.Korean, "슬롯 4(배낭)에 즉시 장착" },
+            { Language.Italian, "Equipaggia Slot 4 (Zaino)" }
+        }},
+        { "lobby.spawn_in_front", new Dictionary<Language, string> {
+            { Language.English, "Spawn on Ground in Front" },
+            { Language.SimplifiedChinese, "生成掉落在面前地面" },
+            { Language.TraditionalChinese, "生成掉落在面前地面" },
+            { Language.Japanese, "目の前の地面にドロップ" },
+            { Language.Korean, "앞 바닥에 드롭 생성" },
+            { Language.Italian, "Genera a terra davanti" }
+        }},
+        { "lobby.equip_backpack", new Dictionary<Language, string> {
+            { Language.English, "Equip Backpack" },
+            { Language.SimplifiedChinese, "穿戴普通背包" },
+            { Language.TraditionalChinese, "穿戴普通背包" },
+            { Language.Japanese, "バックパック装備" },
+            { Language.Korean, "배낭 장착" },
+            { Language.Italian, "Equipaggia Zaino" }
+        }},
+        { "lobby.equip_jetpack", new Dictionary<Language, string> {
+            { Language.English, "Equip Jetpack" },
+            { Language.SimplifiedChinese, "穿戴喷气背包" },
+            { Language.TraditionalChinese, "穿戴噴氣背包" },
+            { Language.Japanese, "ジェットパック装備" },
+            { Language.Korean, "제트팩 장착" },
+            { Language.Italian, "Equipaggia Jetpack" }
+        }},
+        { "lobby.equip_rocketpack", new Dictionary<Language, string> {
+            { Language.English, "Equip Rocketpack" },
+            { Language.SimplifiedChinese, "穿戴火箭背包" },
+            { Language.TraditionalChinese, "穿戴火箭背包" },
+            { Language.Japanese, "ロケットパック装備" },
+            { Language.Korean, "로켓팩 장착" },
+            { Language.Italian, "Equipaggia Rocketpack" }
+        }},
+        { "lobby.equip_fannypack", new Dictionary<Language, string> {
+            { Language.English, "Equip Fannypack" },
+            { Language.SimplifiedChinese, "穿戴滑稽背包" },
+            { Language.TraditionalChinese, "穿戴滑稽背包" },
+            { Language.Japanese, "ファニーパック装備" },
+            { Language.Korean, "힙색 장착" },
+            { Language.Italian, "Equipaggia Marsupio" }
+        }},
+        { "lobby.select_item_first", new Dictionary<Language, string> {
+            { Language.English, "Select an item in right list first" },
+            { Language.SimplifiedChinese, "请先在右侧列表选中物品" },
+            { Language.TraditionalChinese, "請先在右側列表選中物品" },
+            { Language.Japanese, "先に右リストでアイテムを選択" },
+            { Language.Korean, "먼저 오른쪽 목록에서 아이템 선택" },
+            { Language.Italian, "Seleziona prima l'oggetto a destra" }
+        }},
+        { "world.refresh_route", new Dictionary<Language, string> {
+            { Language.English, "Refresh Route" },
+            { Language.SimplifiedChinese, "刷新地图路线" },
+            { Language.TraditionalChinese, "刷新地圖路線" },
+            { Language.Japanese, "ルート再読込" },
+            { Language.Korean, "경로 새로고침" },
+            { Language.Italian, "Aggiorna Percorso" }
+        }},
+        { "error.title", new Dictionary<Language, string> {
+            { Language.English, "Error Alert" },
+            { Language.SimplifiedChinese, "错误提示" },
+            { Language.TraditionalChinese, "錯誤提示" },
+            { Language.Japanese, "エラー警告" },
+            { Language.Korean, "오류 알림" },
+            { Language.Italian, "Avviso Errore" }
+        }},
+        { "error.auto_close", new Dictionary<Language, string> {
+            { Language.English, "Auto-close" },
+            { Language.SimplifiedChinese, "自动关闭" },
+            { Language.TraditionalChinese, "自動關閉" },
+            { Language.Japanese, "自動消去" },
+            { Language.Korean, "자동 닫힘" },
+            { Language.Italian, "Chiusura automatica" }
         }}
     };
 

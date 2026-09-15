@@ -110,4 +110,32 @@ public static class Globals
 
     public static Dictionary<int, PlayerInventorySnapshot> deathSnapshots = new Dictionary<int, PlayerInventorySnapshot>();
     public static Dictionary<int, PlayerInventorySnapshot> liveSnapshots = new Dictionary<int, PlayerInventorySnapshot>();
+
+    // Location Snapshot System (Prevents reviving into void/falling through map)
+    public class PlayerLocationSnapshot
+    {
+        public Vector3 safePosition;
+        public float lastRecordedTime;
+    }
+    public static Dictionary<int, PlayerLocationSnapshot> playerSafeLocations = new Dictionary<int, PlayerLocationSnapshot>();
+
+    // Global Error & Notification System
+    public static class GlobalNotifier
+    {
+        public static string CurrentErrorMessage = null;
+        public static float ExpireTime = 0f;
+        public static float Duration = 5f;
+
+        public static void ShowError(string message, float duration = 5f)
+        {
+            CurrentErrorMessage = message;
+            Duration = duration;
+            ExpireTime = Time.unscaledTime + duration;
+        }
+
+        public static void Clear()
+        {
+            CurrentErrorMessage = null;
+        }
+    }
 }
