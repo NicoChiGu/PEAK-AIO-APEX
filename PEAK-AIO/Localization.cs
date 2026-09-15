@@ -468,6 +468,22 @@ public static class Localization
             { Language.Korean, "일치 항목 없음" },
             { Language.Italian, "Nessuna corrispondenza" }
         }},
+        { "items.empty_notice", new Dictionary<Language, string> {
+            { Language.English, "No item data detected. If you are in the main menu, load into a game level first, or click 'Refresh Item List'." },
+            { Language.SimplifiedChinese, "当前未检测到物品数据。若处于主菜单，请先进入游戏关卡，或点击「刷新物品列表」。" },
+            { Language.TraditionalChinese, "當前未檢測到物品數據。若處於主菜單，請先進入遊戲關卡，或點擊「重新整理物品列表」。" },
+            { Language.Japanese, "アイテムデータが見つかりません。メインメニューの場合はゲームに参加するか、「アイテムリスト更新」を押してください。" },
+            { Language.Korean, "아이템 데이터를 감지할 수 없습니다. 메인 메뉴라면 게임에 진입하거나 '새로고침'을 클릭하세요." },
+            { Language.Italian, "Nessun dato di oggetti rilevato. Se sei nel menu principale, avvia una partita o clicca 'Aggiorna Lista Oggetti'." }
+        }},
+        { "items.empty_tip", new Dictionary<Language, string> {
+            { Language.English, "Item assets will be automatically loaded into the database when game level initializes." },
+            { Language.SimplifiedChinese, "游戏关卡初始化时，物品数据库将自动收集所有游戏预制体。" },
+            { Language.TraditionalChinese, "遊戲關卡初始化時，物品數據庫將自動收集所有遊戲預製體。" },
+            { Language.Japanese, "ゲームレベル開始時にアイテムデータベースが自動的にロードされます。" },
+            { Language.Korean, "게임 레벨이 시작되면 아이템 데이터베이스가 자동으로 로드됩니다." },
+            { Language.Italian, "I dati degli oggetti verranno caricati automaticamente all'avvio della partita." }
+        }},
 
         // Lobby tab
         { "lobby.players", new Dictionary<Language, string> {
@@ -887,17 +903,17 @@ public static class Localization
             { Language.Italian, "Vai al Segmento" }
         }},
         { "world.segment_beach", new Dictionary<Language, string> {
-            { Language.English, "Beach" },
-            { Language.SimplifiedChinese, "海滩 (Beach)" },
-            { Language.TraditionalChinese, "海灘 (Beach)" },
-            { Language.Japanese, "ビーチ (Beach)" },
-            { Language.Korean, "해변 (Beach)" },
+            { Language.English, "Shore (Beach)" },
+            { Language.SimplifiedChinese, "海岸 (Beach)" },
+            { Language.TraditionalChinese, "海岸 (Beach)" },
+            { Language.Japanese, "海岸 (Beach)" },
+            { Language.Korean, "해안 (Beach)" },
             { Language.Italian, "Spiaggia (Beach)" }
         }},
         { "world.segment_tropics", new Dictionary<Language, string> {
             { Language.English, "Tropics" },
-            { Language.SimplifiedChinese, "热带雨林 (Tropics)" },
-            { Language.TraditionalChinese, "熱帶雨林 (Tropics)" },
+            { Language.SimplifiedChinese, "热带 (Tropics)" },
+            { Language.TraditionalChinese, "熱帶 (Tropics)" },
             { Language.Japanese, "熱帯 (Tropics)" },
             { Language.Korean, "열대 (Tropics)" },
             { Language.Italian, "Tropici (Tropics)" }
@@ -911,12 +927,12 @@ public static class Localization
             { Language.Italian, "Alpino (Alpine)" }
         }},
         { "world.segment_caldera", new Dictionary<Language, string> {
-            { Language.English, "Caldera" },
-            { Language.SimplifiedChinese, "火山口 (Caldera)" },
-            { Language.TraditionalChinese, "火山口 (Caldera)" },
-            { Language.Japanese, "カルデラ (Caldera)" },
-            { Language.Korean, "칼데라 (Caldera)" },
-            { Language.Italian, "Caldera (Caldera)" }
+            { Language.English, "Volcano (Caldera)" },
+            { Language.SimplifiedChinese, "火山 (Volcano)" },
+            { Language.TraditionalChinese, "火山 (Volcano)" },
+            { Language.Japanese, "火山 (Volcano)" },
+            { Language.Korean, "화산 (Volcano)" },
+            { Language.Italian, "Vulcano (Caldera)" }
         }},
         { "world.segment_thekiln", new Dictionary<Language, string> {
             { Language.English, "The Kiln" },
@@ -936,19 +952,83 @@ public static class Localization
         }},
         { "world.segment_mesa", new Dictionary<Language, string> {
             { Language.English, "Mesa" },
-            { Language.SimplifiedChinese, "台地 (Mesa)" },
-            { Language.TraditionalChinese, "台地 (Mesa)" },
+            { Language.SimplifiedChinese, "方山 (Mesa)" },
+            { Language.TraditionalChinese, "方山 (Mesa)" },
             { Language.Japanese, "メサ (Mesa)" },
             { Language.Korean, "메사 (Mesa)" },
             { Language.Italian, "Mesa (Mesa)" }
         }},
         { "world.segment_roots", new Dictionary<Language, string> {
             { Language.English, "Roots" },
-            { Language.SimplifiedChinese, "树根 (Roots)" },
-            { Language.TraditionalChinese, "樹根 (Roots)" },
-            { Language.Japanese, "木の根 (Roots)" },
-            { Language.Korean, "뿌리 (Roots)" },
+            { Language.SimplifiedChinese, "森蕈 (Roots)" },
+            { Language.TraditionalChinese, "森蕈 (Roots)" },
+            { Language.Japanese, "森蕈 (Roots)" },
+            { Language.Korean, "버섯숲 (Roots)" },
             { Language.Italian, "Radici (Roots)" }
+        }},
+        { "world.segment_swamp", new Dictionary<Language, string> {
+            { Language.English, "Swamp" },
+            { Language.SimplifiedChinese, "沼泽 (Swamp)" },
+            { Language.TraditionalChinese, "沼澤 (Swamp)" },
+            { Language.Japanese, "湿原 (Swamp)" },
+            { Language.Korean, "늪지대 (Swamp)" },
+            { Language.Italian, "Palude (Swamp)" }
+        }},
+        { "world.segment_void", new Dictionary<Language, string> {
+            { Language.English, "Void" },
+            { Language.SimplifiedChinese, "虚空 (Void)" },
+            { Language.TraditionalChinese, "虛空 (Void)" },
+            { Language.Japanese, "虚空 (Void)" },
+            { Language.Korean, "공허 (Void)" },
+            { Language.Italian, "Vuoto (Void)" }
+        }},
+        { "world.daily_route_info", new Dictionary<Language, string> {
+            { Language.English, "Today's Island Flight Route" },
+            { Language.SimplifiedChinese, "今日每日岛屿 (登机航线)" },
+            { Language.TraditionalChinese, "今日每日島嶼 (登機航線)" },
+            { Language.Japanese, "本日の島ルート" },
+            { Language.Korean, "오늘의 섬 등반 항로" },
+            { Language.Italian, "Rotta dell'Isola di Oggi" }
+        }},
+        { "world.next_rotation_info", new Dictionary<Language, string> {
+            { Language.English, "Next Island Rotation Preview" },
+            { Language.SimplifiedChinese, "明日地图轮换预告" },
+            { Language.TraditionalChinese, "明日地圖輪換預告" },
+            { Language.Japanese, "明日の島マップ予告" },
+            { Language.Korean, "내일 섬 로테이션 예고" },
+            { Language.Italian, "Prossima Mappa dell'Isola" }
+        }},
+        { "world.rotation_timer", new Dictionary<Language, string> {
+            { Language.English, "Next Rotation In:" },
+            { Language.SimplifiedChinese, "距下次地图换日:" },
+            { Language.TraditionalChinese, "距下次地圖換日:" },
+            { Language.Japanese, "次回マップ更新まで:" },
+            { Language.Korean, "다음 맵 교체까지:" },
+            { Language.Italian, "Prossima Rotazione Tra:" }
+        }},
+        { "world.airport_status", new Dictionary<Language, string> {
+            { Language.English, "Airport Lobby (Before Flight)" },
+            { Language.SimplifiedChinese, "机场大厅 (登机前)" },
+            { Language.TraditionalChinese, "機場大廳 (登機前)" },
+            { Language.Japanese, "空港ロビー (搭乗前)" },
+            { Language.Korean, "공항 로비 (탑승 전)" },
+            { Language.Italian, "Lobby Aeroporto (Prima del Volo)" }
+        }},
+        { "world.next_level_target", new Dictionary<Language, string> {
+            { Language.English, "Next Area:" },
+            { Language.SimplifiedChinese, "下一关:" },
+            { Language.TraditionalChinese, "下一關:" },
+            { Language.Japanese, "次のエリア:" },
+            { Language.Korean, "다음 구역:" },
+            { Language.Italian, "Prossima Area:" }
+        }},
+        { "world.return_airport", new Dictionary<Language, string> {
+            { Language.English, "Return to Airport" },
+            { Language.SimplifiedChinese, "返回机场大厅" },
+            { Language.TraditionalChinese, "返回機場大廳" },
+            { Language.Japanese, "空港ロビーに戻る" },
+            { Language.Korean, "공항 로비로 귀환" },
+            { Language.Italian, "Torna all'Aeroporto" }
         }},
         { "world.route_header", new Dictionary<Language, string> {
             { Language.English, "Mountain Route (Full Route)" },

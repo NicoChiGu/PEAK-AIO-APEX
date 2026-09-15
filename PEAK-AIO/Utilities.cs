@@ -55,11 +55,13 @@ public static class Utilities
     public static bool hasAttemptedItemLoad = false;
     private static bool isUpdatingItems = false;
     public static bool pendingItemRefresh = false;
+    private static float lastItemLoadAttemptTime = -999f;
 
     public static void UpdateItems(bool force = false)
     {
         if (isUpdatingItems) return;
-        if (!force && hasAttemptedItemLoad && Globals.items.Count > 0) return;
+        if (!force && hasAttemptedItemLoad && Globals.items != null && Globals.items.Count > 0) return;
+        if (!force && Time.realtimeSinceStartup - lastItemLoadAttemptTime < 2.0f) return;
 
         if (force)
         {
@@ -77,7 +79,6 @@ public static class Utilities
             }
             else
             {
-                // Defer to next Layout event so IMGUI control count remains consistent across Layout and Repaint
                 pendingItemRefresh = true;
             }
             return;
@@ -98,36 +99,61 @@ public static class Utilities
     {
         if (isUpdatingItems) return;
         isUpdatingItems = true;
+        lastItemLoadAttemptTime = Time.realtimeSinceStartup;
 
         try
         {
             var itemSet = new HashSet<string>();
             var collectedItems = new List<Item>();
 
+            Action<Item, bool> tryAddItem = (item, requireAssetOnly) =>
+            {
+                if (item == null || item.gameObject == null) return;
+                if (requireAssetOnly)
+                {
+                    bool isAsset = false;
+                    try
+                    {
+                        isAsset = !item.gameObject.scene.IsValid() || string.IsNullOrEmpty(item.gameObject.scene.name);
+                    }
+                    catch
+                    {
+                        isAsset = true;
+                    }
+                    if (!isAsset) return;
+                }
+
+                string key = null;
+                try { key = item.GetName(); } catch { }
+                if (string.IsNullOrEmpty(key)) key = item.name;
+                if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
+                {
+                    itemSet.Add(key);
+                    collectedItems.Add(item);
+                }
+            };
+
             // 1. Try to load from ItemDatabase singleton asset
             try
             {
                 var db = SingletonAsset<ItemDatabase>.Instance;
-                if (db != null && db.Objects != null && db.Objects.Count > 0)
+                if (db != null)
                 {
-                    for (int i = 0; i < db.Objects.Count; i++)
+                    if (db.Objects == null || db.Objects.Count == 0)
                     {
-                        try
+                        try { db.LoadItems(); } catch { }
+                    }
+
+                    if (db.Objects != null && db.Objects.Count > 0)
+                    {
+                        for (int i = 0; i < db.Objects.Count; i++)
                         {
-                            var item = db.Objects[i];
-                            if (item != null && !string.IsNullOrEmpty(item.name))
+                            try
                             {
-                                string key = null;
-                                try { key = item.GetName(); } catch { }
-                                if (string.IsNullOrEmpty(key)) key = item.name;
-                                if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
-                                {
-                                    itemSet.Add(key);
-                                    collectedItems.Add(item);
-                                }
+                                tryAddItem(db.Objects[i], false);
                             }
+                            catch { }
                         }
-                        catch { }
                     }
                 }
             }
@@ -137,7 +163,49 @@ public static class Utilities
                     Logger.LogWarning("[PEAK AIO] Could not query ItemDatabase: " + ex.Message);
             }
 
-            // 2. Fallback to FindObjectsOfTypeAll only if ItemDatabase gave 0 items
+            // 2. Fallback to Item.ALL_ITEMS
+            try
+            {
+                if (Item.ALL_ITEMS != null && Item.ALL_ITEMS.Count > 0)
+                {
+                    for (int i = 0; i < Item.ALL_ITEMS.Count; i++)
+                    {
+                        try
+                        {
+                            tryAddItem(Item.ALL_ITEMS[i], false);
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] Could not query Item.ALL_ITEMS: " + ex.Message);
+            }
+
+            // 3. Fallback to Item.ALL_ACTIVE_ITEMS
+            try
+            {
+                if (Item.ALL_ACTIVE_ITEMS != null && Item.ALL_ACTIVE_ITEMS.Count > 0)
+                {
+                    for (int i = 0; i < Item.ALL_ACTIVE_ITEMS.Count; i++)
+                    {
+                        try
+                        {
+                            tryAddItem(Item.ALL_ACTIVE_ITEMS[i], false);
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] Could not query Item.ALL_ACTIVE_ITEMS: " + ex.Message);
+            }
+
+            // 4. Fallback to Resources.FindObjectsOfTypeAll only if earlier sources gave 0 items
             if (collectedItems.Count == 0)
             {
                 try
@@ -149,28 +217,7 @@ public static class Utilities
                         {
                             try
                             {
-                                var item = allItems[i] as Item;
-                                if (item != null && item.gameObject != null)
-                                {
-                                    bool isAsset = false;
-                                    try
-                                    {
-                                        isAsset = !item.gameObject.scene.IsValid() || item.gameObject.scene.handle == 0 || string.IsNullOrEmpty(item.gameObject.scene.name);
-                                    }
-                                    catch { }
-
-                                    if (isAsset)
-                                    {
-                                        string key = null;
-                                        try { key = item.GetName(); } catch { }
-                                        if (string.IsNullOrEmpty(key)) key = item.name;
-                                        if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
-                                        {
-                                            itemSet.Add(key);
-                                            collectedItems.Add(item);
-                                        }
-                                    }
-                                }
+                                tryAddItem(allItems[i] as Item, true);
                             }
                             catch { }
                         }
@@ -214,8 +261,8 @@ public static class Utilities
             Globals.items = newItems;
             Globals.itemNames = newItemNames;
 
-            // Mark load attempt only if we got items (otherwise keep false so we can retry on next game scene)
-            hasAttemptedItemLoad = (newItems.Count > 0);
+            // Mark load attempt
+            hasAttemptedItemLoad = true;
 
             // Clamp selected items if out of bounds
             if (Globals.selectedItems != null)
@@ -304,9 +351,12 @@ public static class Utilities
                 try
                 {
                     var slotData = Globals.playerObj.itemSlots[slot];
-                    slotData.prefab = Globals.items[itemIndex];
-                    slotData.data = new ItemInstanceData(Guid.NewGuid());
-                    ItemInstanceDataHandler.AddInstanceData(slotData.data);
+                    if (slotData != null)
+                    {
+                        var itemData = new ItemInstanceData(Guid.NewGuid());
+                        ItemInstanceDataHandler.AddInstanceData(itemData);
+                        slotData.SetItem(Globals.items[itemIndex], itemData);
+                    }
 
                     var syncObj = new InventorySyncData(
                         Globals.playerObj.itemSlots,
@@ -860,6 +910,7 @@ public static class Utilities
                 if (Logger != null)
                     Logger.LogInfo(string.Format("[PEAK AIO] Jumping to segment: {0}", segment));
                 MapHandler.JumpToSegment(segment);
+                WorldDataCache.Invalidate();
             }
             catch (Exception ex)
             {
@@ -887,6 +938,8 @@ public static class Utilities
             return Localization.T("world.segment_thekiln");
         if (seg == Segment.Peak)
             return Localization.T("world.segment_peak");
+        if ((int)seg == 6)
+            return Localization.T("world.segment_void");
 
         switch (bt)
         {
@@ -905,6 +958,11 @@ public static class Utilities
             case Biome.BiomeType.Peak:
                 return Localization.T("world.segment_peak");
             default:
+                if ((int)bt == 8)
+                    return Localization.T("world.segment_swamp");
+                if ((int)bt == 16)
+                    return Localization.T("world.segment_void");
+
                 switch (seg)
                 {
                     case Segment.Beach: return Localization.T("world.segment_beach");
@@ -913,20 +971,80 @@ public static class Utilities
                     case Segment.Caldera: return Localization.T("world.segment_caldera");
                     case Segment.TheKiln: return Localization.T("world.segment_thekiln");
                     case Segment.Peak: return Localization.T("world.segment_peak");
-                    default: return seg.ToString();
+                    default:
+                        if ((int)seg == 6) return Localization.T("world.segment_void");
+                        return seg.ToString();
                 }
+        }
+    }
+
+    public static string DecodeBiomeCharToName(char c)
+    {
+        switch (char.ToUpper(c))
+        {
+            case 'S': return Localization.T("world.segment_beach");
+            case 'T': return Localization.T("world.segment_tropics");
+            case 'R': return Localization.T("world.segment_roots");
+            case 'A': return Localization.T("world.segment_alpine");
+            case 'M': return Localization.T("world.segment_mesa");
+            case 'V': return Localization.T("world.segment_caldera");
+            case 'K': return Localization.T("world.segment_thekiln");
+            case 'P': return Localization.T("world.segment_peak");
+            default: return c.ToString();
+        }
+    }
+
+    public static string FormatBiomeIDRoute(string biomeId)
+    {
+        if (string.IsNullOrEmpty(biomeId)) return "";
+        List<string> parts = new List<string>();
+        for (int i = 0; i < biomeId.Length; i++)
+        {
+            char c = biomeId[i];
+            if (i == 3 && char.ToUpper(c) == 'S')
+            {
+                parts.Add(Localization.T("world.segment_swamp"));
+            }
+            else
+            {
+                parts.Add(DecodeBiomeCharToName(c));
+            }
+        }
+        if (parts.Count == 4)
+        {
+            parts.Add(Localization.T("world.segment_thekiln"));
+            parts.Add(Localization.T("world.segment_peak"));
+        }
+        return string.Join(" ➔ ", parts.ToArray());
+    }
+
+    private static readonly Campfire[] s_CachedCampfires = new Campfire[6];
+
+    public static void ClearCampfireCache()
+    {
+        for (int i = 0; i < s_CachedCampfires.Length; i++)
+        {
+            s_CachedCampfires[i] = null;
         }
     }
 
     public static Campfire GetSegmentCampfire(int segmentIndex)
     {
+        if (segmentIndex < 0 || segmentIndex >= 5)
+            return null;
+
+        if (s_CachedCampfires[segmentIndex] != null && s_CachedCampfires[segmentIndex].gameObject != null)
+        {
+            return s_CachedCampfires[segmentIndex];
+        }
+
         if (!MapHandler.Exists || MapHandler.Instance == null)
             return null;
 
         var mh = MapHandler.Instance;
         Campfire targetCampfire = null;
 
-        if (mh.segments != null && segmentIndex >= 0 && segmentIndex < mh.segments.Length)
+        if (mh.segments != null && segmentIndex < mh.segments.Length)
         {
             var seg = mh.segments[segmentIndex];
             if (seg != null && seg.segmentCampfire != null)
@@ -940,21 +1058,9 @@ public static class Utilities
             targetCampfire = MapHandler.CurrentCampfire;
         }
 
-        if (targetCampfire == null)
+        if (targetCampfire != null)
         {
-            Segment nextSeg = (Segment)(segmentIndex + 1);
-            Campfire[] all = Resources.FindObjectsOfTypeAll<Campfire>();
-            if (all != null)
-            {
-                foreach (var cf in all)
-                {
-                    if (cf != null && cf.advanceToSegment == nextSeg)
-                    {
-                        targetCampfire = cf;
-                        break;
-                    }
-                }
-            }
+            s_CachedCampfires[segmentIndex] = targetCampfire;
         }
 
         return targetCampfire;
@@ -1017,7 +1123,6 @@ public static class Utilities
                     if (seg != null && seg.reconnectSpawnPos != null)
                     {
                         float spawnY = seg.reconnectSpawnPos.position.y;
-                        // Higher segments must have a realistic positive altitude (> 10m) to avoid uninitialized (0,0,0) false positives
                         if (i == 0 || spawnY > 10f)
                         {
                             if (pPos.y >= spawnY - 2f)
@@ -1042,6 +1147,52 @@ public static class Utilities
             return local.transform.position.y;
         }
         return 0f;
+    }
+
+    public static List<RouteSegmentInfo> GetAirportPredictedRoute(string biomeId)
+    {
+        var route = new List<RouteSegmentInfo>(6);
+        Segment[] defaultSegments = new Segment[] {
+            Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
+        };
+
+        for (int i = 0; i < 6; i++)
+        {
+            string name;
+            if (i < 4 && !string.IsNullOrEmpty(biomeId) && i < biomeId.Length)
+            {
+                char c = biomeId[i];
+                if (i == 3 && char.ToUpper(c) == 'S')
+                    name = Localization.T("world.segment_swamp");
+                else
+                    name = DecodeBiomeCharToName(c);
+            }
+            else if (i == 4)
+            {
+                name = Localization.T("world.segment_thekiln");
+            }
+            else if (i == 5)
+            {
+                name = Localization.T("world.segment_peak");
+            }
+            else
+            {
+                name = GetBiomeDisplayName((Biome.BiomeType)(-1), defaultSegments[i]);
+            }
+
+            route.Add(new RouteSegmentInfo
+            {
+                level = i + 1,
+                segment = defaultSegments[i],
+                biomeType = (Biome.BiomeType)(-1),
+                displayName = name,
+                isCurrent = (i == 0),
+                hasCampfire = (i < 5),
+                altitude = 0f,
+                isAtCampfire = false
+            });
+        }
+        return route;
     }
 
     public static List<RouteSegmentInfo> GetFullRoute()
@@ -1106,6 +1257,160 @@ public static class Utilities
         }
 
         return route;
+    }
+
+    public static class WorldDataCache
+    {
+        public static Segment currentSegment = Segment.Beach;
+        public static float altitude = 0f;
+        public static List<RouteSegmentInfo> route = new List<RouteSegmentInfo>();
+        public static bool isAtCampfire = false;
+        public static string currentSegDisplayName = "Unknown";
+        public static string nextSegDisplayName = "Unknown";
+        public static int currentLevelNumber = 1;
+        public static int nextLevelNumber = 2;
+        public static bool isInAirport = true;
+
+        // Daily Island Info
+        public static int todayLevelIndex = 0;
+        public static string todaySceneName = "";
+        public static string todayBiomeID = "";
+        public static string todayBiomeRoute = "";
+
+        public static int nextLevelIndex = 1;
+        public static string nextSceneName = "";
+        public static string nextBiomeID = "";
+        public static string nextBiomeRoute = "";
+
+        public static string countdownFormatted = "";
+
+        private static float s_LastUpdateTime = -10f;
+        public const float UPDATE_INTERVAL = 0.5f;
+
+        public static void Invalidate()
+        {
+            s_LastUpdateTime = -10f;
+            ClearCampfireCache();
+        }
+
+        public static void EnsureUpdated(bool force = false)
+        {
+            float now = Time.realtimeSinceStartup;
+            if (!force && (now - s_LastUpdateTime < UPDATE_INTERVAL))
+            {
+                return;
+            }
+            s_LastUpdateTime = now;
+
+            UpdateCacheInternal();
+        }
+
+        private static void UpdateCacheInternal()
+        {
+            isInAirport = (!MapHandler.Exists || MapHandler.Instance == null);
+
+            try
+            {
+                var nextLevelService = GameHandler.GetService<NextLevelService>();
+                var baker = SingletonAsset<MapBaker>.Instance;
+                if (nextLevelService != null && baker != null)
+                {
+                    int curIdx = nextLevelService.NextLevelIndexOrFallback;
+                    int offset = NextLevelService.debugLevelIndexOffset;
+                    todayLevelIndex = curIdx + offset;
+                    todaySceneName = baker.GetLevel(todayLevelIndex);
+                    todayBiomeID = baker.GetBiomeID(todayLevelIndex);
+                    todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+
+                    nextLevelIndex = curIdx + offset + 1;
+                    nextSceneName = baker.GetLevel(nextLevelIndex);
+                    nextBiomeID = baker.GetBiomeID(nextLevelIndex);
+                    nextBiomeRoute = FormatBiomeIDRoute(nextBiomeID);
+
+                    int seconds = nextLevelService.Data.IsSome
+                        ? nextLevelService.Data.Value.SecondsLeft
+                        : nextLevelService.SecondsLeftFallback;
+
+                    if (seconds >= 0)
+                    {
+                        int h = seconds / 3600;
+                        int m = (seconds % 3600) / 60;
+                        int s = seconds % 60;
+                        countdownFormatted = string.Format("{0}h {1:D2}m {2:D2}s", h, m, s);
+                    }
+                    else
+                    {
+                        countdownFormatted = "--:--:--";
+                    }
+                }
+            }
+            catch { }
+
+            if (!isInAirport)
+            {
+                currentSegment = DetectCurrentPlayerSegment();
+                currentLevelNumber = (int)currentSegment + 1;
+                altitude = GetCurrentPlayerAltitude();
+                route = GetFullRoute();
+                isAtCampfire = (currentLevelNumber <= 5) && IsPlayerNearCampfire((int)currentSegment, 12f);
+
+                currentSegDisplayName = "Unknown";
+                for (int i = 0; i < route.Count; i++)
+                {
+                    if (route[i].segment == currentSegment)
+                    {
+                        currentSegDisplayName = route[i].displayName;
+                        break;
+                    }
+                }
+
+                if (currentLevelNumber < 6 && currentLevelNumber < route.Count)
+                {
+                    nextLevelNumber = currentLevelNumber + 1;
+                    nextSegDisplayName = route[currentLevelNumber].displayName;
+                }
+                else
+                {
+                    nextLevelNumber = 6;
+                    nextSegDisplayName = Localization.T("world.segment_peak");
+                }
+            }
+            else
+            {
+                currentSegment = Segment.Beach;
+                currentLevelNumber = 1;
+                altitude = 0f;
+                route = GetAirportPredictedRoute(todayBiomeID);
+                isAtCampfire = false;
+                currentSegDisplayName = (route.Count > 0) ? route[0].displayName : Localization.T("world.segment_beach");
+                nextSegDisplayName = (route.Count > 1) ? route[1].displayName : "";
+                nextLevelNumber = 2;
+            }
+        }
+    }
+
+    public static void ReturnToAirport()
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                GameHandler.AddStatus<SceneSwitchingStatus>(new SceneSwitchingStatus());
+                RetrievableResourceSingleton<LoadingScreenHandler>.Instance.Load(
+                    LoadingScreen.LoadingScreenType.Plane,
+                    null,
+                    new System.Collections.IEnumerator[] {
+                        RetrievableResourceSingleton<LoadingScreenHandler>.Instance.LoadSceneProcess("Airport", false, true, 2f)
+                    }
+                );
+                WorldDataCache.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] ReturnToAirport error: " + ex.Message);
+            }
+        });
     }
 
     public static bool LightCampfire(int segmentIndex)
@@ -1265,6 +1570,7 @@ public static class Utilities
             if (Logger != null)
                 Logger.LogInfo(string.Format("[PEAK AIO] Teleported to campfire before segment {0} at {1}", (Segment)(segmentIndex + 1), safePos));
 
+            WorldDataCache.Invalidate();
             return true;
         }
         catch (Exception ex)
@@ -1303,8 +1609,10 @@ public static class Utilities
                         EventComponent.QueueDelayedAction(() =>
                         {
                             TeleportToCampfire(segIdx);
+                            WorldDataCache.Invalidate();
                         }, 0.5f);
                     }
+                    WorldDataCache.Invalidate();
                 }
             }
             catch (Exception ex)
@@ -1553,14 +1861,19 @@ public static class Utilities
 
     public static bool PlayerHasBackpack(Player player)
     {
-        if (player == null || player.itemSlots == null)
+        if (player == null)
             return false;
 
-        if (player.itemSlots.Length <= 3)
-            return false;
+        if (player.backpackSlot != null && !player.backpackSlot.IsEmpty())
+            return true;
 
-        var backpackSlot = player.itemSlots[3] as BackpackSlot;
-        return backpackSlot != null && backpackSlot.hasBackpack;
+        if (player.itemSlots != null && player.itemSlots.Length > 3)
+        {
+            var backpackSlot = player.itemSlots[3] as BackpackSlot;
+            return backpackSlot != null && !backpackSlot.IsEmpty();
+        }
+
+        return false;
     }
 
     public static void GivePlayerBackpack(Player player)
@@ -1572,11 +1885,15 @@ public static class Utilities
             return;
         }
 
-        ItemSlot slot = player.GetItemSlot(3);
-        var backpackSlot = slot as BackpackSlot;
+        BackpackSlot backpackSlot = player.backpackSlot;
+        if (backpackSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
+        {
+            backpackSlot = player.itemSlots[3] as BackpackSlot;
+        }
+
         if (backpackSlot != null)
         {
-            if (backpackSlot.hasBackpack)
+            if (!backpackSlot.IsEmpty())
             {
                 if (Logger != null)
                     Logger.LogInfo("[SpawnBackpack] Player already has backpack.");
@@ -1586,8 +1903,8 @@ public static class Utilities
             var data = new ItemInstanceData(Guid.NewGuid());
             ItemInstanceDataHandler.AddInstanceData(data);
 
-            backpackSlot.hasBackpack = true;
-            backpackSlot.data = data;
+            backpackSlot.backpackType = BackpackSlot.BackpackType.Backpack;
+            backpackSlot.SetItem(null, data);
 
             try
             {
@@ -1614,7 +1931,7 @@ public static class Utilities
         else
         {
             if (Logger != null)
-                Logger.LogError("[SpawnBackpack] Slot 3 is not BackpackSlot.");
+                Logger.LogError("[SpawnBackpack] BackpackSlot is null.");
         }
     }
 }

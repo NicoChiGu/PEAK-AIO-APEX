@@ -411,7 +411,7 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Space(6);
 
         // 2. Main Content Area
-        GUILayout.BeginVertical(cardBoxStyle);
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
         try
         {
             DrawMainArea();
@@ -696,62 +696,100 @@ public class PeakMod : BaseUnityPlugin
             if (Utilities.pendingItemRefresh || (Globals.items.Count == 0 && !Utilities.hasAttemptedItemLoad))
             {
                 Utilities.pendingItemRefresh = false;
-                Utilities.UpdateItemsSync();
+                try
+                {
+                    Utilities.UpdateItemsSync();
+                }
+                catch (Exception ex)
+                {
+                    if (Logger != null)
+                        Logger.LogError("[PEAK AIO] Error updating items in DrawItemsTab: " + ex);
+                }
             }
         }
 
-        // Safety check for search buffers
-        if (Globals.itemSearchBuffers == null || Globals.itemSearchBuffers.Length < 3)
-        {
-            Globals.itemSearchBuffers = new string[3] { "", "", "" };
-        }
-        for (int s = 0; s < 3; s++)
-        {
-            if (Globals.itemSearchBuffers[s] == null)
-                Globals.itemSearchBuffers[s] = "";
-        }
-
-        if (Globals.slotScrolls == null || Globals.slotScrolls.Length < 3)
-        {
-            Globals.slotScrolls = new Vector2[3] { Vector2.zero, Vector2.zero, Vector2.zero };
-        }
-
-        if (Globals.selectedItems == null || Globals.selectedItems.Length < 3)
-        {
-            Globals.selectedItems = new int[3] { -1, -1, -1 };
-        }
-
-        GUILayout.BeginHorizontal();
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
         try
         {
-            GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
-            GUILayout.FlexibleSpace();
-            GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
-            if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(120), GUILayout.Height(22)))
+            // Safety check for search buffers
+            if (Globals.itemSearchBuffers == null || Globals.itemSearchBuffers.Length < 3)
             {
-                Utilities.pendingItemRefresh = true;
+                Globals.itemSearchBuffers = new string[3] { "", "", "" };
+            }
+            for (int s = 0; s < 3; s++)
+            {
+                if (Globals.itemSearchBuffers[s] == null)
+                    Globals.itemSearchBuffers[s] = "";
+            }
+
+            if (Globals.slotScrolls == null || Globals.slotScrolls.Length < 3)
+            {
+                Globals.slotScrolls = new Vector2[3] { Vector2.zero, Vector2.zero, Vector2.zero };
+            }
+
+            if (Globals.selectedItems == null || Globals.selectedItems.Length < 3)
+            {
+                Globals.selectedItems = new int[3] { -1, -1, -1 };
+            }
+
+            GUILayout.BeginHorizontal();
+            try
+            {
+                GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
+                if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(130), GUILayout.Height(22)))
+                {
+                    Utilities.pendingItemRefresh = true;
+                }
+            }
+            finally
+            {
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(4);
+
+            if (Globals.items.Count == 0)
+            {
+                GUILayout.BeginVertical(cardBoxStyle);
+                try
+                {
+                    GUILayout.Label(Localization.T("items.empty_notice"), labelStyle);
+                    GUILayout.Space(2);
+                    GUILayout.Label(Localization.T("items.empty_tip"), tipLabelStyle);
+                    GUILayout.Space(6);
+                    if (GUILayout.Button(Localization.T("items.refresh"), primaryBtnStyle, GUILayout.Width(160), GUILayout.Height(26)))
+                    {
+                        Utilities.pendingItemRefresh = true;
+                    }
+                }
+                finally
+                {
+                    GUILayout.EndVertical();
+                }
+            }
+            else
+            {
+                // 3 columns for slots 0, 1, 2
+                GUILayout.BeginHorizontal();
+                try
+                {
+                    for (int slot = 0; slot < 3; slot++)
+                    {
+                        DrawItemSlotColumn(slot);
+                        if (slot < 2) GUILayout.Space(4);
+                    }
+                }
+                finally
+                {
+                    GUILayout.EndHorizontal();
+                }
             }
         }
         finally
         {
-            GUILayout.EndHorizontal();
-        }
-
-        GUILayout.Space(4);
-
-        // 3 columns for slots 0, 1, 2
-        GUILayout.BeginHorizontal();
-        try
-        {
-            for (int slot = 0; slot < 3; slot++)
-            {
-                DrawItemSlotColumn(slot);
-                if (slot < 2) GUILayout.Space(4);
-            }
-        }
-        finally
-        {
-            GUILayout.EndHorizontal();
+            GUILayout.EndScrollView();
         }
     }
 
@@ -768,12 +806,20 @@ public class PeakMod : BaseUnityPlugin
             try
             {
                 if (Player.localPlayer != null && Player.localPlayer.itemSlots != null &&
-                    Player.localPlayer.itemSlots.Length > slot && Player.localPlayer.itemSlots[slot] != null &&
-                    Player.localPlayer.itemSlots[slot].prefab != null)
+                    Player.localPlayer.itemSlots.Length > slot && Player.localPlayer.itemSlots[slot] != null)
                 {
-                    string n = Player.localPlayer.itemSlots[slot].prefab.GetName();
-                    if (string.IsNullOrEmpty(n)) n = Player.localPlayer.itemSlots[slot].prefab.name;
-                    if (!string.IsNullOrEmpty(n)) currentItemName = n;
+                    var itemSlot = Player.localPlayer.itemSlots[slot];
+                    if (!itemSlot.IsEmpty() && itemSlot.prefab != null)
+                    {
+                        string n = itemSlot.prefab.GetName();
+                        if (string.IsNullOrEmpty(n)) n = itemSlot.prefab.name;
+                        if (!string.IsNullOrEmpty(n)) currentItemName = n;
+                    }
+                    else if (!itemSlot.IsEmpty())
+                    {
+                        string n = itemSlot.GetPrefabName();
+                        if (!string.IsNullOrEmpty(n)) currentItemName = n;
+                    }
                 }
             }
             catch { }
@@ -985,6 +1031,7 @@ public class PeakMod : BaseUnityPlugin
     private void DrawWorldTab()
     {
         Utilities.EnsureLuggageListInitialized();
+        Utilities.WorldDataCache.EnsureUpdated();
 
         Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
 
@@ -995,48 +1042,80 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Label(Localization.T("world.segment_teleport"), sectionHeaderStyle);
         GUILayout.Space(4);
 
-        // Current Area Detection
-        Segment detectedSeg = Utilities.DetectCurrentPlayerSegment();
-        int currentLevel = (int)detectedSeg + 1;
-        float altitude = Utilities.GetCurrentPlayerAltitude();
-        List<Utilities.RouteSegmentInfo> route = Utilities.GetFullRoute();
-        bool isAtCampfire = (currentLevel <= 5) && Utilities.IsPlayerNearCampfire((int)detectedSeg);
+        // Read from Cached World Data (Zero Lag)
+        Segment detectedSeg = Utilities.WorldDataCache.currentSegment;
+        int currentLevel = Utilities.WorldDataCache.currentLevelNumber;
+        float altitude = Utilities.WorldDataCache.altitude;
+        List<Utilities.RouteSegmentInfo> route = Utilities.WorldDataCache.route;
+        bool isAtCampfire = Utilities.WorldDataCache.isAtCampfire;
+        string currentSegDisplayName = Utilities.WorldDataCache.currentSegDisplayName;
+        string nextSegDisplayName = Utilities.WorldDataCache.nextSegDisplayName;
+        bool isInAirport = Utilities.WorldDataCache.isInAirport;
 
-        string currentSegDisplayName = "Unknown";
-        for (int i = 0; i < route.Count; i++)
+        if (isInAirport)
         {
-            if (route[i].segment == detectedSeg)
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("🛫 " + Localization.T("world.airport_status"), boldLabelStyle);
+            GUILayout.FlexibleSpace();
+            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.countdownFormatted))
             {
-                currentSegDisplayName = route[i].displayName;
-                break;
+                GUILayout.Label(string.Format("{0} {1}", Localization.T("world.rotation_timer"), Utilities.WorldDataCache.countdownFormatted), tipLabelStyle);
+            }
+            GUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.todayBiomeRoute))
+            {
+                GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.daily_route_info"), Utilities.WorldDataCache.todayBiomeRoute), subHeaderStyle);
+            }
+            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.nextBiomeRoute))
+            {
+                GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.next_rotation_info"), Utilities.WorldDataCache.nextBiomeRoute), tipLabelStyle);
             }
         }
-
-        GUILayout.BeginHorizontal();
-        string statusText = string.Format("{0} {1} - {2}",
-            Localization.T("world.current_segment"),
-            string.Format(Localization.T("world.level_label"), currentLevel),
-            currentSegDisplayName);
-        if (isAtCampfire)
+        else
         {
-            statusText += "  " + Localization.T("world.at_campfire_tag");
-        }
-        GUILayout.Label(statusText, boldLabelStyle);
+            GUILayout.BeginHorizontal();
+            string statusText = string.Format("{0} {1} - {2}",
+                Localization.T("world.current_segment"),
+                string.Format(Localization.T("world.level_label"), currentLevel),
+                currentSegDisplayName);
+            if (isAtCampfire)
+            {
+                statusText += "  " + Localization.T("world.at_campfire_tag");
+            }
+            GUILayout.Label(statusText, boldLabelStyle);
 
-        GUILayout.FlexibleSpace();
-        if (altitude != 0f)
-        {
-            GUILayout.Label(string.Format("{0} {1:F1} m", Localization.T("world.current_altitude"), altitude), tipLabelStyle);
+            GUILayout.FlexibleSpace();
+            if (altitude != 0f)
+            {
+                GUILayout.Label(string.Format("{0} {1:F1} m", Localization.T("world.current_altitude"), altitude), tipLabelStyle);
+            }
+            GUILayout.EndHorizontal();
+
+            // Next Level & Daily Route info
+            GUILayout.BeginHorizontal();
+            if (currentLevel < 6)
+            {
+                GUILayout.Label(string.Format("{0} {1} - {2}",
+                    Localization.T("world.next_level_target"),
+                    string.Format(Localization.T("world.level_label"), Utilities.WorldDataCache.nextLevelNumber),
+                    nextSegDisplayName), tipLabelStyle);
+            }
+            GUILayout.FlexibleSpace();
+            if (!string.IsNullOrEmpty(Utilities.WorldDataCache.countdownFormatted))
+            {
+                GUILayout.Label(string.Format("{0} {1}", Localization.T("world.rotation_timer"), Utilities.WorldDataCache.countdownFormatted), tipLabelStyle);
+            }
+            GUILayout.EndHorizontal();
         }
-        GUILayout.EndHorizontal();
 
         GUILayout.Space(6);
 
         // Prominent Button(s): Teleport to Campfire / Light Campfire
         if (currentLevel < 6)
         {
-            int nextLevel = currentLevel + 1;
-            string nextName = (currentLevel < route.Count) ? route[currentLevel].displayName : "";
+            int nextLevel = Utilities.WorldDataCache.nextLevelNumber;
+            string nextName = nextSegDisplayName;
 
             if (!isAtCampfire)
             {
@@ -1177,6 +1256,14 @@ public class PeakMod : BaseUnityPlugin
             if (i < route.Count - 1)
                 GUILayout.Space(3);
         }
+
+        GUILayout.Space(6);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(Localization.T("world.return_airport"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(150)))
+        {
+            Utilities.ReturnToAirport();
+        }
+        GUILayout.EndHorizontal();
 
         GUILayout.EndVertical();
 
