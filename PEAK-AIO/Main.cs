@@ -187,7 +187,7 @@ public class PeakMod : BaseUnityPlugin
         windowStyle.fontSize = 14;
         windowStyle.fontStyle = FontStyle.Bold;
         windowStyle.padding = new RectOffset(8, 8, 24, 8);
-        windowStyle.border = new RectOffset(4, 4, 4, 4);
+        windowStyle.border = new RectOffset(0, 0, 0, 0);
         customSkin.window = windowStyle;
 
         // Default button style
@@ -247,6 +247,7 @@ public class PeakMod : BaseUnityPlugin
         cardBoxStyle.normal.textColor = logInk;
         cardBoxStyle.padding = new RectOffset(8, 8, 8, 8);
         cardBoxStyle.margin = new RectOffset(2, 2, 2, 2);
+        cardBoxStyle.border = new RectOffset(0, 0, 0, 0);
         customSkin.box = cardBoxStyle;
 
         // Section Header
@@ -353,13 +354,21 @@ public class PeakMod : BaseUnityPlugin
 
         InitStyles();
 
-        GUI.skin = customSkin;
+        GUISkin prevSkin = GUI.skin;
+        try
+        {
+            GUI.skin = customSkin;
 
-        // Ensure window stays within screen bounds
-        Globals.windowRect.x = Mathf.Clamp(Globals.windowRect.x, 0, Mathf.Max(0, Screen.width - Globals.windowRect.width));
-        Globals.windowRect.y = Mathf.Clamp(Globals.windowRect.y, 0, Mathf.Max(0, Screen.height - Globals.windowRect.height));
+            // Ensure window stays within screen bounds
+            Globals.windowRect.x = Mathf.Clamp(Globals.windowRect.x, 0, Mathf.Max(0, Screen.width - Globals.windowRect.width));
+            Globals.windowRect.y = Mathf.Clamp(Globals.windowRect.y, 0, Mathf.Max(0, Screen.height - Globals.windowRect.height));
 
-        Globals.windowRect = GUI.Window(9999, Globals.windowRect, DrawWindow, "PEAK AIO [APEX Edition]");
+            Globals.windowRect = GUILayout.Window(9999, Globals.windowRect, DrawWindow, "PEAK AIO [APEX Edition]", GUILayout.Width(780), GUILayout.Height(520));
+        }
+        finally
+        {
+            GUI.skin = prevSkin;
+        }
     }
 
     private void DrawWindow(int windowId)
@@ -384,8 +393,20 @@ public class PeakMod : BaseUnityPlugin
 
         // 1. Left Sidebar
         GUILayout.BeginVertical(GUILayout.Width(115));
-        DrawSidebar();
-        GUILayout.EndVertical();
+        try
+        {
+            DrawSidebar();
+        }
+        catch (Exception ex)
+        {
+            GUILayout.Label("Sidebar Error: " + ex.Message, tipLabelStyle);
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] Error in DrawSidebar: " + ex);
+        }
+        finally
+        {
+            GUILayout.EndVertical();
+        }
 
         GUILayout.Space(6);
 
