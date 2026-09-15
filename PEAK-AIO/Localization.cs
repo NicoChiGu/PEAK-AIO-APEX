@@ -429,12 +429,12 @@ public static class Localization
             { Language.Italian, "Ricarica l'elenco degli oggetti disponibili nel caso qualcosa sia stato perso o aggiornato." }
         }},
         { "items.loaded_count", new Dictionary<Language, string> {
-            { Language.English, "Items: {0}" },
-            { Language.SimplifiedChinese, "物品数: {0}" },
-            { Language.TraditionalChinese, "物品數: {0}" },
-            { Language.Japanese, "アイテム数: {0}" },
-            { Language.Korean, "아이템 수: {0}" },
-            { Language.Italian, "Oggetti: {0}" }
+            { Language.English, "Loaded Items: {0}" },
+            { Language.SimplifiedChinese, "已加载物品数: {0}" },
+            { Language.TraditionalChinese, "已加載物品數: {0}" },
+            { Language.Japanese, "ロード済みアイテム: {0}" },
+            { Language.Korean, "로드된 아이템: {0}" },
+            { Language.Italian, "Oggetti Caricati: {0}" }
         }},
         { "items.current", new Dictionary<Language, string> {
             { Language.English, "Current" },
@@ -448,9 +448,9 @@ public static class Localization
             { Language.English, "Spawn in World" },
             { Language.SimplifiedChinese, "生成到世界" },
             { Language.TraditionalChinese, "生成到世界" },
-            { Language.Japanese, "ワールドに生成" },
-            { Language.Korean, "월드에 생성" },
-            { Language.Italian, "Genera nel mondo" }
+            { Language.Japanese, "ワールドに出現" },
+            { Language.Korean, "월드에 소환" },
+            { Language.Italian, "Genera nel Mondo" }
         }},
         { "items.none_available", new Dictionary<Language, string> {
             { Language.English, "No items available" },
@@ -1082,14 +1082,6 @@ public static class Localization
         }},
 
         // Items spawn
-        { "items.spawn_item", new Dictionary<Language, string> {
-            { Language.English, "Spawn in World" },
-            { Language.SimplifiedChinese, "生成到世界" },
-            { Language.TraditionalChinese, "生成到世界" },
-            { Language.Japanese, "ワールドに出現" },
-            { Language.Korean, "월드에 소환" },
-            { Language.Italian, "Genera nel Mondo" }
-        }},
         { "tip.spawn_item", new Dictionary<Language, string> {
             { Language.English, "Spawns the selected item into the world in front of the player" },
             { Language.SimplifiedChinese, "在玩家前方将选中的物品生成到游戏世界中" },
@@ -1097,15 +1089,7 @@ public static class Localization
             { Language.Japanese, "選択したアイテムをプレイヤーの前方に生成します" },
             { Language.Korean, "선택한 아이템을 플레이어 앞 월드에 소환합니다" },
             { Language.Italian, "Genera l'oggetto selezionato nel mondo davanti al giocatore" }
-        }},
-        { "items.loaded_count", new Dictionary<Language, string> {
-            { Language.English, "Loaded Items: {0}" },
-            { Language.SimplifiedChinese, "已加载物品数: {0}" },
-            { Language.TraditionalChinese, "已加載物品數: {0}" },
-            { Language.Japanese, "ロード済みアイテム: {0}" },
-            { Language.Korean, "로드된 아이템: {0}" },
-            { Language.Italian, "Oggetti Caricati: {0}" }
-        }},
+        }}
     };
 
     public static readonly string[] LanguageNames = new string[] { "English", "简体中文", "日本語", "한국어", "Italiano", "繁體中文" };
@@ -1127,7 +1111,14 @@ public static class Localization
 
     public static string T(string key, params object[] args)
     {
-        return string.Format(T(key), args);
+        try
+        {
+            return string.Format(T(key), args);
+        }
+        catch
+        {
+            return T(key);
+        }
     }
 
     public static void SetLanguage(Language lang)
