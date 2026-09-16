@@ -36,6 +36,13 @@ public class PeakMod : BaseUnityPlugin
     private GUIStyle itemSelectableStyle;
     private GUIStyle itemSelectedStyle;
     private GUIStyle toggleStyle;
+    private GUIStyle ribbonCardStyle;
+    private GUIStyle badgeCurrentStyle;
+    private GUIStyle badgeCompletedStyle;
+    private GUIStyle badgePendingStyle;
+    private GUIStyle flowArrowStyle;
+    private GUIStyle stageTagStyle;
+    private GUIStyle stageTagActiveStyle;
 
     // Solid Color Textures
     private Texture2D texCanvasTan;
@@ -49,6 +56,10 @@ public class PeakMod : BaseUnityPlugin
     private Texture2D texLightGreen;
     private Texture2D texScoutRed;
     private Texture2D texCardBg;
+    private Texture2D texRibbonCard;
+    private Texture2D texBadgeCur;
+    private Texture2D texBadgeComp;
+    private Texture2D texBadgePend;
 
     private static Texture2D MakeSolidTex(int width, int height, Color col)
     {
@@ -162,6 +173,16 @@ public class PeakMod : BaseUnityPlugin
         texLightGreen = MakeSolidTex(2, 2, lightGreen);
         texScoutRed = MakeSolidTex(2, 2, scoutRed);
         texCardBg = MakeSolidTex(2, 2, cardBg);
+
+        Color ribbonBg = new Color(0.95f, 0.93f, 0.88f, 1.0f);
+        Color badgeCurCol = new Color(0.22f, 0.52f, 0.32f, 1.0f);
+        Color badgeCompCol = new Color(0.42f, 0.62f, 0.46f, 0.92f);
+        Color badgePendCol = new Color(0.86f, 0.82f, 0.75f, 1.0f);
+
+        texRibbonCard = MakeSolidTex(2, 2, ribbonBg);
+        texBadgeCur = MakeSolidTex(2, 2, badgeCurCol);
+        texBadgeComp = MakeSolidTex(2, 2, badgeCompCol);
+        texBadgePend = MakeSolidTex(2, 2, badgePendCol);
 
         // Clone base skin to retain all default controls and scrollbars
         customSkin = Instantiate(GUI.skin);
@@ -343,6 +364,54 @@ public class PeakMod : BaseUnityPlugin
         vScrollThumb.active.background = texSidebarGreen;
         vScrollThumb.fixedWidth = 10;
         customSkin.verticalScrollbarThumb = vScrollThumb;
+
+        // Ribbon Card Box (Paper Ticket style)
+        ribbonCardStyle = new GUIStyle(customSkin.box);
+        ribbonCardStyle.normal.background = texRibbonCard;
+        ribbonCardStyle.normal.textColor = logInk;
+        ribbonCardStyle.padding = new RectOffset(6, 6, 6, 6);
+        ribbonCardStyle.margin = new RectOffset(2, 2, 2, 2);
+
+        // Badges for Flight Route Ribbon
+        badgeCurrentStyle = new GUIStyle(customSkin.label);
+        badgeCurrentStyle.normal.background = texBadgeCur;
+        badgeCurrentStyle.normal.textColor = Color.white;
+        badgeCurrentStyle.fontSize = 11;
+        badgeCurrentStyle.fontStyle = FontStyle.Bold;
+        badgeCurrentStyle.alignment = TextAnchor.MiddleCenter;
+        badgeCurrentStyle.padding = new RectOffset(7, 7, 3, 3);
+        badgeCurrentStyle.margin = new RectOffset(1, 1, 1, 1);
+
+        badgeCompletedStyle = new GUIStyle(customSkin.label);
+        badgeCompletedStyle.normal.background = texBadgeComp;
+        badgeCompletedStyle.normal.textColor = Color.white;
+        badgeCompletedStyle.fontSize = 11;
+        badgeCompletedStyle.alignment = TextAnchor.MiddleCenter;
+        badgeCompletedStyle.padding = new RectOffset(6, 6, 3, 3);
+        badgeCompletedStyle.margin = new RectOffset(1, 1, 1, 1);
+
+        badgePendingStyle = new GUIStyle(customSkin.label);
+        badgePendingStyle.normal.background = texBadgePend;
+        badgePendingStyle.normal.textColor = logInk;
+        badgePendingStyle.fontSize = 11;
+        badgePendingStyle.alignment = TextAnchor.MiddleCenter;
+        badgePendingStyle.padding = new RectOffset(6, 6, 3, 3);
+        badgePendingStyle.margin = new RectOffset(1, 1, 1, 1);
+
+        flowArrowStyle = new GUIStyle(customSkin.label);
+        flowArrowStyle.normal.textColor = ropeBrown;
+        flowArrowStyle.fontSize = 12;
+        flowArrowStyle.fontStyle = FontStyle.Bold;
+        flowArrowStyle.alignment = TextAnchor.MiddleCenter;
+        flowArrowStyle.padding = new RectOffset(0, 0, 2, 0);
+
+        stageTagStyle = new GUIStyle(badgePendingStyle);
+        stageTagStyle.fontStyle = FontStyle.Bold;
+        stageTagStyle.fontSize = 10;
+        stageTagStyle.normal.textColor = ropeBrown;
+
+        stageTagActiveStyle = new GUIStyle(badgeCurrentStyle);
+        stageTagActiveStyle.fontSize = 10;
 
         skinInitialized = true;
     }
@@ -1324,8 +1393,154 @@ public class PeakMod : BaseUnityPlugin
     }
 
     // ==========================================
-    // TAB 4: WORLD (Updated Map & Containers)
+    // TAB 4: WORLD (Custom Route Map & Flight Ribbon)
     // ==========================================
+    private void DrawRouteFlowRibbon(List<Utilities.RouteNodeBadge> badges, bool showDetails = true)
+    {
+        if (badges == null || badges.Count == 0)
+            return;
+
+        GUILayout.BeginVertical(ribbonCardStyle);
+        GUILayout.BeginHorizontal();
+
+        for (int i = 0; i < badges.Count; i++)
+        {
+            var b = badges[i];
+            GUIStyle bStyle = b.isCurrent ? badgeCurrentStyle : (b.isCompleted ? badgeCompletedStyle : badgePendingStyle);
+
+            string statusMarker = "";
+            if (b.isCurrent)
+            {
+                statusMarker = " ★";
+            }
+            else if (b.isCompleted || b.isCampfireLit)
+            {
+                statusMarker = " ✓";
+            }
+
+            string badgeText = string.Format("{0} {1}.{2}{3}", b.icon, b.stepIndex, b.name, statusMarker);
+            GUILayout.Label(badgeText, bStyle, GUILayout.Height(24));
+
+            if (i < badges.Count - 1)
+            {
+                GUILayout.Label("➔", flowArrowStyle, GUILayout.Width(16), GUILayout.Height(24));
+            }
+        }
+
+        GUILayout.FlexibleSpace();
+        GUILayout.EndHorizontal();
+
+        if (showDetails)
+        {
+            Utilities.RouteNodeBadge activeBadge = null;
+            for (int i = 0; i < badges.Count; i++)
+            {
+                if (badges[i].isCurrent)
+                {
+                    activeBadge = badges[i];
+                    break;
+                }
+            }
+
+            if (activeBadge != null)
+            {
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                string curDetail = string.Format("📍 {0}: {1} {2}. {3}",
+                    Localization.T("world.current_node_tag"),
+                    activeBadge.icon,
+                    activeBadge.stepIndex,
+                    activeBadge.name);
+
+                if (activeBadge.hasCampfire)
+                {
+                    curDetail += activeBadge.isCampfireLit ? " [🔥✓]" : " [🔥]";
+                }
+                if (activeBadge.altitude > 0f)
+                {
+                    curDetail += string.Format(" ({0:F1}m)", activeBadge.altitude);
+                }
+                GUILayout.Label(curDetail, tipLabelStyle);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        GUILayout.EndVertical();
+    }
+
+    private void DrawPlaylistQueueSection()
+    {
+        var queue = Utilities.WorldDataCache.playlistQueue;
+        if (queue == null || queue.Count <= 1)
+            return;
+
+        GUILayout.Space(6);
+        string overviewHeader = string.Format("📋 {0} ({1}/{2})",
+            Localization.T("world.playlist_overview"),
+            Utilities.WorldDataCache.currentPlaylistIndex + 1,
+            Utilities.WorldDataCache.totalPlaylistCount);
+        GUILayout.Label(overviewHeader, subHeaderStyle);
+        GUILayout.Space(2);
+
+        for (int p = 0; p < queue.Count; p++)
+        {
+            var item = queue[p];
+            bool isCur = item.isCurrent;
+
+            GUILayout.BeginVertical(ribbonCardStyle);
+
+            GUILayout.BeginHorizontal();
+            string stageTag = string.Format(Localization.T("world.stage_tag"), p + 1, queue.Count);
+            GUIStyle tagStyle = isCur ? stageTagActiveStyle : stageTagStyle;
+            GUILayout.Label(stageTag, tagStyle, GUILayout.Height(18), GUILayout.Width(75));
+
+            GUILayout.Space(4);
+            string mapTitle = item.displayName;
+            GUILayout.Label(mapTitle, isCur ? boldLabelStyle : labelStyle);
+
+            GUILayout.FlexibleSpace();
+
+            string statusText;
+            GUIStyle statusStyle;
+            if (isCur)
+            {
+                statusText = string.Format("★ {0}", Localization.T("world.status_active"));
+                statusStyle = badgeCurrentStyle;
+            }
+            else if (p < Utilities.WorldDataCache.currentPlaylistIndex)
+            {
+                statusText = string.Format("✓ {0}", Localization.T("world.status_completed"));
+                statusStyle = badgeCompletedStyle;
+            }
+            else
+            {
+                statusText = Localization.T("world.status_upcoming");
+                statusStyle = badgePendingStyle;
+            }
+            GUILayout.Label(statusText, statusStyle, GUILayout.Height(18), GUILayout.Width(65));
+            GUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(item.formattedRoute))
+            {
+                GUILayout.Space(2);
+                GUILayout.Label(string.Format("🗺️ {0}", item.formattedRoute), tipLabelStyle);
+            }
+
+            if (item.nodes != null && item.nodes.Count > 0)
+            {
+                GUILayout.Space(2);
+                DrawRouteFlowRibbon(item.nodes, false);
+            }
+
+            GUILayout.EndVertical();
+            if (p < queue.Count - 1)
+            {
+                GUILayout.Space(3);
+            }
+        }
+    }
+
     private void DrawWorldTab()
     {
         Utilities.EnsureLuggageListInitialized();
@@ -1399,6 +1614,15 @@ public class PeakMod : BaseUnityPlugin
                     GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.next_rotation_info"), Utilities.WorldDataCache.nextBiomeRoute), tipLabelStyle);
                 }
             }
+
+            // Route Ribbon in Airport
+            GUILayout.Space(4);
+            GUILayout.Label(string.Format("🛫 {0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
+            DrawRouteFlowRibbon(Utilities.WorldDataCache.currentMapBadges, false);
+            GUILayout.Label("ℹ️ " + Localization.T("world.airport_preview_tip"), tipLabelStyle);
+
+            // Playlist Queue (if multiple maps)
+            DrawPlaylistQueueSection();
         }
         else
         {
@@ -1448,87 +1672,98 @@ public class PeakMod : BaseUnityPlugin
             {
                 GUILayout.Label(string.Format("{0}: {1}", Localization.T("world.custom_route_info"), Utilities.WorldDataCache.todayBiomeRoute), tipLabelStyle);
             }
+
+            // Route Ribbon in Island
+            GUILayout.Space(4);
+            GUILayout.Label(string.Format("🧭 {0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
+            DrawRouteFlowRibbon(Utilities.WorldDataCache.currentMapBadges, true);
+
+            // Playlist Queue (if multiple maps)
+            DrawPlaylistQueueSection();
         }
 
         GUILayout.Space(6);
 
-        // Prominent Button(s): Teleport to Campfire / Light Campfire
-        if (currentLevel < 6)
+        // Prominent Button(s): Teleport to Campfire / Light Campfire (Only on Island)
+        if (!isInAirport)
         {
-            int nextLevel = Utilities.WorldDataCache.nextLevelNumber;
-            string nextName = nextSegDisplayName;
-
-            if (!isAtCampfire)
+            if (currentLevel < 6)
             {
-                string btnText;
-                if (nextLevel < 5)
+                int nextLevel = Utilities.WorldDataCache.nextLevelNumber;
+                string nextName = nextSegDisplayName;
+
+                if (!isAtCampfire)
                 {
-                    btnText = string.Format("{0} ({1} {2})",
-                        Localization.T("world.teleport_next_campfire"),
-                        string.Format(Localization.T("world.level_label"), nextLevel),
-                        nextName);
-                }
-                else if (nextLevel == 5)
-                {
-                    btnText = Localization.T("world.teleport_kiln_safe");
+                    string btnText;
+                    if (nextLevel < 5)
+                    {
+                        btnText = string.Format("{0} ({1} {2})",
+                            Localization.T("world.teleport_next_campfire"),
+                            string.Format(Localization.T("world.level_label"), nextLevel),
+                            nextName);
+                    }
+                    else if (nextLevel == 5)
+                    {
+                        btnText = Localization.T("world.teleport_kiln_safe");
+                    }
+                    else
+                    {
+                        btnText = Localization.T("world.teleport_to_peak");
+                    }
+
+                    if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
+                    {
+                        Utilities.TeleportToNextCampfire();
+                    }
                 }
                 else
                 {
-                    btnText = Localization.T("world.teleport_to_peak");
-                }
+                    // Player is already at the transition campfire!
+                    GUILayout.BeginHorizontal();
+                    string lightText = string.Format(Localization.T("world.light_campfire"), currentLevel);
+                    if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
+                    {
+                        Utilities.LightCurrentCampfire();
+                    }
 
-                if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
-                {
-                    Utilities.TeleportToNextCampfire();
+                    GUILayout.Space(6);
+
+                    int afterNextLevel = nextLevel;
+                    string nextCampText;
+                    if (afterNextLevel < 5)
+                    {
+                        nextCampText = string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel);
+                    }
+                    else if (afterNextLevel == 5)
+                    {
+                        nextCampText = Localization.T("world.teleport_kiln_safe");
+                    }
+                    else
+                    {
+                        nextCampText = Localization.T("world.teleport_to_peak");
+                    }
+
+                    if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
+                    {
+                        Utilities.TeleportToNextCampfire();
+                    }
+                    GUILayout.EndHorizontal();
                 }
             }
             else
             {
-                // Player is already at the transition campfire!
+                // At Peak
                 GUILayout.BeginHorizontal();
-                string lightText = string.Format(Localization.T("world.light_campfire"), currentLevel);
-                if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
-                {
-                    Utilities.LightCurrentCampfire();
-                }
-
+                GUI.enabled = false;
+                GUILayout.Button(Localization.T("world.at_peak"), primaryBtnStyle, GUILayout.Height(32));
+                GUI.enabled = true;
                 GUILayout.Space(6);
-
-                int afterNextLevel = nextLevel;
-                string nextCampText;
-                if (afterNextLevel < 5)
+                if (GUILayout.Button(Localization.T("world.summon_helicopter"), dangerBtnStyle, GUILayout.Height(32), GUILayout.Width(160)))
                 {
-                    nextCampText = string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel);
-                }
-                else if (afterNextLevel == 5)
-                {
-                    nextCampText = Localization.T("world.teleport_kiln_safe");
-                }
-                else
-                {
-                    nextCampText = Localization.T("world.teleport_to_peak");
-                }
-
-                if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
-                {
-                    Utilities.TeleportToNextCampfire();
+                    Utilities.SummonHelicopter();
                 }
                 GUILayout.EndHorizontal();
             }
-        }
-        else
-        {
-            // At Peak
-            GUILayout.BeginHorizontal();
-            GUI.enabled = false;
-            GUILayout.Button(Localization.T("world.at_peak"), primaryBtnStyle, GUILayout.Height(32));
-            GUI.enabled = true;
-            GUILayout.Space(6);
-            if (GUILayout.Button(Localization.T("world.summon_helicopter"), dangerBtnStyle, GUILayout.Height(32), GUILayout.Width(160)))
-            {
-                Utilities.SummonHelicopter();
-            }
-            GUILayout.EndHorizontal();
         }
 
         // Detailed Area & Campfire Jump Controls with Refresh Button
@@ -1546,12 +1781,13 @@ public class PeakMod : BaseUnityPlugin
         for (int i = 0; i < route.Count; i++)
         {
             var r = route[i];
-            bool isCur = (r.segment == detectedSeg);
+            bool isCur = !isInAirport && (r.segment == detectedSeg);
 
             GUILayout.BeginHorizontal();
 
-            // Label for Level and Biome name
-            string segLabel = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), r.level), r.displayName);
+            // Label for Level and Biome name with Biome Emoji Icon
+            string icon = Utilities.GetBiomeIcon(r.biomeType, r.segment);
+            string segLabel = string.Format("{0} {1}: {2}", icon, string.Format(Localization.T("world.level_label"), r.level), r.displayName);
             if (r.isCampfireLit)
             {
                 segLabel += "  [✓]";
@@ -1563,6 +1799,9 @@ public class PeakMod : BaseUnityPlugin
                     : string.Format("  [{0}]", Localization.T("world.current_tag"));
             }
             GUILayout.Label(segLabel, isCur ? boldLabelStyle : labelStyle, GUILayout.Width(200));
+
+            // Controls disabled in Airport
+            GUI.enabled = !isInAirport;
 
             // Button 1: Jump to Start of segment (Safe start jump, does not light campfire)
             GUIStyle jumpBtnStyle = isCur ? sidebarActiveBtnStyle : primaryBtnStyle;
@@ -1605,6 +1844,8 @@ public class PeakMod : BaseUnityPlugin
                 }
             }
 
+            GUI.enabled = true;
+
             GUILayout.EndHorizontal();
 
             if (i < route.Count - 1)
@@ -1613,10 +1854,12 @@ public class PeakMod : BaseUnityPlugin
 
         GUILayout.Space(6);
         GUILayout.BeginHorizontal();
+        GUI.enabled = !isInAirport;
         if (GUILayout.Button(Localization.T("world.return_airport"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(150)))
         {
             Utilities.ReturnToAirport();
         }
+        GUI.enabled = true;
         GUILayout.EndHorizontal();
 
         GUILayout.EndVertical();

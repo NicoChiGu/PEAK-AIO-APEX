@@ -1087,6 +1087,70 @@ public static class Localization
             { Language.Korean, "플레이리스트 큐" },
             { Language.Italian, "Coda Playlist" }
         }},
+        { "world.playlist_overview", new Dictionary<Language, string> {
+            { Language.English, "Playlist Journey Overview" },
+            { Language.SimplifiedChinese, "航程播放列表全景" },
+            { Language.TraditionalChinese, "航程播放列表全景" },
+            { Language.Japanese, "プレイリスト航路全体図" },
+            { Language.Korean, "플레이리스트 항로 개요" },
+            { Language.Italian, "Panoramica Itinerario Playlist" }
+        }},
+        { "world.route_flow_title", new Dictionary<Language, string> {
+            { Language.English, "Flight Route Flow (Ribbon)" },
+            { Language.SimplifiedChinese, "航线流程条" },
+            { Language.TraditionalChinese, "航線流程條" },
+            { Language.Japanese, "ルートフローリボン" },
+            { Language.Korean, "항로 플로우 리본" },
+            { Language.Italian, "Nastro di Flusso della Rotta" }
+        }},
+        { "world.stage_tag", new Dictionary<Language, string> {
+            { Language.English, "Stop {0}/{1}" },
+            { Language.SimplifiedChinese, "第 {0}/{1} 站" },
+            { Language.TraditionalChinese, "第 {0}/{1} 站" },
+            { Language.Japanese, "第 {0}/{1} ステージ" },
+            { Language.Korean, "제 {0}/{1} 코스" },
+            { Language.Italian, "Tappa {0}/{1}" }
+        }},
+        { "world.status_active", new Dictionary<Language, string> {
+            { Language.English, "ACTIVE" },
+            { Language.SimplifiedChinese, "进行中" },
+            { Language.TraditionalChinese, "進行中" },
+            { Language.Japanese, "進行中" },
+            { Language.Korean, "진행중" },
+            { Language.Italian, "ATTIVO" }
+        }},
+        { "world.status_completed", new Dictionary<Language, string> {
+            { Language.English, "CLEARED" },
+            { Language.SimplifiedChinese, "已通关" },
+            { Language.TraditionalChinese, "已通關" },
+            { Language.Japanese, "クリア" },
+            { Language.Korean, "클리어" },
+            { Language.Italian, "COMPLETATO" }
+        }},
+        { "world.status_upcoming", new Dictionary<Language, string> {
+            { Language.English, "UPCOMING" },
+            { Language.SimplifiedChinese, "待启航" },
+            { Language.TraditionalChinese, "待啟航" },
+            { Language.Japanese, "待機中" },
+            { Language.Korean, "출발 대기" },
+            { Language.Italian, "IN ARRIVO" }
+        }},
+        { "world.airport_preview_tip", new Dictionary<Language, string> {
+            { Language.English, "Flight route planned. Real-time segment & campfire tracking activates on island." },
+            { Language.SimplifiedChinese, "航班航线已规划完毕，登岛后将实时追踪节点与营火进度。" },
+            { Language.TraditionalChinese, "航班航線已規劃完畢，登島後將實時追蹤節點與營火進度。" },
+            { Language.Japanese, "航路計画完了。島に到着後、各区間と焚き火の進捗をリアルタイム追跡します。" },
+            { Language.Korean, "항로 계획 완료. 섬 도착 후 구역 및 모닥불 진행 상황을 실시간 추적합니다." },
+            { Language.Italian, "Rotta pianificata. Il monitoraggio in tempo reale si attiverà sull'isola." }
+        }},
+        { "world.current_node_tag", new Dictionary<Language, string> {
+            { Language.English, "HERE" },
+            { Language.SimplifiedChinese, "当前" },
+            { Language.TraditionalChinese, "當前" },
+            { Language.Japanese, "現在地" },
+            { Language.Korean, "현재 위치" },
+            { Language.Italian, "QUI" }
+        }},
         { "world.route_header", new Dictionary<Language, string> {
             { Language.English, "Mountain Route (Full Route)" },
             { Language.SimplifiedChinese, "登山完整路线" },

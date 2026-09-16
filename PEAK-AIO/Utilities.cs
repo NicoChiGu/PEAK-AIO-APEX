@@ -1623,6 +1623,34 @@ public static class Utilities
         });
     }
 
+    public class RouteNodeBadge
+    {
+        public int stepIndex;
+        public string icon = "📍";
+        public string name = "";
+        public char biomeChar = ' ';
+        public Segment segment = Segment.Beach;
+        public bool hasSegment = false;
+        public bool isCompleted = false;
+        public bool isCurrent = false;
+        public bool isPending = true;
+        public float altitude = 0f;
+        public bool hasCampfire = false;
+        public bool isCampfireLit = false;
+    }
+
+    public class PlaylistItemInfo
+    {
+        public int index;
+        public int mapIndex = -1;
+        public string sceneName = "";
+        public string displayName = "";
+        public string biomeId = "";
+        public string formattedRoute = "";
+        public bool isCurrent = false;
+        public List<RouteNodeBadge> nodes = new List<RouteNodeBadge>();
+    }
+
     public struct RouteSegmentInfo
     {
         public int level;
@@ -1634,6 +1662,163 @@ public static class Utilities
         public float altitude;
         public bool isAtCampfire;
         public bool isCampfireLit;
+    }
+
+    public static string GetBiomeIcon(char c)
+    {
+        switch (char.ToUpper(c))
+        {
+            case 'S': return "🏝️"; // Shore / Beach
+            case 'T': return "🌴"; // Tropics
+            case 'R': return "🌿"; // Roots
+            case 'A': return "🏔️"; // Alpine
+            case 'M': return "🏜️"; // Mesa
+            case 'V': return "🌋"; // Volcano / Caldera
+            case 'C': return "🌋"; // Caldera
+            case 'K': return "🔥"; // Kiln
+            case 'P': return "🚩"; // Peak
+            default: return "📍";
+        }
+    }
+
+    public static string GetBiomeIcon(Biome.BiomeType bt, Segment seg)
+    {
+        if (seg == Segment.TheKiln) return "🔥";
+        if (seg == Segment.Peak) return "🚩";
+        switch (bt)
+        {
+            case Biome.BiomeType.Shore: return "🏝️";
+            case Biome.BiomeType.Tropics: return "🌴";
+            case Biome.BiomeType.Roots: return "🌿";
+            case Biome.BiomeType.Alpine: return "🏔️";
+            case Biome.BiomeType.Volcano: return "🌋";
+            case Biome.BiomeType.Mesa: return "🏜️";
+            case Biome.BiomeType.Peak: return "🚩";
+            default:
+                switch (seg)
+                {
+                    case Segment.Beach: return "🏝️";
+                    case Segment.Tropics: return "🌴";
+                    case Segment.Alpine: return "🏔️";
+                    case Segment.Caldera: return "🌋";
+                    case Segment.TheKiln: return "🔥";
+                    case Segment.Peak: return "🚩";
+                    default: return "📍";
+                }
+        }
+    }
+
+    public static List<RouteNodeBadge> BuildRouteBadges(string biomeId, Segment currentSeg, bool isCurrentMap, bool isInAirport, List<RouteSegmentInfo> liveRoute = null)
+    {
+        var badges = new List<RouteNodeBadge>();
+
+        // 1. If liveRoute is valid and we have active segments, use liveRoute for high fidelity
+        if (liveRoute != null && liveRoute.Count > 0 && !isInAirport)
+        {
+            for (int i = 0; i < liveRoute.Count; i++)
+            {
+                var r = liveRoute[i];
+                char bChar = ' ';
+                if (!string.IsNullOrEmpty(biomeId) && i < biomeId.Length)
+                {
+                    bChar = biomeId[i];
+                }
+
+                bool isCur = isCurrentMap && r.isCurrent;
+                bool isComp = isCurrentMap && ((int)r.segment < (int)currentSeg || r.isCampfireLit);
+                bool isPend = !isCur && !isComp;
+
+                badges.Add(new RouteNodeBadge
+                {
+                    stepIndex = r.level,
+                    icon = GetBiomeIcon(r.biomeType, r.segment),
+                    name = r.displayName,
+                    biomeChar = bChar,
+                    segment = r.segment,
+                    isCompleted = isComp,
+                    isCurrent = isCur,
+                    isPending = isPend,
+                    altitude = r.altitude,
+                    hasCampfire = r.hasCampfire,
+                    isCampfireLit = r.isCampfireLit
+                });
+            }
+            return badges;
+        }
+
+        // 2. Otherwise build from biomeId string
+        List<char> chars = new List<char>();
+        if (!string.IsNullOrEmpty(biomeId))
+        {
+            for (int i = 0; i < biomeId.Length; i++)
+            {
+                chars.Add(biomeId[i]);
+            }
+        }
+        else
+        {
+            chars.AddRange(new char[] { 'S', 'T', 'A', 'V' });
+        }
+
+        bool hasKiln = false;
+        bool hasPeak = false;
+        for (int i = 0; i < chars.Count; i++)
+        {
+            if (char.ToUpper(chars[i]) == 'K') hasKiln = true;
+            if (char.ToUpper(chars[i]) == 'P') hasPeak = true;
+        }
+        if (!hasKiln) chars.Add('K');
+        if (!hasPeak) chars.Add('P');
+
+        Segment[] defSegs = new Segment[] {
+            Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
+        };
+
+        for (int i = 0; i < chars.Count; i++)
+        {
+            char c = chars[i];
+            bool hasSeg = (i < defSegs.Length);
+            Segment s = hasSeg ? defSegs[i] : Segment.Beach;
+            string name;
+            if (i == 3 && char.ToUpper(c) == 'S')
+                name = Localization.T("world.segment_swamp");
+            else
+                name = DecodeBiomeCharToName(c);
+
+            bool isCur = false;
+            bool isComp = false;
+
+            if (isCurrentMap && !isInAirport)
+            {
+                int curSegIdx = (int)currentSeg;
+                if (i == curSegIdx)
+                {
+                    isCur = true;
+                }
+                else if (i < curSegIdx)
+                {
+                    isComp = true;
+                }
+            }
+
+            badges.Add(new RouteNodeBadge
+            {
+                stepIndex = i + 1,
+                icon = GetBiomeIcon(c),
+                name = name,
+                biomeChar = c,
+                segment = s,
+                hasSegment = hasSeg,
+                isCompleted = isComp,
+                isCurrent = isCur,
+                isPending = !isCur && !isComp,
+                altitude = 0f,
+                hasCampfire = (i < chars.Count - 1),
+                isCampfireLit = isComp
+            });
+        }
+
+        return badges;
     }
 
     public static string GetBiomeDisplayName(Biome.BiomeType bt, Segment seg)
@@ -1801,13 +1986,22 @@ public static class Utilities
         return false;
     }
 
-    public static bool TryGetCustomMapOrPlaylist(out int customMapIndex, out string sceneName, out string biomeId, out string playlistInfo, out string sourceName)
+    public static bool TryGetCustomMapOrPlaylist(
+        out int customMapIndex,
+        out string sceneName,
+        out string biomeId,
+        out string playlistInfo,
+        out string sourceName,
+        out List<PlaylistItemInfo> playlistQueue,
+        out int activePlaylistIndex)
     {
         customMapIndex = -1;
         sceneName = "";
         biomeId = "";
         playlistInfo = "";
         sourceName = "";
+        playlistQueue = new List<PlaylistItemInfo>();
+        activePlaylistIndex = 0;
 
         try
         {
@@ -1891,16 +2085,13 @@ public static class Utilities
                                         if (val != null) biomeId = val.ToString();
                                     }
 
-                                    PropertyInfo playlistProp = type.GetProperty("Playlist", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
-                                        ?? type.GetProperty("MapList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                                    if (playlistProp != null)
+                                    PropertyInfo curPlIdxProp = type.GetProperty("CurrentPlaylistIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("PlaylistIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("CurrentMapIndexInPlaylist", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (curPlIdxProp != null)
                                     {
-                                        object pVal = playlistProp.GetValue(instance, null);
-                                        System.Collections.ICollection coll = pVal as System.Collections.ICollection;
-                                        if (coll != null)
-                                        {
-                                            playlistInfo = string.Format("{0} maps", coll.Count);
-                                        }
+                                        object val = curPlIdxProp.GetValue(instance, null);
+                                        if (val is int) activePlaylistIndex = (int)val;
                                     }
 
                                     var baker = SingletonAsset<MapBaker>.Instance;
@@ -1909,6 +2100,110 @@ public static class Utilities
                                         sceneName = baker.GetLevel(customMapIndex);
                                         if (string.IsNullOrEmpty(biomeId))
                                             biomeId = baker.GetBiomeID(customMapIndex);
+                                    }
+
+                                    // Parse Playlist elements
+                                    PropertyInfo playlistProp = type.GetProperty("Playlist", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                        ?? type.GetProperty("MapList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                    if (playlistProp != null)
+                                    {
+                                        object pVal = playlistProp.GetValue(instance, null);
+                                        System.Collections.IEnumerable enumerable = pVal as System.Collections.IEnumerable;
+                                        if (enumerable != null)
+                                        {
+                                            int k = 0;
+                                            foreach (object item in enumerable)
+                                            {
+                                                if (item == null) continue;
+                                                PlaylistItemInfo itemInfo = new PlaylistItemInfo();
+                                                itemInfo.index = k + 1;
+
+                                                if (item is int)
+                                                {
+                                                    int mapIdx = (int)item;
+                                                    itemInfo.mapIndex = mapIdx;
+                                                    if (baker != null)
+                                                    {
+                                                        itemInfo.sceneName = baker.GetLevel(mapIdx);
+                                                        itemInfo.biomeId = baker.GetBiomeID(mapIdx);
+                                                    }
+                                                    itemInfo.displayName = !string.IsNullOrEmpty(itemInfo.sceneName) ? itemInfo.sceneName : string.Format("Map #{0}", mapIdx);
+                                                }
+                                                else if (item is string)
+                                                {
+                                                    string str = (string)item;
+                                                    itemInfo.sceneName = str;
+                                                    itemInfo.displayName = str;
+                                                    if (baker != null && baker.ScenePaths != null)
+                                                    {
+                                                        for (int b = 0; b < baker.ScenePaths.Length; b++)
+                                                        {
+                                                            if (baker.GetLevel(b).Equals(str, StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                itemInfo.mapIndex = b;
+                                                                itemInfo.biomeId = baker.GetBiomeID(b);
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    Type itemType = item.GetType();
+                                                    PropertyInfo sProp = itemType.GetProperty("SceneName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                                        ?? itemType.GetProperty("CustomSceneName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                                        ?? itemType.GetProperty("Name", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                                    if (sProp != null)
+                                                    {
+                                                        object sv = sProp.GetValue(item, null);
+                                                        if (sv != null) itemInfo.sceneName = sv.ToString();
+                                                    }
+
+                                                    PropertyInfo bProp = itemType.GetProperty("BiomeID", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                                        ?? itemType.GetProperty("CustomBiomeID", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                                    if (bProp != null)
+                                                    {
+                                                        object bv = bProp.GetValue(item, null);
+                                                        if (bv != null) itemInfo.biomeId = bv.ToString();
+                                                    }
+
+                                                    PropertyInfo mProp = itemType.GetProperty("MapIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                                        ?? itemType.GetProperty("CustomMapIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                                                        ?? itemType.GetProperty("LevelIndex", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                                    if (mProp != null)
+                                                    {
+                                                        object mv = mProp.GetValue(item, null);
+                                                        if (mv is int) itemInfo.mapIndex = (int)mv;
+                                                    }
+
+                                                    if (baker != null && itemInfo.mapIndex >= 0)
+                                                    {
+                                                        if (string.IsNullOrEmpty(itemInfo.sceneName)) itemInfo.sceneName = baker.GetLevel(itemInfo.mapIndex);
+                                                        if (string.IsNullOrEmpty(itemInfo.biomeId)) itemInfo.biomeId = baker.GetBiomeID(itemInfo.mapIndex);
+                                                    }
+
+                                                    itemInfo.displayName = !string.IsNullOrEmpty(itemInfo.sceneName) ? itemInfo.sceneName : string.Format("Map #{0}", k + 1);
+                                                }
+
+                                                if (string.IsNullOrEmpty(itemInfo.displayName))
+                                                {
+                                                    itemInfo.displayName = string.Format("Map #{0}", k + 1);
+                                                }
+
+                                                itemInfo.formattedRoute = FormatBiomeIDRoute(itemInfo.biomeId);
+                                                itemInfo.isCurrent = (k == activePlaylistIndex) ||
+                                                    (!string.IsNullOrEmpty(sceneName) && sceneName.Equals(itemInfo.sceneName, StringComparison.OrdinalIgnoreCase));
+                                                itemInfo.nodes = BuildRouteBadges(itemInfo.biomeId, Segment.Beach, itemInfo.isCurrent, true, null);
+
+                                                playlistQueue.Add(itemInfo);
+                                                k++;
+                                            }
+
+                                            if (playlistQueue.Count > 0)
+                                            {
+                                                playlistInfo = string.Format("{0} maps", playlistQueue.Count);
+                                            }
+                                        }
                                     }
 
                                     return true;
@@ -1922,6 +2217,13 @@ public static class Utilities
         catch { }
 
         return false;
+    }
+
+    public static bool TryGetCustomMapOrPlaylist(out int customMapIndex, out string sceneName, out string biomeId, out string playlistInfo, out string sourceName)
+    {
+        List<PlaylistItemInfo> queue;
+        int activeIdx;
+        return TryGetCustomMapOrPlaylist(out customMapIndex, out sceneName, out biomeId, out playlistInfo, out sourceName, out queue, out activeIdx);
     }
 
     public static bool TryGetPeakAMapCustomMap(out int customMapIndex, out string sceneName, out string biomeId)
@@ -2190,6 +2492,12 @@ public static class Utilities
         public static int pendingAnnouncedAscent = -1;
         public static float pendingAnnouncedTime = -100f;
 
+        // Playlist & Route Badges Model
+        public static List<PlaylistItemInfo> playlistQueue = new List<PlaylistItemInfo>();
+        public static int currentPlaylistIndex = 0;
+        public static int totalPlaylistCount = 0;
+        public static List<RouteNodeBadge> currentMapBadges = new List<RouteNodeBadge>();
+
         // Daily Island Info
         public static int todayLevelIndex = 0;
         public static string todaySceneName = "";
@@ -2270,7 +2578,9 @@ public static class Utilities
             string customBiomeId = "";
             string extPlaylistInfo = "";
             string extSourceName = "";
-            bool hasCustomMap = TryGetCustomMapOrPlaylist(out customMapIdx, out customSceneName, out customBiomeId, out extPlaylistInfo, out extSourceName);
+            List<PlaylistItemInfo> extQueue;
+            int extActivePlIdx;
+            bool hasCustomMap = TryGetCustomMapOrPlaylist(out customMapIdx, out customSceneName, out customBiomeId, out extPlaylistInfo, out extSourceName, out extQueue, out extActivePlIdx);
 
             try
             {
@@ -2322,6 +2632,13 @@ public static class Utilities
                 {
                     todayBiomeID = customBiomeId;
                     todayBiomeRoute = FormatBiomeIDRoute(todayBiomeID);
+                }
+
+                if (extQueue != null && extQueue.Count > 0)
+                {
+                    playlistQueue = extQueue;
+                    currentPlaylistIndex = extActivePlIdx;
+                    totalPlaylistCount = extQueue.Count;
                 }
             }
             else if (isInAirport && Time.realtimeSinceStartup - pendingAnnouncedTime < 30f && !string.IsNullOrEmpty(pendingAnnouncedScene))
@@ -2412,10 +2729,44 @@ public static class Utilities
                 altitude = 0f;
                 route = GetAirportPredictedRoute(todayBiomeID);
                 isAtCampfire = false;
-                currentSegDisplayName = (route.Count > 0) ? route[0].displayName : Localization.T("world.segment_beach");
-                nextSegDisplayName = (route.Count > 1) ? route[1].displayName : "";
+                currentSegDisplayName = (route != null && route.Count > 0) ? route[0].displayName : Localization.T("world.segment_beach");
+                nextSegDisplayName = (route != null && route.Count > 1) ? route[1].displayName : "";
                 nextLevelNumber = 2;
             }
+
+            // Sync or generate playlistQueue fallback
+            if (playlistQueue == null || playlistQueue.Count == 0)
+            {
+                playlistQueue = new List<PlaylistItemInfo>();
+                PlaylistItemInfo single = new PlaylistItemInfo
+                {
+                    index = 1,
+                    mapIndex = todayLevelIndex,
+                    sceneName = todaySceneName,
+                    displayName = !string.IsNullOrEmpty(todaySceneName) ? todaySceneName : (isCustomScene ? "Custom Island" : "Daily Island"),
+                    biomeId = todayBiomeID,
+                    formattedRoute = todayBiomeRoute,
+                    isCurrent = true,
+                    nodes = BuildRouteBadges(todayBiomeID, currentSegment, true, isInAirport, route)
+                };
+                playlistQueue.Add(single);
+                currentPlaylistIndex = 0;
+                totalPlaylistCount = 1;
+            }
+            else
+            {
+                // Sync current states of playlist queue items
+                for (int p = 0; p < playlistQueue.Count; p++)
+                {
+                    var pItem = playlistQueue[p];
+                    bool isCur = (p == currentPlaylistIndex) ||
+                        (!string.IsNullOrEmpty(todaySceneName) && todaySceneName.Equals(pItem.sceneName, StringComparison.OrdinalIgnoreCase));
+                    pItem.isCurrent = isCur;
+                    pItem.nodes = BuildRouteBadges(pItem.biomeId, currentSegment, isCur, isInAirport, isCur ? route : null);
+                }
+            }
+
+            currentMapBadges = BuildRouteBadges(todayBiomeID, currentSegment, true, isInAirport, route);
         }
     }
 
