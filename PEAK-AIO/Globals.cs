@@ -118,6 +118,7 @@ public static class Globals
         public float lastRecordedTime;
     }
     public static Dictionary<int, PlayerLocationSnapshot> playerSafeLocations = new Dictionary<int, PlayerLocationSnapshot>();
+    public static Dictionary<int, Vector3> playerDeathLocations = new Dictionary<int, Vector3>();
 
     // Global Error & Notification System
     public static class GlobalNotifier

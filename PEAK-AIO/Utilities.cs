@@ -425,9 +425,9 @@ public static class Utilities
         if (target == null) return Vector3.zero;
 
         bool isDead = (target.data != null && target.data.dead) || target.Ghost != null;
-        bool isDowned = (target.data != null && target.data.passedOut);
+        bool isDowned = (target.data != null && (target.data.passedOut || target.data.fullyPassedOut));
 
-        // 1. 如果没有死亡且没有倒地（存活状态）或者处于倒地状态，必须【原地复活】，绝不能拉回历史死亡地点
+        // 1. 如果没有死亡（存活站立或仅倒地），复活位置即为当前原本坐标，绝不拉回历史营火或死亡地点
         if (!isDead)
         {
             Vector3 currentPos = target.transform.position;
@@ -436,51 +436,40 @@ public static class Utilities
                 currentPos = target.Head;
             }
 
-            // 在当前站立/倒地位置正上方微调打射线，紧贴当前地面
-            Vector3 rayStart = currentPos + Vector3.up * 1.5f;
-            RaycastHit hit;
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 4.0f, ~0, QueryTriggerInteraction.Ignore))
-            {
-                return hit.point + Vector3.up * 0.15f;
-            }
-            return currentPos;
+            return ResolveSafeGroundPosition(currentPos);
         }
 
-        // 2. 只有在玩家彻底死亡（Dead）且掉入虚空或变为幽灵的情况下，才使用安全快照或幽灵位置
-        Vector3 basePos = Vector3.zero;
-        bool foundSnapshot = false;
+        // 2. 玩家已死亡：优先读取死亡发生时记录的现场物理世界坐标
+        int viewId = (target.photonView != null) ? target.photonView.ViewID : target.GetInstanceID();
+        Vector3 deathPos;
+        if (Globals.playerDeathLocations.TryGetValue(viewId, out deathPos) && deathPos.sqrMagnitude > 1f && deathPos.y > -30f && deathPos.y < 4000f)
+        {
+            return ResolveSafeGroundPosition(deathPos);
+        }
 
+        // 3. 备选：生前最后一次安全地面快照
         Globals.PlayerLocationSnapshot snapshot;
         if (target.photonView != null && Globals.playerSafeLocations.TryGetValue(target.photonView.ViewID, out snapshot))
         {
-            basePos = snapshot.safePosition;
-            foundSnapshot = true;
-        }
-        else
-        {
-            Globals.PlayerLocationSnapshot snapInst;
-            if (Globals.playerSafeLocations.TryGetValue(target.GetInstanceID(), out snapInst))
+            if (snapshot.safePosition.sqrMagnitude > 1f && snapshot.safePosition.y > -30f && snapshot.safePosition.y < 4000f)
             {
-                basePos = snapInst.safePosition;
-                foundSnapshot = true;
+                return ResolveSafeGroundPosition(snapshot.safePosition);
             }
         }
 
-        if (!foundSnapshot)
+        // 4. 备选：角色属性 LastLivingPosition
+        if (target.LastLivingPosition.sqrMagnitude > 1f && target.LastLivingPosition.y > -30f && target.LastLivingPosition.y < 4000f)
         {
-            basePos = target.Ghost != null ? target.Ghost.transform.position : target.Head;
-            if (basePos == Vector3.zero)
-                basePos = target.transform.position;
+            return ResolveSafeGroundPosition(target.LastLivingPosition);
         }
 
-        Vector3 deadRayStart = basePos + Vector3.up * 5.0f;
-        RaycastHit deadHit;
-        if (Physics.Raycast(deadRayStart, Vector3.down, out deadHit, 15.0f, ~0, QueryTriggerInteraction.Ignore))
+        // 5. 终极防御：若角色本体已被移动至太空且无快照，取当前本地玩家身旁安全地面，绝不抛向太空或错误营火
+        if (Character.localCharacter != null && Character.localCharacter != target)
         {
-            return deadHit.point + Vector3.up * 1.5f;
+            return ResolveSafeGroundPosition(Character.localCharacter.transform.position + Character.localCharacter.transform.forward * 1.5f);
         }
 
-        return basePos + Vector3.up * 1.5f;
+        return ResolveSafeGroundPosition(target.transform.position);
     }
 
     public static void SpawnItemInWorld(int itemIndex)
@@ -750,11 +739,56 @@ public static class Utilities
                             continue;
 
                         bool isDead = (character.data != null && character.data.dead) || character.Ghost != null;
+                        bool isDowned = (character.data != null && (character.data.passedOut || character.data.fullyPassedOut));
+
+                        if (!isDead)
+                        {
+                            // 存活或仅倒地：原地恢复，严禁调用 RPCA_ReviveAtPosition，杜绝掉装与错误传送
+                            if (isDowned)
+                            {
+                                character.photonView.RPC("RPCA_UnPassOut", RpcTarget.All, Array.Empty<object>());
+                            }
+                            if (character.refs != null && character.refs.afflictions != null)
+                            {
+                                character.refs.afflictions.ClearAllStatus(true);
+                                character.refs.afflictions.RemoveAllThorns();
+                                character.refs.afflictions.ClearAllAfflictions();
+                            }
+                            if (character.data != null)
+                            {
+                                character.data.passedOut = false;
+                                character.data.fullyPassedOut = false;
+                                character.data.deathTimer = 0f;
+                                character.data.fallSeconds = 0f;
+                                var stamF = ConstantFields.GetStaminaField();
+                                if (stamF != null) stamF.SetValue(character.data, 1f);
+                            }
+                            character.ClampStamina();
+                            if (character.IsLocal)
+                            {
+                                character.SetExtraStamina(0f);
+                            }
+                            continue;
+                        }
+
+                        // 彻底死亡玩家：在死亡地点复活
                         Vector3 revivePos = GetSafeRevivePosition(character);
 
                         character.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
                             revivePos, false, -1
                         });
+
+                        // 延迟清除负面诅咒/饥饿
+                        var cRef = character;
+                        EventComponent.QueueDelayedAction(() =>
+                        {
+                            if (cRef != null && cRef.refs != null && cRef.refs.afflictions != null)
+                            {
+                                cRef.refs.afflictions.ClearAllStatus(true);
+                                cRef.refs.afflictions.RemoveAllThorns();
+                                cRef.refs.afflictions.ClearAllAfflictions();
+                            }
+                        }, 0.2f);
 
                         int viewId = character.photonView.ViewID;
                         Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
@@ -779,7 +813,7 @@ public static class Utilities
                     }
                 }
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Revive All triggered with safe snapshots. RestoreItems: {0}", restoreItems));
+                    Logger.LogInfo(string.Format("[Lobby] Revive All triggered. RestoreItems: {0}", restoreItems));
             }
             catch (Exception ex)
             {
@@ -809,7 +843,20 @@ public static class Utilities
                         if (Globals.excludeSelfFromAllActions && character.IsLocal)
                             continue;
 
+                        var statusLockProp = ConstantFields.GetStatusLockProperty();
+                        if (character.statusesLocked && statusLockProp != null)
+                        {
+                            statusLockProp.SetValue(character, false, null);
+                        }
+
                         Vector3 pos = character.transform.position;
+                        if (pos.y > 4000f || pos.sqrMagnitude < 0.1f)
+                            pos = character.LastLivingPosition;
+
+                        CaptureInventorySnapshot(character);
+                        int viewId = character.photonView.ViewID;
+                        Globals.playerDeathLocations[viewId] = ResolveSafeGroundPosition(pos);
+
                         character.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
                     }
                     catch (Exception ex)
@@ -826,6 +873,7 @@ public static class Utilities
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("全员击杀异常: " + ex.Message);
             }
         });
     }
@@ -891,11 +939,62 @@ public static class Utilities
                 if (target == null || target.photonView == null) return;
 
                 bool isDead = (target.data != null && target.data.dead) || target.Ghost != null;
+                bool isDowned = (target.data != null && (target.data.passedOut || target.data.fullyPassedOut));
+
+                if (!isDead)
+                {
+                    // 1. 玩家未死亡（存活站立或仅倒地昏迷）：绝不能调用 RPCA_ReviveAtPosition，防止全身装备爆落到地上！
+                    if (isDowned)
+                    {
+                        // 原地唤醒倒地玩家
+                        target.photonView.RPC("RPCA_UnPassOut", RpcTarget.All, Array.Empty<object>());
+                    }
+
+                    // 原地恢复状态，彻底清除诅咒、饥饿、中毒等负面
+                    if (target.refs != null && target.refs.afflictions != null)
+                    {
+                        target.refs.afflictions.ClearAllStatus(true);
+                        target.refs.afflictions.RemoveAllThorns();
+                        target.refs.afflictions.ClearAllAfflictions();
+                    }
+                    if (target.data != null)
+                    {
+                        target.data.passedOut = false;
+                        target.data.fullyPassedOut = false;
+                        target.data.deathTimer = 0f;
+                        target.data.fallSeconds = 0f;
+                        var stamF = ConstantFields.GetStaminaField();
+                        if (stamF != null) stamF.SetValue(target.data, 1f);
+                    }
+                    target.ClampStamina();
+                    if (target.IsLocal)
+                    {
+                        target.SetExtraStamina(0f);
+                    }
+
+                    if (Logger != null)
+                        Logger.LogInfo(string.Format("[Lobby] Player {0} is alive/downed; refreshed in-place without dropping items.", target.characterName));
+                    return;
+                }
+
+                // 2. 玩家彻底死亡：传送到其死亡位置复活（绝不传送到营火）
                 Vector3 revivePos = GetSafeRevivePosition(target);
 
+                // 发送 RPCA_ReviveAtPosition (applyStatus = false, 绝不施加诅咒/饥饿)
                 target.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
                     revivePos, false, -1
                 });
+
+                // 复活后延迟清除可能带有的任何负面
+                EventComponent.QueueDelayedAction(() =>
+                {
+                    if (target != null && target.refs != null && target.refs.afflictions != null)
+                    {
+                        target.refs.afflictions.ClearAllStatus(true);
+                        target.refs.afflictions.RemoveAllThorns();
+                        target.refs.afflictions.ClearAllAfflictions();
+                    }
+                }, 0.2f);
 
                 int viewId = target.photonView.ViewID;
                 Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
@@ -913,7 +1012,7 @@ public static class Utilities
                 }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Revive requested for player index {0}. RestoreItems: {1}", Globals.selectedPlayer, restoreItems));
+                    Logger.LogInfo(string.Format("[Lobby] Revive requested for player index {0} at death pos. RestoreItems: {1}", Globals.selectedPlayer, restoreItems));
             }
             catch (Exception ex)
             {
@@ -936,16 +1035,33 @@ public static class Utilities
                 var target = Globals.allPlayers[Globals.selectedPlayer];
                 if (target == null || target.photonView == null) return;
 
+                // 1. 若目标开启了状态锁定（免伤），临时解锁
+                var targetStatusProp = ConstantFields.GetStatusLockProperty();
+                if (target.statusesLocked && targetStatusProp != null)
+                {
+                    targetStatusProp.SetValue(target, false, null);
+                }
+
                 Vector3 pos = target.transform.position;
+                if (pos.y > 4000f || pos.sqrMagnitude < 0.1f)
+                    pos = target.LastLivingPosition;
+
+                // 2. 捕获物品快照和死亡位置
+                CaptureInventorySnapshot(target);
+                int viewId = target.photonView.ViewID;
+                Globals.playerDeathLocations[viewId] = ResolveSafeGroundPosition(pos);
+
+                // 3. 执行死亡 RPC
                 target.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Kill requested for player index {0}", Globals.selectedPlayer));
+                    Logger.LogInfo(string.Format("[Lobby] Kill executed for player index {0}", Globals.selectedPlayer));
             }
             catch (Exception ex)
             {
                 if (ConfigManager.Logger != null)
                     ConfigManager.Logger.LogError(ex);
+                Globals.GlobalNotifier.ShowError("击杀玩家异常: " + ex.Message);
             }
         });
     }
@@ -1148,11 +1264,13 @@ public static class Utilities
             return rawPos;
         }
 
-        int terrainMapMask = LayerMask.GetMask("Terrain", "Map");
-        if (terrainMapMask == 0)
-            terrainMapMask = LayerMask.GetMask("Terrain", "Map", "Default");
+        // 关键：必须显式包含 Default 物理层，因为火山浮石、窑炉平台、山顶停机坪神殿网格均在 Default 层
+        int terrainMapMask = LayerMask.GetMask("Terrain", "Map", "Default");
         if (terrainMapMask == 0)
             terrainMapMask = HelperFunctions.AllPhysicalExceptCharacter.value;
+
+        // 刷新 PhysX 碰撞加速结构，确保新激活物体的 MeshCollider 即刻对射线有效
+        Physics.SyncTransforms();
 
         // 1. 向上探测是否有岩壁屋顶、洞穴穹顶或拱桥天花板（避免从洞穴/拱门上方下落射线导致传送到山顶/穹顶极高处）
         RaycastHit ceilHit;
@@ -1160,30 +1278,43 @@ public static class Utilities
             rawPos + Vector3.up * 0.2f,
             Vector3.up,
             out ceilHit,
-            3.0f,
+            3.5f,
             terrainMapMask,
             QueryTriggerInteraction.Ignore
         );
 
-        // 如果头顶有天花板，将向上发射起点限制在天花板距离的一半且不超过0.8m；若无天花板，向上探测起点仅取1.2m（绝不钻到上层山体上方）
+        // 如果头顶有天花板，将向上发射起点限制在天花板距离的一半且不超过0.8m；若无天花板，仅向上偏移1.2m
         float castOffset = hasCeiling ? Mathf.Clamp(ceilHit.distance * 0.5f, 0.15f, 0.8f) : 1.2f;
         Vector3 rayStart = rawPos + Vector3.up * castOffset;
 
-        // 2. 向下发射射线寻找真正脚下的坚实地面（过滤掉角色本身和绳索）
+        // 2. 向下发射近距离高精度射线
         RaycastHit hit;
         if (Physics.Raycast(rayStart, Vector3.down, out hit, 20.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
         {
-            if (hit.point.y <= rawPos.y + 1.2f)
+            if (hit.point.y <= rayStart.y && hit.normal.y > 0.25f)
             {
                 return hit.point + Vector3.up * 0.15f;
             }
         }
 
-        // 3. 若近距离未探测到地面，向下深探 60m 寻找真实地面（防止悬空跌落虚空）
-        RaycastHit deepHit;
-        if (Physics.Raycast(rawPos + Vector3.up * 0.3f, Vector3.down, out deepHit, 60.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
+        // 3. 中距球体投射（半径0.25m，深度35m，防止射线正好穿过拼接缝隙）
+        RaycastHit sphereHit;
+        if (Physics.SphereCast(rayStart, 0.25f, Vector3.down, out sphereHit, 35.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
         {
-            return deepHit.point + Vector3.up * 0.15f;
+            if (sphereHit.point.y <= rayStart.y && sphereHit.normal.y > 0.25f)
+            {
+                return sphereHit.point + Vector3.up * 0.15f;
+            }
+        }
+
+        // 4. 深探 60m 寻找真实地面（防止悬空跌落虚空）
+        RaycastHit deepHit;
+        if (Physics.Raycast(rawPos + Vector3.up * 0.5f, Vector3.down, out deepHit, 60.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
+        {
+            if (deepHit.point.y <= rawPos.y + 1.0f && deepHit.normal.y > 0.25f)
+            {
+                return deepHit.point + Vector3.up * 0.15f;
+            }
         }
 
         return rawPos + Vector3.up * 0.15f;
@@ -1202,7 +1333,7 @@ public static class Utilities
 
         if (segIdx >= 5) // Level 6: Peak
         {
-            // 1. 确保第 4 段（通向山顶的段落/角斗场）地形及网格被激活
+            // 1. 确保第 4 段地形及网格被激活
             if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
             {
                 if (mh.segments[4].segmentParent != null && !mh.segments[4].segmentParent.activeSelf)
@@ -1223,35 +1354,44 @@ public static class Utilities
                     Singleton<PeakHandler>.Instance.peakSequence.SetActive(true);
             }
 
-            // 3. 优先取官方山顶重生点 respawnThePeak
-            if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > -50f)
+            Physics.SyncTransforms();
+
+            // 3. 优先取官方山顶出生点 respawnThePeak（带防平流层高度检查）
+            if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > 10f && mh.respawnThePeak.position.y < 800f)
             {
                 rawPos = mh.respawnThePeak.position;
                 foundPos = true;
             }
-            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f)
+            // 4. 取 PeakHandler 通关童子军站立点（绝对地表坚实网格）
+            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.firstCutsceneScout != null)
             {
-                rawPos = Singleton<PeakHandler>.Instance.transform.position;
+                rawPos = Singleton<PeakHandler>.Instance.firstCutsceneScout.transform.position;
                 foundPos = true;
+            }
+            // 5. 取直升机救援绳索锚点正下方地表
+            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.peakSequence != null)
+            {
+                var seq = Singleton<PeakHandler>.Instance.peakSequence.GetComponent<PeakSequence>();
+                if (seq != null && seq.ropeSpawnPoint != null)
+                {
+                    rawPos = seq.ropeSpawnPoint.position - Vector3.up * 15f;
+                    foundPos = true;
+                }
             }
             else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
             {
                 rawPos = mh.segments[4].reconnectSpawnPos.position;
                 foundPos = true;
             }
-            else
+            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f && Singleton<PeakHandler>.Instance.transform.position.y < 800f)
             {
-                GameObject go = GameObject.Find("respawnThePeak") ?? GameObject.Find("ThePeak") ?? GameObject.Find("Peak");
-                if (go != null && go.transform.position.sqrMagnitude > 1f)
-                {
-                    rawPos = go.transform.position;
-                    foundPos = true;
-                }
+                rawPos = Singleton<PeakHandler>.Instance.transform.position;
+                foundPos = true;
             }
         }
         else if (segIdx == 4) // Level 5: The Kiln
         {
-            // 1. 激活第 4 段及第 3 段的 wallNext
+            // 1. 激活第 4 段及第 3 段（Caldera）的连接通道及网格，确保双向保活不留裂缝
             if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
             {
                 var kSeg = mh.segments[4];
@@ -1266,13 +1406,17 @@ public static class Utilities
             }
             if (mh.segments != null && mh.segments.Length > 3 && mh.segments[3] != null)
             {
+                if (mh.segments[3].segmentParent != null && !mh.segments[3].segmentParent.activeSelf)
+                    mh.segments[3].segmentParent.SetActive(true);
                 if (mh.segments[3].wallNext != null && !mh.segments[3].wallNext.activeSelf)
                     mh.segments[3].wallNext.SetActive(true);
             }
 
-            // 2. 核心：优先取 MapHandler 官方专属字段 respawnTheKiln（彻底解决第 4 到第 5 关传入虚空）
+            Physics.SyncTransforms();
+
+            // 2. 核心：优先取 MapHandler 官方专属字段 respawnTheKiln
             Transform kilnSpawn = GetRespawnTheKiln(mh);
-            if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -50f)
+            if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -10f)
             {
                 rawPos = kilnSpawn.position;
                 foundPos = true;
@@ -1281,27 +1425,29 @@ public static class Utilities
                     mh.segments[4].reconnectSpawnPos = kilnSpawn;
                 }
             }
+            // 3. 次选：TheKiln 切片自带 reconnectSpawnPos
             else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null && mh.segments[4].reconnectSpawnPos.position.sqrMagnitude > 1f)
             {
                 rawPos = mh.segments[4].reconnectSpawnPos.position;
                 foundPos = true;
             }
-            else
+            // 4. 次选：TheKiln 下的 RespawnChest 石雕像
+            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].segmentParent != null)
             {
-                GameObject go = GameObject.Find("respawnTheKiln") ?? GameObject.Find("TheKiln") ?? GameObject.Find("Kiln");
-                if (go != null && go.transform.position.sqrMagnitude > 1f)
+                RespawnChest chest = mh.segments[4].segmentParent.GetComponentInChildren<RespawnChest>(true);
+                if (chest != null && chest.transform.position.sqrMagnitude > 1f)
                 {
-                    rawPos = go.transform.position;
+                    rawPos = chest.transform.position + chest.transform.forward * 1.5f;
                     foundPos = true;
                 }
-                else
+            }
+            else
+            {
+                LavaRising lr = GetLavaRising(mh);
+                if (lr != null && lr.transform.position.sqrMagnitude > 1f)
                 {
-                    LavaRising lr = GetLavaRising(mh);
-                    if (lr != null && lr.transform.position.sqrMagnitude > 1f)
-                    {
-                        rawPos = lr.transform.position + Vector3.up * 8f;
-                        foundPos = true;
-                    }
+                    rawPos = lr.transform.position + Vector3.up * 8f;
+                    foundPos = true;
                 }
             }
         }
@@ -1340,6 +1486,8 @@ public static class Utilities
                 if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
                     seg.wallPrevious.SetActive(true);
 
+                Physics.SyncTransforms();
+
                 // 候选 1：生效变体段落的 reconnectSpawnPos
                 if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
                 {
@@ -1347,7 +1495,7 @@ public static class Utilities
                     foundPos = true;
                 }
                 // 候选 2：生效变体段落的营火位置
-                else if (activeSeg.segmentCampfire != null)
+                if (!foundPos && activeSeg.segmentCampfire != null)
                 {
                     Campfire cf = activeSeg.segmentCampfire.GetComponentInChildren<Campfire>(true);
                     if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
@@ -1356,7 +1504,16 @@ public static class Utilities
                         foundPos = true;
                     }
                 }
-
+                // 候选 2.5：核心解决 Caldera（第 4 关）无常规营火：自动定位 RespawnChest 石雕像（官方基地标志）
+                if (!foundPos && activeSeg.segmentParent != null)
+                {
+                    RespawnChest chest = activeSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    {
+                        rawPos = chest.transform.position + chest.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
                 // 候选 3：基础段落的 reconnectSpawnPos
                 if (!foundPos && seg.reconnectSpawnPos != null && seg.reconnectSpawnPos.position.sqrMagnitude > 1f && seg.reconnectSpawnPos.position.y > -50f)
                 {
@@ -1373,6 +1530,16 @@ public static class Utilities
                         foundPos = true;
                     }
                 }
+                // 候选 4.5：基础段落下的 RespawnChest
+                if (!foundPos && seg.segmentParent != null)
+                {
+                    RespawnChest chest = seg.segmentParent.GetComponentInChildren<RespawnChest>(true);
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    {
+                        rawPos = chest.transform.position + chest.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
                 // 候选 5：海滩初生点
                 if (!foundPos && segIdx == 0 && SpawnPoint.LocalSpawnPoint != null)
                 {
@@ -1384,6 +1551,11 @@ public static class Utilities
 
         if (!foundPos || rawPos.sqrMagnitude < 0.1f || rawPos.y < -50f)
         {
+            if (Character.localCharacter != null)
+            {
+                safePos = ResolveSafeGroundPosition(Character.localCharacter.transform.position);
+                return true;
+            }
             return false;
         }
 
@@ -1773,20 +1945,20 @@ public static class Utilities
 
         try
         {
-            // 1. Check if at The Peak
+            // 1. 检查是否在 Peak 山顶（高度和距离双重判定）
             if (officialSeg == Segment.Peak)
             {
                 return Segment.Peak;
             }
             if (mh.respawnThePeak != null && mh.respawnThePeak.position.y > 50f)
             {
-                if (pPos.y >= mh.respawnThePeak.position.y - 25f || Vector3.Distance(pPos, mh.respawnThePeak.position) < 80f)
+                if (pPos.y >= mh.respawnThePeak.position.y - 25f && Vector3.Distance(pPos, mh.respawnThePeak.position) < 200f)
                 {
                     return Segment.Peak;
                 }
             }
 
-            // 1.5. Check if at The Kiln
+            // 1.5. 检查是否在 The Kiln 窑炉
             if (officialSeg == Segment.TheKiln)
             {
                 return Segment.TheKiln;
@@ -1794,37 +1966,26 @@ public static class Utilities
             Transform kilnRespawn = GetRespawnTheKiln(mh);
             if (kilnRespawn != null && kilnRespawn.position.y > 10f)
             {
-                if (Mathf.Abs(pPos.y - kilnRespawn.position.y) < 60f && Vector3.Distance(pPos, kilnRespawn.position) < 150f)
+                if (Mathf.Abs(pPos.y - kilnRespawn.position.y) < 50f && Vector3.Distance(pPos, kilnRespawn.position) < 150f)
                 {
                     return Segment.TheKiln;
                 }
             }
 
-            // 2. Determine minimum segment based on lit campfires
-            int minSegment = 0;
-            for (int i = 3; i >= 0; i--)
-            {
-                if (IsCampfireLit(i))
-                {
-                    minSegment = i + 1;
-                    break;
-                }
-            }
-
-            // 3. Check if player is standing near any segment's campfire
+            // 2. 检查玩家是否正站在某个营火附近（12m内）
             for (int i = 0; i < 4; i++)
             {
                 if (IsPlayerNearCampfire(i, 12f))
                 {
                     if (IsCampfireLit(i))
                     {
-                        return (Segment)Math.Max(minSegment, i + 1);
+                        return (Segment)(i + 1);
                     }
-                    return (Segment)Math.Max(minSegment, i);
+                    return (Segment)i;
                 }
             }
 
-            // 4. Check altitude bands across segments (descending from 4 down to 0, including variant segments)
+            // 3. 基于各段落物理海拔（由高至低：4 -> 0）逐级比对实际 Y 坐标
             if (mh.segments != null && mh.segments.Length > 0)
             {
                 for (int i = mh.segments.Length - 1; i >= 0; i--)
@@ -1842,11 +2003,11 @@ public static class Utilities
                         if (spawnTf != null)
                         {
                             float spawnY = spawnTf.position.y;
-                            if (i == 0 || spawnY > 10f)
+                            if (i == 0 || spawnY > 5f)
                             {
-                                if (pPos.y >= spawnY - 2f)
+                                if (pPos.y >= spawnY - 5f)
                                 {
-                                    return (Segment)Math.Max(minSegment, i);
+                                    return (Segment)i;
                                 }
                             }
                         }
@@ -1854,7 +2015,7 @@ public static class Utilities
                 }
             }
 
-            return (Segment)Math.Max(minSegment, (int)officialSeg);
+            return officialSeg;
         }
         catch { }
 

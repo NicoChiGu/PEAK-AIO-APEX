@@ -196,6 +196,32 @@ public class Patch_CharacterDie
             if (__instance != null)
             {
                 Utilities.CaptureInventorySnapshot(__instance);
+
+                if (__instance.photonView != null)
+                {
+                    int viewId = __instance.photonView.ViewID;
+                    // 在尸体被传送到 (0, 5000, -5000) 之前，捕获真实世界坐标
+                    Vector3 rawDeathPos = (__instance.Center != Vector3.zero) ? __instance.Center : __instance.transform.position;
+                    if (rawDeathPos.y > 4000f)
+                    {
+                        rawDeathPos = __instance.LastLivingPosition;
+                    }
+
+                    // 贴地安全检测，防止死在虚空深渊中
+                    Vector3 safeGround = Utilities.ResolveSafeGroundPosition(rawDeathPos);
+                    if (safeGround.y < -30f || float.IsNaN(safeGround.y))
+                    {
+                        Globals.PlayerLocationSnapshot snap;
+                        if (Globals.playerSafeLocations.TryGetValue(viewId, out snap))
+                            safeGround = snap.safePosition;
+                        else
+                            safeGround = __instance.LastLivingPosition;
+                    }
+
+                    Globals.playerDeathLocations[viewId] = safeGround;
+                    if (ConfigManager.Logger != null)
+                        ConfigManager.Logger.LogInfo(string.Format("[Patch_CharacterDie] Recorded death pos for {0} (ViewID {1}): {2}", __instance.characterName, viewId, safeGround));
+                }
             }
         }
         catch (Exception ex)
@@ -321,9 +347,13 @@ public class Patch_MapHandler_JumpToSegmentLogic
                     if (mh.segments[4].reconnectSpawnPos == null && kilnTf != null)
                         mh.segments[4].reconnectSpawnPos = kilnTf;
                 }
-                if (mh.segments.Length > 3 && mh.segments[3] != null && mh.segments[3].wallNext != null)
+                // 关键保活：保持 Caldera(段落3) 地表与相连通道激活，防止玩家从交界缝隙跌入虚空
+                if (mh.segments.Length > 3 && mh.segments[3] != null)
                 {
-                    mh.segments[3].wallNext.SetActive(true);
+                    if (mh.segments[3].segmentParent != null && !mh.segments[3].segmentParent.activeSelf)
+                        mh.segments[3].segmentParent.SetActive(true);
+                    if (mh.segments[3].wallNext != null && !mh.segments[3].wallNext.activeSelf)
+                        mh.segments[3].wallNext.SetActive(true);
                 }
             }
 
@@ -353,6 +383,9 @@ public class Patch_MapHandler_JumpToSegmentLogic
                 }
             }
 
+            // 关键：强制刷新 Unity PhysX BVH 结构，确保刚激活的切片碰撞体即刻对射线生效
+            Physics.SyncTransforms();
+
             // 5. 获取经过 100% 安全校验的绝对坐标（绝不飞天，绝不掉入虚空）
             Vector3 safeVector;
             if (!Utilities.TryGetSegmentSpawnPosition(segment, out safeVector))
@@ -364,8 +397,13 @@ public class Patch_MapHandler_JumpToSegmentLogic
                     safeVector = Utilities.ResolveSafeGroundPosition(mh.respawnThePeak.position);
                 else if (activeSeg != null && activeSeg.reconnectSpawnPos != null)
                     safeVector = Utilities.ResolveSafeGroundPosition(activeSeg.reconnectSpawnPos.position);
+                else if (Character.localCharacter != null)
+                    safeVector = Utilities.ResolveSafeGroundPosition(Character.localCharacter.transform.position);
                 else
-                    safeVector = Utilities.ResolveSafeGroundPosition(Vector3.zero);
+                    safeVector = (activeSeg != null && activeSeg.segmentParent != null) ? Utilities.ResolveSafeGroundPosition(activeSeg.segmentParent.transform.position) : Vector3.zero;
+
+                if (ConfigManager.Logger != null)
+                    ConfigManager.Logger.LogWarning(string.Format("[Harmony] TryGetSegmentSpawnPosition fallback for {0}: {1}", segment, safeVector));
             }
 
             // 6. MasterClient 触发物品 Spawner
