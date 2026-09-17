@@ -78,6 +78,7 @@ public class PeakMod : BaseUnityPlugin
     {
         Logger.LogInfo("[PEAK AIO] Initializing Mod (Native Unity GUI)...");
         this.gameObject.AddComponent<EventComponent>();
+        this.gameObject.AddComponent<AutoReconnectService>();
     }
 
     private void OnEnable()
@@ -1478,6 +1479,34 @@ public class PeakMod : BaseUnityPlugin
         }
         GUI.enabled = prevGA;
 
+        GUILayout.Space(6);
+        GUILayout.Label(Localization.T("lobby.network_title"), subHeaderStyle);
+
+        bool curTuning = Globals.enableNetworkTuning;
+        bool newTuning = GUILayout.Toggle(curTuning, Localization.T("lobby.enable_network_tuning"));
+        if (newTuning != curTuning)
+        {
+            Globals.enableNetworkTuning = newTuning;
+            ConfigManager.EnableNetworkTuning.Value = newTuning;
+            if (newTuning) NetworkTuningManager.ApplyOptimizations();
+        }
+
+        bool curAntiKick = Globals.enableAntiKick;
+        bool newAntiKick = GUILayout.Toggle(curAntiKick, Localization.T("lobby.enable_antikick"));
+        if (newAntiKick != curAntiKick)
+        {
+            Globals.enableAntiKick = newAntiKick;
+            ConfigManager.EnableAntiKick.Value = newAntiKick;
+        }
+
+        bool curAutoRec = Globals.enableAutoReconnect;
+        bool newAutoRec = GUILayout.Toggle(curAutoRec, Localization.T("lobby.enable_autoreconnect"));
+        if (newAutoRec != curAutoRec)
+        {
+            Globals.enableAutoReconnect = newAutoRec;
+            ConfigManager.EnableAutoReconnect.Value = newAutoRec;
+        }
+
         GUILayout.EndVertical();
 
         GUILayout.Space(8);
@@ -2144,7 +2173,9 @@ public class PeakMod : BaseUnityPlugin
                     }
                     else if (r.segment == Segment.TheKiln)
                     {
-                        if (GUILayout.Button(Localization.T("world.teleport_kiln_safe"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
+                        bool isCitadel = Utilities.IsCitadelActive() || (!string.IsNullOrEmpty(r.displayName) && (r.displayName.IndexOf("Citadel", StringComparison.OrdinalIgnoreCase) >= 0 || r.displayName.IndexOf("城塞", StringComparison.OrdinalIgnoreCase) >= 0));
+                        string btnKey = isCitadel ? "world.teleport_citadel_safe" : "world.teleport_kiln_safe";
+                        if (GUILayout.Button(Localization.T(btnKey), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
                         {
                             Utilities.JumpToSegmentStartSafe(Segment.TheKiln);
                         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 public enum Language
 {
@@ -985,11 +985,19 @@ public static class Localization
         }},
         { "world.segment_swamp", new Dictionary<Language, string> {
             { Language.English, "Swamp" },
-            { Language.SimplifiedChinese, "沼泽 (Swamp)" },
-            { Language.TraditionalChinese, "沼澤 (Swamp)" },
+            { Language.SimplifiedChinese, "雾沼 (Swamp)" },
+            { Language.TraditionalChinese, "霧沼 (Swamp)" },
             { Language.Japanese, "湿原 (Swamp)" },
             { Language.Korean, "늪지대 (Swamp)" },
             { Language.Italian, "Palude (Swamp)" }
+        }},
+        { "world.segment_citadel", new Dictionary<Language, string> {
+            { Language.English, "The Citadel" },
+            { Language.SimplifiedChinese, "城塞 (The Citadel)" },
+            { Language.TraditionalChinese, "城塞 (The Citadel)" },
+            { Language.Japanese, "城塞 (The Citadel)" },
+            { Language.Korean, "성채 (The Citadel)" },
+            { Language.Italian, "La Cittadella (The Citadel)" }
         }},
         { "world.segment_void", new Dictionary<Language, string> {
             { Language.English, "Void" },
@@ -1270,6 +1278,14 @@ public static class Localization
             { Language.Japanese, "熔炉安全地点へ" },
             { Language.Korean, "용광로 안전 지점으로" },
             { Language.Italian, "Teletrasporto al Forno" }
+        }},
+        { "world.teleport_citadel_safe", new Dictionary<Language, string> {
+            { Language.English, "Teleport to Citadel Point" },
+            { Language.SimplifiedChinese, "传送至城塞安全点" },
+            { Language.TraditionalChinese, "傳送至城塞安全點" },
+            { Language.Japanese, "城塞安全地点へ" },
+            { Language.Korean, "성채 안전 지점으로" },
+            { Language.Italian, "Teletrasporto alla Cittadella" }
         }},
         { "world.light_campfire", new Dictionary<Language, string> {
             { Language.English, "Light Campfire (To Level {0})" },
@@ -2294,6 +2310,62 @@ public static class Localization
             { Language.Japanese, "{0} の全デバフを解除しました" },
             { Language.Korean, "모든 디버프가 해제되었습니다" },
             { Language.Italian, "Rimossi tutti i debuff da {0}" }
+        }},
+        { "network.reconnect_toast", new Dictionary<Language, string> {
+            { Language.English, "Network interruption detected ({0}). Auto-reconnecting to room..." },
+            { Language.SimplifiedChinese, "检测到网络异常中断 ({0})，正在尝试快速自愈重连..." },
+            { Language.TraditionalChinese, "檢測到網路異常中斷 ({0})，正在嘗試快速自愈重連..." },
+            { Language.Japanese, "ネットワーク切断を検知 ({0})。ルームへ自動再接続中..." },
+            { Language.Korean, "네트워크 중단 감지됨 ({0}). 방으로 자동 재접속 시도 중..." },
+            { Language.Italian, "Interruzione di rete rilevata ({0}). Riconnessione automatica in corso..." }
+        }},
+        { "network.antikick_toast", new Dictionary<Language, string> {
+            { Language.English, "Host kick attempt intercepted! Kept in room." },
+            { Language.SimplifiedChinese, "已自动拦截房主踢人指令！保持在当前房间中。" },
+            { Language.TraditionalChinese, "已自動攔截房主踢人指令！保持在當前房間中。" },
+            { Language.Japanese, "ホストからのキックを自動遮断しました！ルームを維持します。" },
+            { Language.Korean, "호스트의 강퇴 명령을 차단했습니다! 현재 방에 유지됩니다." },
+            { Language.Italian, "Tentativo di espulsione dell'host intercettato! Rimasto nella stanza." }
+        }},
+        { "network.tuning_applied", new Dictionary<Language, string> {
+            { Language.English, "High-resilience network tuning applied." },
+            { Language.SimplifiedChinese, "高韧性抗抖动网络优化已生效。" },
+            { Language.TraditionalChinese, "高韌性抗抖動網路優化已生效。" },
+            { Language.Japanese, "高耐久ネットワーク最適化が適用されました。" },
+            { Language.Korean, "고내구성 네트워크 최적화가 적용되었습니다." },
+            { Language.Italian, "Ottimizzazione di rete ad alta resilienza applicata." }
+        }},
+        { "lobby.network_title", new Dictionary<Language, string> {
+            { Language.English, "NETWORK & PROTECTION" },
+            { Language.SimplifiedChinese, "网络优化与防掉线" },
+            { Language.TraditionalChinese, "網路優化與防斷線" },
+            { Language.Japanese, "ネットワーク最適化・保護" },
+            { Language.Korean, "네트워크 최적화 및 보호" },
+            { Language.Italian, "RETE E PROTEZIONE" }
+        }},
+        { "lobby.enable_network_tuning", new Dictionary<Language, string> {
+            { Language.English, "Network Tuning (Robust ACK/Resend)" },
+            { Language.SimplifiedChinese, "网络底层加固 (防抖动/抗丢包)" },
+            { Language.TraditionalChinese, "網路底層加固 (防抖動/抗丟包)" },
+            { Language.Japanese, "通信パラメータ最適化 (再送/耐性強化)" },
+            { Language.Korean, "네트워크 파라미터 최적화 (재전송 강화)" },
+            { Language.Italian, "Ottimizzazione Rete (Resilienza ACK)" }
+        }},
+        { "lobby.enable_antikick", new Dictionary<Language, string> {
+            { Language.English, "Anti-Kick (Block Host Kick)" },
+            { Language.SimplifiedChinese, "防房主恶意踢出 (Anti-Kick)" },
+            { Language.TraditionalChinese, "防房主惡意踢出 (Anti-Kick)" },
+            { Language.Japanese, "キック保護 (ホストキック無効化)" },
+            { Language.Korean, "강퇴 방지 (호스트 강퇴 차단)" },
+            { Language.Italian, "Anti-Espulsione (Blocca Kick)" }
+        }},
+        { "lobby.enable_autoreconnect", new Dictionary<Language, string> {
+            { Language.English, "Auto-Reconnect & Rejoin Room" },
+            { Language.SimplifiedChinese, "断线自动自愈重连 (Auto-Rejoin)" },
+            { Language.TraditionalChinese, "斷線自動自愈重連 (Auto-Rejoin)" },
+            { Language.Japanese, "切断時自動再接続 (Auto-Rejoin)" },
+            { Language.Korean, "연결 끊김 시 자동 재접속" },
+            { Language.Italian, "Riconnessione Automatica alla Stanza" }
         }}
     };
 

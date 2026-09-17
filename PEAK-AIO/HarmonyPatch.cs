@@ -336,24 +336,51 @@ public class Patch_MapHandler_JumpToSegmentLogic
                     activeSeg.wallPrevious.SetActive(true);
             }
 
-            // 特殊关卡激活支持：TheKiln
+            // 特殊关卡激活支持：TheKiln 或 The Citadel (城塞)
             if (segment == Segment.TheKiln)
             {
-                Transform kilnTf = Utilities.GetRespawnTheKiln(mh);
                 if (mh.segments.Length > 4 && mh.segments[4] != null)
                 {
-                    if (mh.segments[4].segmentParent != null && !mh.segments[4].segmentParent.activeSelf)
-                        mh.segments[4].segmentParent.SetActive(true);
-                    if (mh.segments[4].reconnectSpawnPos == null && kilnTf != null)
-                        mh.segments[4].reconnectSpawnPos = kilnTf;
+                    var kSeg = mh.segments[4];
+                    MapHandler.MapSegment vSeg;
+                    if (Utilities.TryGetVariantSegment(mh, kSeg, out vSeg) && vSeg != null)
+                    {
+                        if (vSeg.segmentParent != null && !vSeg.segmentParent.activeSelf)
+                            vSeg.segmentParent.SetActive(true);
+                        if (vSeg.segmentCampfire != null && !vSeg.segmentCampfire.activeSelf)
+                            vSeg.segmentCampfire.SetActive(true);
+                        if (vSeg.wallNext != null && !vSeg.wallNext.activeSelf)
+                            vSeg.wallNext.SetActive(true);
+                        if (vSeg.wallPrevious != null && !vSeg.wallPrevious.activeSelf)
+                            vSeg.wallPrevious.SetActive(true);
+                        if (vSeg.reconnectSpawnPos != null)
+                            kSeg.reconnectSpawnPos = vSeg.reconnectSpawnPos;
+                    }
+
+                    if (kSeg.segmentParent != null && !kSeg.segmentParent.activeSelf)
+                        kSeg.segmentParent.SetActive(true);
+                    if (kSeg.reconnectSpawnPos == null)
+                    {
+                        Transform kilnTf = Utilities.GetRespawnTheKiln(mh);
+                        if (kilnTf != null) kSeg.reconnectSpawnPos = kilnTf;
+                    }
                 }
-                // 关键保活：保持 Caldera(段落3) 地表与相连通道激活，防止玩家从交界缝隙跌入虚空
+                // 关键保活：保持 Caldera / 雾沼(段落3) 地表与相连通道激活，防止玩家从交界缝隙跌入虚空
                 if (mh.segments.Length > 3 && mh.segments[3] != null)
                 {
-                    if (mh.segments[3].segmentParent != null && !mh.segments[3].segmentParent.activeSelf)
-                        mh.segments[3].segmentParent.SetActive(true);
-                    if (mh.segments[3].wallNext != null && !mh.segments[3].wallNext.activeSelf)
-                        mh.segments[3].wallNext.SetActive(true);
+                    var cSeg = mh.segments[3];
+                    MapHandler.MapSegment vSeg3;
+                    if (Utilities.TryGetVariantSegment(mh, cSeg, out vSeg3) && vSeg3 != null)
+                    {
+                        if (vSeg3.segmentParent != null && !vSeg3.segmentParent.activeSelf)
+                            vSeg3.segmentParent.SetActive(true);
+                        if (vSeg3.wallNext != null && !vSeg3.wallNext.activeSelf)
+                            vSeg3.wallNext.SetActive(true);
+                    }
+                    if (cSeg.segmentParent != null && !cSeg.segmentParent.activeSelf)
+                        cSeg.segmentParent.SetActive(true);
+                    if (cSeg.wallNext != null && !cSeg.wallNext.activeSelf)
+                        cSeg.wallNext.SetActive(true);
                 }
             }
 
@@ -368,8 +395,7 @@ public class Patch_MapHandler_JumpToSegmentLogic
                 {
                     if (!Singleton<PeakHandler>.Instance.gameObject.activeSelf)
                         Singleton<PeakHandler>.Instance.gameObject.SetActive(true);
-                    if (Singleton<PeakHandler>.Instance.peakSequence != null && !Singleton<PeakHandler>.Instance.peakSequence.activeSelf)
-                        Singleton<PeakHandler>.Instance.peakSequence.SetActive(true);
+                    // 注意：绝不激活 peakSequence 避免提前触发直升机救援序列
                 }
             }
 
@@ -715,5 +741,49 @@ public class Patch_CookingBehavior_AddPoisonOnUse
         return true;
     }
 }
+
+// ==========================================
+// Anti-Host Malicious Kick Patch
+// ==========================================
+[HarmonyPatch(typeof(PlayerHandler), "Kick")]
+public class Patch_PlayerHandler_Kick
+{
+    static bool Prefix(int actorNumber)
+    {
+        try
+        {
+            if (!Globals.enableAntiKick) return true;
+
+            if (PhotonNetwork.LocalPlayer != null && actorNumber == PhotonNetwork.LocalPlayer.ActorNumber)
+            {
+                if (ConfigManager.Logger != null)
+                    ConfigManager.Logger.LogWarning(string.Format("[AntiKick] Intercepted kick command targeting local player (ActorNumber={0})!", actorNumber));
+
+                Globals.GlobalNotifier.ShowError(Localization.T("network.antikick_toast"), 4.5f);
+                return false; // 阻断踢人逻辑执行
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogError("[AntiKick] Error in Kick patch: " + ex);
+        }
+        return true;
+    }
+}
+
+[HarmonyPatch(typeof(PlayerHandler), "KickRoutine")]
+public class Patch_PlayerHandler_KickRoutine
+{
+    static bool Prefix(int actorNumber)
+    {
+        if (Globals.enableAntiKick && PhotonNetwork.LocalPlayer != null && actorNumber == PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            return false;
+        }
+        return true;
+    }
+}
+
 
 

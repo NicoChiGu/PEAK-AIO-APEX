@@ -790,6 +790,81 @@ public static class Utilities
         }
     }
 
+    private static float _lastToolChargeSyncTime = 0f;
+
+    /// <summary>
+    /// 安全高效地充能前三个工具槽位：具备脏标记校验与网络发包节流，消除无意义的 RPC 洪泛。
+    /// </summary>
+    public static void SafeRechargeToolSlots()
+    {
+        GetPlayer();
+        if (Globals.playerObj == null || Globals.playerObj.itemSlots == null) return;
+
+        bool anyModified = false;
+        int maxSlots = Math.Min(3, Globals.playerObj.itemSlots.Length);
+
+        for (int s = 0; s < maxSlots; s++)
+        {
+            var itemSlot = Globals.playerObj.itemSlots[s];
+            if (itemSlot == null || itemSlot.data == null || itemSlot.data.data == null) continue;
+
+            foreach (var kvp in itemSlot.data.data)
+            {
+                if (kvp.Key == DataEntryKey.PetterItemUses)
+                {
+                    var intData = kvp.Value as IntItemData;
+                    if (intData != null && intData.Value < 100)
+                    {
+                        intData.Value = 100;
+                        anyModified = true;
+                    }
+                }
+                else if (kvp.Key == DataEntryKey.Fuel)
+                {
+                    var floatData = kvp.Value as FloatItemData;
+                    if (floatData != null && floatData.Value < 99.9f)
+                    {
+                        floatData.Value = 100f;
+                        anyModified = true;
+                    }
+                }
+                else if (kvp.Key == DataEntryKey.UseRemainingPercentage)
+                {
+                    var floatData = kvp.Value as FloatItemData;
+                    if (floatData != null && floatData.Value < 99.9f)
+                    {
+                        floatData.Value = 100f;
+                        anyModified = true;
+                    }
+                }
+                else if (kvp.Key == DataEntryKey.ItemUses)
+                {
+                    var intData = kvp.Value as OptionableIntItemData;
+                    if (intData != null && intData.Value < 100)
+                    {
+                        intData.Value = 100;
+                        anyModified = true;
+                    }
+                }
+            }
+        }
+
+        if (anyModified && (Time.time - _lastToolChargeSyncTime >= 2.0f))
+        {
+            _lastToolChargeSyncTime = Time.time;
+            if (Globals.playerObj.photonView != null && PhotonNetwork.InRoom)
+            {
+                var syncObj = new InventorySyncData(
+                    Globals.playerObj.itemSlots,
+                    Globals.playerObj.backpackSlot,
+                    Globals.playerObj.tempFullSlot
+                );
+                byte[] syncData = SerializeSyncData(syncObj);
+                Globals.playerObj.photonView.SafeRPC("SyncInventoryRPC", RpcTarget.Others, syncData, true);
+            }
+        }
+    }
+
     public static void RechargeInventorySlot(int slot, float rechargeValue)
     {
         GetPlayer();
@@ -812,40 +887,57 @@ public static class Utilities
                     var itemSlot = Globals.playerObj.itemSlots[slot];
                     if (itemSlot != null && itemSlot.data != null && itemSlot.data.data != null)
                     {
+                        bool modified = false;
                         foreach (var kvp in itemSlot.data.data)
                         {
                             if (kvp.Key == DataEntryKey.PetterItemUses)
                             {
                                 var intData = kvp.Value as IntItemData;
-                                if (intData != null) intData.Value = (int)rechargeValue;
+                                if (intData != null && intData.Value != (int)rechargeValue)
+                                {
+                                    intData.Value = (int)rechargeValue;
+                                    modified = true;
+                                }
                             }
                             else if (kvp.Key == DataEntryKey.Fuel)
                             {
                                 var floatData = kvp.Value as FloatItemData;
-                                if (floatData != null) floatData.Value = rechargeValue;
+                                if (floatData != null && Math.Abs(floatData.Value - rechargeValue) > 0.1f)
+                                {
+                                    floatData.Value = rechargeValue;
+                                    modified = true;
+                                }
                             }
                             else if (kvp.Key == DataEntryKey.UseRemainingPercentage)
                             {
                                 var floatData = kvp.Value as FloatItemData;
-                                if (floatData != null) floatData.Value = rechargeValue;
+                                if (floatData != null && Math.Abs(floatData.Value - rechargeValue) > 0.1f)
+                                {
+                                    floatData.Value = rechargeValue;
+                                    modified = true;
+                                }
                             }
                             else if (kvp.Key == DataEntryKey.ItemUses)
                             {
                                 var intData = kvp.Value as OptionableIntItemData;
-                                if (intData != null) intData.Value = (int)rechargeValue;
+                                if (intData != null && intData.Value != (int)rechargeValue)
+                                {
+                                    intData.Value = (int)rechargeValue;
+                                    modified = true;
+                                }
                             }
                         }
 
-                        // Sync updated data over network
-                        var syncObj = new InventorySyncData(
-                            Globals.playerObj.itemSlots,
-                            Globals.playerObj.backpackSlot,
-                            Globals.playerObj.tempFullSlot
-                        );
-                        byte[] syncData = SerializeSyncData(syncObj);
-                        if (Globals.playerObj.photonView != null)
+                        // 仅在真实发生数据修改时才同步网络
+                        if (modified && Globals.playerObj.photonView != null && PhotonNetwork.InRoom)
                         {
-                            Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
+                            var syncObj = new InventorySyncData(
+                                Globals.playerObj.itemSlots,
+                                Globals.playerObj.backpackSlot,
+                                Globals.playerObj.tempFullSlot
+                            );
+                            byte[] syncData = SerializeSyncData(syncObj);
+                            Globals.playerObj.photonView.SafeRPC("SyncInventoryRPC", RpcTarget.Others, syncData, true);
                         }
                     }
                 }
@@ -1092,28 +1184,38 @@ public static class Utilities
                         }
                         if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
                         {
-                            target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { clearData });
-                        }
+                            target.refs.afflictions.photonView.SafeRPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, clearData);
 
-                        // 循环远程拔除荆棘
-                        for (int t = 0; t < 20; t++)
-                        {
-                            target.refs.afflictions.photonView.RPC("RemoveThornRPC", target.photonView.Owner, new object[] { t });
+                            // 精确拔除实际扎在目标身上的荆棘，避免无脑 20 次空包发送
+                            float thornVal = target.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Thorns);
+                            if (thornVal > 0.001f)
+                            {
+                                int thornCount = Mathf.Clamp(Mathf.CeilToInt(thornVal / 20f), 1, 5);
+                                for (int t = 0; t < thornCount; t++)
+                                {
+                                    target.refs.afflictions.photonView.SafeRPC("RemoveThornRPC", target.photonView.Owner, t);
+                                }
+                            }
                         }
 
                         // 提振耐力
-                        target.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+                        target.photonView.SafeRPC("MoraleBoost", RpcTarget.All, 100f, 1);
                     }
                     else
                     {
                         if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
                         {
-                            for (int t = 0; t < 20; t++)
+                            float thornVal = target.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Thorns);
+                            if (thornVal > 0.001f)
                             {
-                                target.refs.afflictions.photonView.RPC("RemoveThornRPC", target.photonView.Owner, new object[] { t });
+                                int thornCount = Mathf.Clamp(Mathf.CeilToInt(thornVal / 20f), 1, 5);
+                                for (int t = 0; t < thornCount; t++)
+                                {
+                                    target.refs.afflictions.photonView.SafeRPC("RemoveThornRPC", target.photonView.Owner, t);
+                                }
                             }
                         }
-                        target.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+                        target.photonView.SafeRPC("MoraleBoost", RpcTarget.All, 100f, 1);
                         Globals.GlobalNotifier.ShowError(Localization.T("status.non_host_hint"), 4f);
                     }
                 }
@@ -2012,6 +2114,16 @@ public static class Utilities
             }
         }
 
+        // 5. 超深 500m 探底（针对山顶/高空出生点，穿透高空将落点精准吸附至地表停机坪或石台，彻底消除半空悬空）
+        RaycastHit ultraHit;
+        if (Physics.Raycast(rawPos + Vector3.up * 2.0f, Vector3.down, out ultraHit, 500.0f, terrainMapMask, QueryTriggerInteraction.Ignore))
+        {
+            if (ultraHit.normal.y > 0.25f)
+            {
+                return ultraHit.point + Vector3.up * 0.15f;
+            }
+        }
+
         return rawPos + Vector3.up * 0.15f;
     }
 
@@ -2040,42 +2152,25 @@ public static class Utilities
                     mh.segments[5].segmentParent.SetActive(true);
             }
 
-            // 2. 确保 PeakHandler 处于激活状态
+            // 2. 确保 PeakHandler 根对象处于激活状态（注意：绝不激活 peakSequence 避免提前触发直升机救援序列）
             if (Singleton<PeakHandler>.Instance != null)
             {
                 if (!Singleton<PeakHandler>.Instance.gameObject.activeSelf)
                     Singleton<PeakHandler>.Instance.gameObject.SetActive(true);
-                if (Singleton<PeakHandler>.Instance.peakSequence != null && !Singleton<PeakHandler>.Instance.peakSequence.activeSelf)
-                    Singleton<PeakHandler>.Instance.peakSequence.SetActive(true);
             }
 
             Physics.SyncTransforms();
 
-            // 3. 优先取官方山顶出生点 respawnThePeak（带防平流层高度检查）
-            if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > 10f && mh.respawnThePeak.position.y < 800f)
-            {
-                rawPos = mh.respawnThePeak.position;
-                foundPos = true;
-            }
-            // 4. 取 PeakHandler 通关童子军站立点（绝对地表坚实网格）
-            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.firstCutsceneScout != null)
+            // 3. 优先取通关童子军站立点（绝对地表坚实网格）
+            if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.firstCutsceneScout != null)
             {
                 rawPos = Singleton<PeakHandler>.Instance.firstCutsceneScout.transform.position;
                 foundPos = true;
             }
-            // 5. 取直升机救援绳索锚点正下方地表
-            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.peakSequence != null)
+            // 4. 次选：官方山顶出生点 respawnThePeak（配合超深探地射线精准吸附停机坪地表）
+            else if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > 10f && mh.respawnThePeak.position.y < 800f)
             {
-                var seq = Singleton<PeakHandler>.Instance.peakSequence.GetComponent<PeakSequence>();
-                if (seq != null && seq.ropeSpawnPoint != null)
-                {
-                    rawPos = seq.ropeSpawnPoint.position - Vector3.up * 15f;
-                    foundPos = true;
-                }
-            }
-            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
-            {
-                rawPos = mh.segments[4].reconnectSpawnPos.position;
+                rawPos = mh.respawnThePeak.position;
                 foundPos = true;
             }
             else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f && Singleton<PeakHandler>.Instance.transform.position.y < 800f)
@@ -2083,13 +2178,35 @@ public static class Utilities
                 rawPos = Singleton<PeakHandler>.Instance.transform.position;
                 foundPos = true;
             }
+            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
+            {
+                rawPos = mh.segments[4].reconnectSpawnPos.position;
+                foundPos = true;
+            }
         }
-        else if (segIdx == 4) // Level 5: The Kiln
+        else if (segIdx == 4) // Level 5: The Kiln or The Citadel
         {
-            // 1. 激活第 4 段及第 3 段（Caldera）的连接通道及网格，确保双向保活不留裂缝
+            MapHandler.MapSegment activeSeg = null;
             if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
             {
                 var kSeg = mh.segments[4];
+                activeSeg = kSeg;
+
+                // 核心：探测并激活变体切片（如 Citadel 城塞）
+                MapHandler.MapSegment vSeg;
+                if (TryGetVariantSegment(mh, kSeg, out vSeg) && vSeg != null)
+                {
+                    activeSeg = vSeg;
+                    if (vSeg.segmentParent != null && !vSeg.segmentParent.activeSelf)
+                        vSeg.segmentParent.SetActive(true);
+                    if (vSeg.segmentCampfire != null && !vSeg.segmentCampfire.activeSelf)
+                        vSeg.segmentCampfire.SetActive(true);
+                    if (vSeg.wallNext != null && !vSeg.wallNext.activeSelf)
+                        vSeg.wallNext.SetActive(true);
+                    if (vSeg.wallPrevious != null && !vSeg.wallPrevious.activeSelf)
+                        vSeg.wallPrevious.SetActive(true);
+                }
+
                 if (kSeg.segmentParent != null && !kSeg.segmentParent.activeSelf)
                     kSeg.segmentParent.SetActive(true);
                 if (kSeg.segmentCampfire != null && !kSeg.segmentCampfire.activeSelf)
@@ -2099,50 +2216,81 @@ public static class Utilities
                 if (kSeg.wallPrevious != null && !kSeg.wallPrevious.activeSelf)
                     kSeg.wallPrevious.SetActive(true);
             }
+
+            // 关键保活：保持第 3 段（Caldera 或变体 Gloom 雾沼）的地表及连接通道激活，防止玩家从交界缝隙跌入虚空
             if (mh.segments != null && mh.segments.Length > 3 && mh.segments[3] != null)
             {
-                if (mh.segments[3].segmentParent != null && !mh.segments[3].segmentParent.activeSelf)
-                    mh.segments[3].segmentParent.SetActive(true);
-                if (mh.segments[3].wallNext != null && !mh.segments[3].wallNext.activeSelf)
-                    mh.segments[3].wallNext.SetActive(true);
+                var cSeg = mh.segments[3];
+                MapHandler.MapSegment vSeg3;
+                if (TryGetVariantSegment(mh, cSeg, out vSeg3) && vSeg3 != null)
+                {
+                    if (vSeg3.segmentParent != null && !vSeg3.segmentParent.activeSelf)
+                        vSeg3.segmentParent.SetActive(true);
+                    if (vSeg3.wallNext != null && !vSeg3.wallNext.activeSelf)
+                        vSeg3.wallNext.SetActive(true);
+                }
+                if (cSeg.segmentParent != null && !cSeg.segmentParent.activeSelf)
+                    cSeg.segmentParent.SetActive(true);
+                if (cSeg.wallNext != null && !cSeg.wallNext.activeSelf)
+                    cSeg.wallNext.SetActive(true);
             }
 
             Physics.SyncTransforms();
 
-            // 2. 核心：优先取 MapHandler 官方专属字段 respawnTheKiln
-            Transform kilnSpawn = GetRespawnTheKiln(mh);
-            if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -10f)
+            // 若激活的是变体切片（如 Citadel 城塞），优先取变体的 reconnectSpawnPos 或 RespawnChest
+            if (activeSeg != null && activeSeg != (mh.segments.Length > 4 ? mh.segments[4] : null))
             {
-                rawPos = kilnSpawn.position;
-                foundPos = true;
-                if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos == null)
+                if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
                 {
-                    mh.segments[4].reconnectSpawnPos = kilnSpawn;
-                }
-            }
-            // 3. 次选：TheKiln 切片自带 reconnectSpawnPos
-            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null && mh.segments[4].reconnectSpawnPos.position.sqrMagnitude > 1f)
-            {
-                rawPos = mh.segments[4].reconnectSpawnPos.position;
-                foundPos = true;
-            }
-            // 4. 次选：TheKiln 下的 RespawnChest 石雕像
-            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].segmentParent != null)
-            {
-                RespawnChest chest = mh.segments[4].segmentParent.GetComponentInChildren<RespawnChest>(true);
-                if (chest != null && chest.transform.position.sqrMagnitude > 1f)
-                {
-                    rawPos = chest.transform.position + chest.transform.forward * 1.5f;
+                    rawPos = activeSeg.reconnectSpawnPos.position;
                     foundPos = true;
                 }
-            }
-            else
-            {
-                LavaRising lr = GetLavaRising(mh);
-                if (lr != null && lr.transform.position.sqrMagnitude > 1f)
+                else if (activeSeg.segmentParent != null)
                 {
-                    rawPos = lr.transform.position + Vector3.up * 8f;
+                    RespawnChest chest = activeSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    {
+                        rawPos = chest.transform.position + chest.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
+            }
+
+            // 若不是变体或变体未找到点位，走经典熔炉查找
+            if (!foundPos)
+            {
+                Transform kilnSpawn = GetRespawnTheKiln(mh);
+                if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -10f)
+                {
+                    rawPos = kilnSpawn.position;
                     foundPos = true;
+                    if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos == null)
+                    {
+                        mh.segments[4].reconnectSpawnPos = kilnSpawn;
+                    }
+                }
+                else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null && mh.segments[4].reconnectSpawnPos.position.sqrMagnitude > 1f)
+                {
+                    rawPos = mh.segments[4].reconnectSpawnPos.position;
+                    foundPos = true;
+                }
+                else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].segmentParent != null)
+                {
+                    RespawnChest chest = mh.segments[4].segmentParent.GetComponentInChildren<RespawnChest>(true);
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f)
+                    {
+                        rawPos = chest.transform.position + chest.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
+                else
+                {
+                    LavaRising lr = GetLavaRising(mh);
+                    if (lr != null && lr.transform.position.sqrMagnitude > 1f)
+                    {
+                        rawPos = lr.transform.position + Vector3.up * 8f;
+                        foundPos = true;
+                    }
                 }
             }
         }
@@ -2376,6 +2524,40 @@ public static class Utilities
         public bool isCampfireLit;
     }
 
+    public static bool IsCitadelActive(MapHandler mh = null)
+    {
+        if (mh == null && MapHandler.Exists) mh = MapHandler.Instance;
+        try
+        {
+            if (!string.IsNullOrEmpty(WorldDataCache.todayBiomeID))
+            {
+                string b = WorldDataCache.todayBiomeID.ToUpper();
+                if (b.Length >= 5 && b[4] == 'C') return true;
+                if (b.Length >= 4 && (b[3] == 'S' || b[3] == 'G')) return true;
+            }
+            if (mh != null)
+            {
+                if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
+                {
+                    MapHandler.MapSegment vSeg;
+                    if (TryGetVariantSegment(mh, mh.segments[4], out vSeg) && vSeg != null)
+                        return true;
+                }
+                if (mh.variantSegments != null)
+                {
+                    for (int i = 0; i < mh.variantSegments.Length; i++)
+                    {
+                        var v = mh.variantSegments[i];
+                        if (v != null && v.segmentParent != null && v.segmentParent.name.IndexOf("Citadel", StringComparison.OrdinalIgnoreCase) >= 0 && v.segmentParent.activeSelf)
+                            return true;
+                    }
+                }
+            }
+        }
+        catch { }
+        return false;
+    }
+
     public static string GetBiomeIcon(char c)
     {
         switch (char.ToUpper(c))
@@ -2386,7 +2568,8 @@ public static class Utilities
             case 'A': return "🏔️"; // Alpine
             case 'M': return "🏜️"; // Mesa
             case 'V': return "🌋"; // Volcano / Caldera
-            case 'C': return "🌋"; // Caldera
+            case 'G': return "🌫️"; // Gloom / Swamp
+            case 'C': return "🏰"; // Citadel
             case 'K': return "🔥"; // Kiln
             case 'P': return "🚩"; // Peak
             default: return "📍";
@@ -2395,7 +2578,7 @@ public static class Utilities
 
     public static string GetBiomeIcon(Biome.BiomeType bt, Segment seg)
     {
-        if (seg == Segment.TheKiln) return "🔥";
+        if (seg == Segment.TheKiln) return IsCitadelActive() ? "🏰" : "🔥";
         if (seg == Segment.Peak) return "🚩";
         switch (bt)
         {
@@ -2413,7 +2596,7 @@ public static class Utilities
                     case Segment.Tropics: return "🌴";
                     case Segment.Alpine: return "🏔️";
                     case Segment.Caldera: return "🌋";
-                    case Segment.TheKiln: return "🔥";
+                    case Segment.TheKiln: return IsCitadelActive() ? "🏰" : "🔥";
                     case Segment.Peak: return "🚩";
                     default: return "📍";
                 }
@@ -2472,15 +2655,18 @@ public static class Utilities
             chars.AddRange(new char[] { 'S', 'T', 'A', 'V' });
         }
 
-        bool hasKiln = false;
-        bool hasPeak = false;
-        for (int i = 0; i < chars.Count; i++)
+        if (chars.Count < 5)
         {
-            if (char.ToUpper(chars[i]) == 'K') hasKiln = true;
-            if (char.ToUpper(chars[i]) == 'P') hasPeak = true;
+            char seg4Char = chars.Count > 3 ? char.ToUpper(chars[3]) : 'V';
+            if (seg4Char == 'S' || seg4Char == 'G')
+                chars.Add('C');
+            else
+                chars.Add('K');
         }
-        if (!hasKiln) chars.Add('K');
-        if (!hasPeak) chars.Add('P');
+        if (chars.Count < 6)
+        {
+            chars.Add('P');
+        }
 
         Segment[] defSegs = new Segment[] {
             Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
@@ -2492,7 +2678,7 @@ public static class Utilities
             bool hasSeg = (i < defSegs.Length);
             Segment s = hasSeg ? defSegs[i] : Segment.Beach;
             string name;
-            if (i == 3 && char.ToUpper(c) == 'S')
+            if (i == 3 && (char.ToUpper(c) == 'S' || char.ToUpper(c) == 'G'))
                 name = Localization.T("world.segment_swamp");
             else
                 name = DecodeBiomeCharToName(c);
@@ -2589,6 +2775,8 @@ public static class Utilities
             case 'A': return Localization.T("world.segment_alpine");
             case 'M': return Localization.T("world.segment_mesa");
             case 'V': return Localization.T("world.segment_caldera");
+            case 'G': return Localization.T("world.segment_swamp");
+            case 'C': return Localization.T("world.segment_citadel");
             case 'K': return Localization.T("world.segment_thekiln");
             case 'P': return Localization.T("world.segment_peak");
             default: return c.ToString();
@@ -2602,7 +2790,7 @@ public static class Utilities
         for (int i = 0; i < biomeId.Length; i++)
         {
             char c = biomeId[i];
-            if (i == 3 && char.ToUpper(c) == 'S')
+            if (i == 3 && (char.ToUpper(c) == 'S' || char.ToUpper(c) == 'G'))
             {
                 parts.Add(Localization.T("world.segment_swamp"));
             }
@@ -2613,7 +2801,15 @@ public static class Utilities
         }
         if (parts.Count == 4)
         {
-            parts.Add(Localization.T("world.segment_thekiln"));
+            char seg4 = char.ToUpper(biomeId[3]);
+            if (seg4 == 'S' || seg4 == 'G')
+                parts.Add(Localization.T("world.segment_citadel"));
+            else
+                parts.Add(Localization.T("world.segment_thekiln"));
+            parts.Add(Localization.T("world.segment_peak"));
+        }
+        else if (parts.Count == 5)
+        {
             parts.Add(Localization.T("world.segment_peak"));
         }
         return string.Join(" ➔ ", parts.ToArray());
@@ -3034,29 +3230,36 @@ public static class Utilities
             Segment.Beach, Segment.Tropics, Segment.Alpine, Segment.Caldera, Segment.TheKiln, Segment.Peak
         };
 
+        List<char> chars = new List<char>(6);
+        if (!string.IsNullOrEmpty(biomeId))
+        {
+            for (int k = 0; k < biomeId.Length; k++) chars.Add(biomeId[k]);
+        }
+        else
+        {
+            chars.AddRange(new char[] { 'S', 'T', 'A', 'V' });
+        }
+        if (chars.Count < 5)
+        {
+            char seg4Char = chars.Count > 3 ? char.ToUpper(chars[3]) : 'V';
+            if (seg4Char == 'S' || seg4Char == 'G')
+                chars.Add('C');
+            else
+                chars.Add('K');
+        }
+        if (chars.Count < 6)
+        {
+            chars.Add('P');
+        }
+
         for (int i = 0; i < 6; i++)
         {
             string name;
-            if (i < 4 && !string.IsNullOrEmpty(biomeId) && i < biomeId.Length)
-            {
-                char c = biomeId[i];
-                if (i == 3 && char.ToUpper(c) == 'S')
-                    name = Localization.T("world.segment_swamp");
-                else
-                    name = DecodeBiomeCharToName(c);
-            }
-            else if (i == 4)
-            {
-                name = Localization.T("world.segment_thekiln");
-            }
-            else if (i == 5)
-            {
-                name = Localization.T("world.segment_peak");
-            }
+            char c = i < chars.Count ? chars[i] : ' ';
+            if (i == 3 && (char.ToUpper(c) == 'S' || char.ToUpper(c) == 'G'))
+                name = Localization.T("world.segment_swamp");
             else
-            {
-                name = GetBiomeDisplayName((Biome.BiomeType)(-1), defaultSegments[i]);
-            }
+                name = DecodeBiomeCharToName(c);
 
             // 仅前三关（Beach, Tropics, Alpine）默认必然有营火；Caldera 绝大部分无营火；熔炉与山顶绝无营火
             bool hasCamp = (i < 3);
@@ -3099,19 +3302,27 @@ public static class Utilities
 
             if (i == 4)
             {
-                // Level 5: The Kiln (熔炉) - 绝无营火，独立重生点
+                // Level 5: The Kiln 或 The Citadel (城塞) - 绝无营火，独立重生点
                 seg = Segment.TheKiln;
                 bt = (Biome.BiomeType)(-1);
-                displayName = Localization.T("world.segment_thekiln");
+                bool isCitadel = IsCitadelActive(mh);
+                displayName = isCitadel ? Localization.T("world.segment_citadel") : Localization.T("world.segment_thekiln");
                 hasCamp = false;
-                Transform kilnRespawn = GetRespawnTheKiln(mh);
-                if (mapExists && kilnRespawn != null)
+                if (mapExists && mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
                 {
-                    altitude = kilnRespawn.position.y;
-                }
-                else if (mapExists && mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
-                {
-                    altitude = mh.segments[4].reconnectSpawnPos.position.y;
+                    MapHandler.MapSegment vSeg;
+                    if (TryGetVariantSegment(mh, mh.segments[4], out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
+                    {
+                        altitude = vSeg.reconnectSpawnPos.position.y;
+                    }
+                    else
+                    {
+                        Transform kilnRespawn = GetRespawnTheKiln(mh);
+                        if (kilnRespawn != null)
+                            altitude = kilnRespawn.position.y;
+                        else if (mh.segments[4].reconnectSpawnPos != null)
+                            altitude = mh.segments[4].reconnectSpawnPos.position.y;
+                    }
                 }
             }
             else if (i == 5)
@@ -3972,26 +4183,64 @@ public static class Utilities
 
     public static void OpenAllNearbyLuggage()
     {
-        UnityMainThreadDispatcher.Enqueue(() =>
+        if (EventComponent.Instance != null)
         {
-            int opened = 0;
+            EventComponent.Instance.StartCoroutine(OpenNearbyLuggageRoutine());
+        }
+        else
+        {
+            UnityMainThreadDispatcher.Enqueue(() =>
+            {
+                int opened = 0;
+                for (int i = 0; i < Globals.luggageObject.Count; i++)
+                {
+                    var luggage = Globals.luggageObject[i];
+                    if (luggage == null) continue;
 
-            for (int i = 0; i < Globals.luggageObject.Count; i++)
+                    var view = luggage.GetComponent<PhotonView>();
+                    if (view != null)
+                    {
+                        view.SafeRPC("OpenLuggageRPC", RpcTarget.All, true);
+                        opened++;
+                    }
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Luggage] Requested open for {0} nearby containers.", opened));
+            });
+        }
+    }
+
+    private static System.Collections.IEnumerator OpenNearbyLuggageRoutine()
+    {
+        int count = Globals.luggageObject.Count;
+        int opened = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            if (i < Globals.luggageObject.Count)
             {
                 var luggage = Globals.luggageObject[i];
-                if (luggage == null) continue;
-
-                var view = luggage.GetComponent<PhotonView>();
-                if (view != null)
+                if (luggage != null)
                 {
-                    view.RPC("OpenLuggageRPC", RpcTarget.All, new object[] { true });
-                    opened++;
+                    var view = luggage.GetComponent<PhotonView>();
+                    if (view != null && PhotonNetwork.InRoom)
+                    {
+                        view.SafeRPC("OpenLuggageRPC", RpcTarget.All, true);
+                        opened++;
+                    }
                 }
             }
 
-            if (Logger != null)
-                Logger.LogInfo(string.Format("[Luggage] Requested open for {0} nearby containers.", opened));
-        });
+            // 每开启 2 个箱子平滑等待 0.12 秒，防止单帧瞬发网络风暴与物理刚体流打满
+            if (opened > 0 && opened % 2 == 0)
+            {
+                yield return new WaitForSeconds(0.12f);
+            }
+        }
+
+        if (Logger != null)
+            Logger.LogInfo(string.Format("[Luggage] Smoothly opened {0} nearby containers.", opened));
     }
 
     public static void OpenLuggage(int index)
@@ -4010,7 +4259,7 @@ public static class Utilities
                 PhotonView view = luggage.GetComponent<PhotonView>();
                 if (view != null)
                 {
-                    view.RPC("OpenLuggageRPC", RpcTarget.All, new object[] { true });
+                    view.SafeRPC("OpenLuggageRPC", RpcTarget.All, true);
                     if (Logger != null)
                         Logger.LogInfo(string.Format("[Luggage] Sent OpenLuggageRPC for: {0}", luggage.displayName));
                 }
@@ -4235,7 +4484,7 @@ public static class Utilities
                             var beehive = hiveObj.GetComponent<Beehive>();
                             if (beehive != null && beehive.currentBees != null && beehive.currentBees.photonView != null)
                             {
-                                beehive.currentBees.photonView.RPC("SetBeesAngryRPC", Photon.Pun.RpcTarget.AllBuffered, new object[] { true });
+                                beehive.currentBees.photonView.SafeRPC("SetBeesAngryRPC", Photon.Pun.RpcTarget.All, true);
                             }
                         }
                         break;
@@ -4619,11 +4868,12 @@ public static class Utilities
                         var gu = UnityEngine.Object.FindObjectOfType<GameUtils>();
                         if (gu != null && gu.photonView != null)
                         {
-                            gu.photonView.RPC("InstantiateAndGrabRPC", RpcTarget.MasterClient, new object[] {
+                            gu.photonView.SafeRPC("InstantiateAndGrabRPC", RpcTarget.MasterClient,
                                 bpPrefab.gameObject.name,
+                                character.transform.position,
                                 character.photonView,
-                                0
-                            });
+                                (byte)0
+                            );
                         }
                     }
                 }

@@ -32,6 +32,20 @@ public class EventComponent : MonoBehaviour
         }
     }
 
+    public static EventComponent Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(this);
+        }
+    }
+
     private void Update()
     {
         lock (delayedActions)
@@ -45,18 +59,23 @@ public class EventComponent : MonoBehaviour
                     try { act(); }
                     catch (Exception ex)
                     {
-                        if (ConfigManager.Logger != null)
-                            ConfigManager.Logger.LogError("DelayedAction error: " + ex);
+                        ConfigManager.Logger.LogError("[EventComponent] DelayedAction failed: " + ex);
                     }
                 }
             }
+        }
+
+        stateTimer += Time.deltaTime;
+        if (stateTimer >= STATE_INTERVAL)
+        {
+            stateTimer = 0f;
+            GameHelpers.InvalidateCache();
         }
 
         validationTimer += Time.deltaTime;
         if (validationTimer >= VALIDATION_INTERVAL)
         {
             validationTimer = 0f;
-            GameHelpers.InvalidateCache();
 
             try
             {
@@ -72,10 +91,7 @@ public class EventComponent : MonoBehaviour
             {
                 try
                 {
-                    for (int s = 0; s < 3; s++)
-                    {
-                        Utilities.RechargeInventorySlot(s, 100f);
-                    }
+                    Utilities.SafeRechargeToolSlots();
                 }
                 catch { }
             }

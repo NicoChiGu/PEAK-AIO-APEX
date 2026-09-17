@@ -211,6 +211,11 @@ public static class Globals
     public static bool foodPoisonImmunity = false;
     public static bool infiniteToolCharge = false;
 
+    // Network Optimization & Protection
+    public static bool enableNetworkTuning = true;
+    public static bool enableAutoReconnect = true;
+    public static bool enableAntiKick = true;
+
     // Status & Afflictions Management
     public static int selfSelectedStatusIndex = 0;
     public static float selfStatusAmount = 0.5f;

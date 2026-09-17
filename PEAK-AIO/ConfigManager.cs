@@ -46,6 +46,11 @@ public static class ConfigManager
     public static ConfigEntry<bool> FoodPoisonImmunity;
     public static ConfigEntry<bool> InfiniteToolCharge;
 
+    // Network & Protection
+    public static ConfigEntry<bool> EnableNetworkTuning;
+    public static ConfigEntry<bool> EnableAutoReconnect;
+    public static ConfigEntry<bool> EnableAntiKick;
+
     // General
     public static ConfigEntry<KeyCode> MenuToggleKey;
 
@@ -102,6 +107,15 @@ public static class ConfigManager
             Globals.selectedDartAmmoType = (Globals.DartAmmoType)SelectedDartAmmoType.Value;
         Globals.foodPoisonImmunity = FoodPoisonImmunity.Value;
         Globals.infiniteToolCharge = InfiniteToolCharge.Value;
+
+        // Network & Protection
+        EnableNetworkTuning = config.Bind("Network", "EnableNetworkTuning", true, "Optimize Photon network parameters (MaxResends=8, QuickResend=3, CRC=true)");
+        EnableAutoReconnect = config.Bind("Network", "EnableAutoReconnect", true, "Automatically reconnect and rejoin room when unexpected disconnection occurs");
+        EnableAntiKick = config.Bind("Network", "EnableAntiKick", true, "Intercept host kick command (EventCode 18) to prevent malicious kick");
+
+        Globals.enableNetworkTuning = EnableNetworkTuning.Value;
+        Globals.enableAutoReconnect = EnableAutoReconnect.Value;
+        Globals.enableAntiKick = EnableAntiKick.Value;
 
         // Language
         LanguageIndex = config.Bind("UI", "Language", 0, new ConfigDescription("Language: 0=English, 1=简体中文, 2=日本語, 3=한국어, 4=Italiano, 5=繁體中文", new AcceptableValueRange<int>(0, 5)));
