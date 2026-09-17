@@ -507,3 +507,213 @@ public class Patch_MapHandler_JumpToSegmentLogic
     }
 }
 
+// ==========================================
+// Blowgun Dart Ammunition Enchantment Patches
+// ==========================================
+[HarmonyPatch(typeof(Action_RaycastDart), "FireDart")]
+public class Patch_Action_RaycastDart_FireDart
+{
+    static void Prefix(Action_RaycastDart __instance)
+    {
+        try
+        {
+            if (!Globals.dartAmmoEnabled)
+                return;
+
+            var ammoType = Globals.selectedDartAmmoType;
+            if (ammoType == Globals.DartAmmoType.Chaos)
+            {
+                int count = Enum.GetValues(typeof(Globals.DartAmmoType)).Length - 1;
+                ammoType = (Globals.DartAmmoType)UnityEngine.Random.Range(0, count);
+            }
+
+            var affList = new List<Peak.Afflictions.Affliction>();
+            switch (ammoType)
+            {
+                case Globals.DartAmmoType.Invincibility:
+                    affList.Add(new Peak.Afflictions.Affliction_Invincibility());
+                    break;
+                case Globals.DartAmmoType.SpeedBoost:
+                    affList.Add(new Peak.Afflictions.Affliction_FasterBoi());
+                    break;
+                case Globals.DartAmmoType.InfiniteStamina:
+                    affList.Add(new Peak.Afflictions.Affliction_InfiniteStamina(60f));
+                    break;
+                case Globals.DartAmmoType.FullCleanse:
+                    affList.Add(new Peak.Afflictions.Affliction_ClearAllStatus());
+                    break;
+                case Globals.DartAmmoType.LowGravity:
+                    var lowGrav = new Peak.Afflictions.Affliction_LowGravity();
+                    lowGrav.lowGravAmount = 3;
+                    affList.Add(lowGrav);
+                    break;
+                case Globals.DartAmmoType.Glow:
+                    affList.Add(new Peak.Afflictions.Affliction_Glowing());
+                    break;
+                case Globals.DartAmmoType.Poison:
+                    var poison = new Peak.Afflictions.Affliction_PoisonOverTime(0f, 10f, 30f);
+                    affList.Add(poison);
+                    break;
+                case Globals.DartAmmoType.Starvation:
+                    var hunger = new Peak.Afflictions.Affliction_AdjustStatus();
+                    hunger.statusType = CharacterAfflictions.STATUSTYPE.Hunger;
+                    hunger.statusAmount = 60f;
+                    affList.Add(hunger);
+                    break;
+                case Globals.DartAmmoType.Sleep:
+                    var drowsy = new Peak.Afflictions.Affliction_AdjustDrowsyOverTime();
+                    drowsy.statusPerSecond = 20f;
+                    affList.Add(drowsy);
+                    break;
+                case Globals.DartAmmoType.Thorns:
+                    var thorns = new Peak.Afflictions.Affliction_AdjustStatus();
+                    thorns.statusType = CharacterAfflictions.STATUSTYPE.Thorns;
+                    thorns.statusAmount = 50f;
+                    affList.Add(thorns);
+                    break;
+                case Globals.DartAmmoType.Spores:
+                    var spores = new Peak.Afflictions.Affliction_AdjustStatus();
+                    spores.statusType = CharacterAfflictions.STATUSTYPE.Spores;
+                    spores.statusAmount = 50f;
+                    affList.Add(spores);
+                    break;
+                case Globals.DartAmmoType.Blind:
+                    affList.Add(new Peak.Afflictions.Affliction_Blind());
+                    break;
+                case Globals.DartAmmoType.Numb:
+                    affList.Add(new Peak.Afflictions.Affliction_Numb());
+                    break;
+                default:
+                    break;
+            }
+
+            if (affList.Count > 0)
+            {
+                __instance.afflictionsOnHit = affList.ToArray();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogError("[Patch_Action_RaycastDart_FireDart] Exception: " + ex);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(Action_RaycastDart), "DartImpact")]
+public class Patch_Action_RaycastDart_DartImpact
+{
+    static void Postfix(Character hitCharacter, Vector3 origin, Vector3 endpoint)
+    {
+        try
+        {
+            if (!Globals.dartAmmoEnabled || hitCharacter == null || hitCharacter.photonView == null)
+                return;
+
+            var ammoType = Globals.selectedDartAmmoType;
+            if (ammoType == Globals.DartAmmoType.Chaos)
+            {
+                int count = Enum.GetValues(typeof(Globals.DartAmmoType)).Length - 1;
+                ammoType = (Globals.DartAmmoType)UnityEngine.Random.Range(0, count);
+            }
+
+            if (!hitCharacter.photonView.IsMine)
+            {
+                switch (ammoType)
+                {
+                    case Globals.DartAmmoType.TripFall:
+                        hitCharacter.photonView.RPC("RPCA_Fall", RpcTarget.All, new object[] { 3.5f });
+                        break;
+
+                    case Globals.DartAmmoType.Revive:
+                        hitCharacter.photonView.RPC("RPCA_Revive", RpcTarget.All, new object[] { false });
+                        break;
+
+                    case Globals.DartAmmoType.SpeedBoost:
+                    case Globals.DartAmmoType.InfiniteStamina:
+                        hitCharacter.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+                        break;
+
+                    case Globals.DartAmmoType.Poison:
+                        hitCharacter.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, endpoint, endpoint, CharacterAfflictions.STATUSTYPE.Poison, 50f
+                        });
+                        break;
+
+                    case Globals.DartAmmoType.Starvation:
+                        hitCharacter.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, endpoint, endpoint, CharacterAfflictions.STATUSTYPE.Hunger, 50f
+                        });
+                        break;
+
+                    case Globals.DartAmmoType.Sleep:
+                        hitCharacter.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, endpoint, endpoint, CharacterAfflictions.STATUSTYPE.Drowsy, 50f
+                        });
+                        break;
+
+                    case Globals.DartAmmoType.Thorns:
+                        hitCharacter.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, endpoint, endpoint, CharacterAfflictions.STATUSTYPE.Thorns, 50f
+                        });
+                        break;
+
+                    case Globals.DartAmmoType.Spores:
+                        hitCharacter.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, endpoint, endpoint, CharacterAfflictions.STATUSTYPE.Spores, 50f
+                        });
+                        break;
+                }
+            }
+            else
+            {
+                if (ammoType == Globals.DartAmmoType.TripFall)
+                {
+                    hitCharacter.photonView.RPC("RPCA_Fall", RpcTarget.All, new object[] { 3.5f });
+                }
+                else if (ammoType == Globals.DartAmmoType.Revive)
+                {
+                    hitCharacter.photonView.RPC("RPCA_Revive", RpcTarget.All, new object[] { false });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogError("[Patch_Action_RaycastDart_DartImpact] Exception: " + ex);
+        }
+    }
+}
+
+// ==========================================
+// Food Poison Immunity Patches
+// ==========================================
+[HarmonyPatch(typeof(Action_InflictPoison), "RunAction")]
+public class Patch_Action_InflictPoison
+{
+    static bool Prefix()
+    {
+        if (Globals.foodPoisonImmunity)
+        {
+            if (ConfigManager.Logger != null)
+                ConfigManager.Logger.LogInfo("[FoodPoisonImmunity] Blocked poison infliction.");
+            return false;
+        }
+        return true;
+    }
+}
+
+[HarmonyPatch(typeof(CookingBehavior_AddPoisonOnUse), "TriggerBehaviour")]
+public class Patch_CookingBehavior_AddPoisonOnUse
+{
+    static bool Prefix()
+    {
+        if (Globals.foodPoisonImmunity)
+        {
+            return false;
+        }
+        return true;
+    }
+}
+
+

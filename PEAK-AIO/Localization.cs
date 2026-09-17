@@ -49,6 +49,14 @@ public static class Localization
             { Language.Korean, "월드" },
             { Language.Italian, "MONDO" }
         }},
+        { "tab.creatures", new Dictionary<Language, string> {
+            { Language.English, "CREATURES" },
+            { Language.SimplifiedChinese, "生物" },
+            { Language.TraditionalChinese, "生物" },
+            { Language.Japanese, "クリーチャー" },
+            { Language.Korean, "생물" },
+            { Language.Italian, "CREATURE" }
+        }},
         { "tab.about", new Dictionary<Language, string> {
             { Language.English, "ABOUT" },
             { Language.SimplifiedChinese, "关于" },
@@ -1498,6 +1506,575 @@ public static class Localization
             { Language.Japanese, "自動消去" },
             { Language.Korean, "자동 닫힘" },
             { Language.Italian, "Chiusura automatica" }
+        }},
+        { "creatures.title", new Dictionary<Language, string> {
+            { Language.English, "CREATURE SPAWNER" },
+            { Language.SimplifiedChinese, "生物生成器" },
+            { Language.TraditionalChinese, "生物生成器" },
+            { Language.Japanese, "クリーチャースポナー" },
+            { Language.Korean, "생물 생성기" },
+            { Language.Italian, "GENERATORE CREATURE" }
+        }},
+        { "creatures.desc", new Dictionary<Language, string> {
+            { Language.English, "Spawn native monsters, boss entities, and wildlife with custom distance & aggro overrides." },
+            { Language.SimplifiedChinese, "生成游戏原生怪物、Boss实体及野生动物，支持自定义生成距离与强制仇恨锁定。" },
+            { Language.TraditionalChinese, "生成遊戲原生怪物、Boss實體及野生動物，支援自訂生成距離與強制仇恨鎖定。" },
+            { Language.Japanese, "原生モンスター、ボス、野生動物を生成します。距離とターゲットのカスタム指定に対応。" },
+            { Language.Korean, "게임 내 몬스터, 보스 및 야생 동물을 생성합니다. 거리 및 어그로 대상 커스텀 지원." },
+            { Language.Italian, "Genera mostri, boss e fauna nativa con distanza personalizzata e override dell'aggro." }
+        }},
+        { "creatures.host_required", new Dictionary<Language, string> {
+            { Language.English, "Host Only: You must be the MasterClient to spawn networked room entities." },
+            { Language.SimplifiedChinese, "仅限房主：生成联网房间生物必须具备主机/房主权限。" },
+            { Language.TraditionalChinese, "僅限房主：生成聯網房間生物必須具備主機/房主權限。" },
+            { Language.Japanese, "ホスト専用：ルーム生物の同期生成にはホスト権限が必要です。" },
+            { Language.Korean, "호스트 전용: 동기화된 룸 생물을 생성하려면 방장 권한이 필요합니다." },
+            { Language.Italian, "Solo Host: Devi essere il MasterClient per generare entità di rete." }
+        }},
+        { "creatures.host_badge_ready", new Dictionary<Language, string> {
+            { Language.English, "● Host Authority Ready (Full Spawning Enabled)" },
+            { Language.SimplifiedChinese, "● 房主权限就绪（全功能生物生成已解锁）" },
+            { Language.TraditionalChinese, "● 房主權限就緒（全功能生物生成已解鎖）" },
+            { Language.Japanese, "● ホスト権限確認済（全生物の生成可能）" },
+            { Language.Korean, "● 호스트 권한 활성화됨 (모든 생물 생성 가능)" },
+            { Language.Italian, "● Autorità Host Attiva (Generazione Completa Abilitata)" }
+        }},
+        { "creatures.host_badge_warning", new Dictionary<Language, string> {
+            { Language.English, "▲ Client Mode (Room Objects like Scoutmaster require Host)" },
+            { Language.SimplifiedChinese, "▲ 客机模式（生成教官等房间对象需要房主权限）" },
+            { Language.TraditionalChinese, "▲ 客機模式（生成教官等房間物件需要房主權限）" },
+            { Language.Japanese, "▲ クライアントモード（スカウトマスター等の生成にはホストが必要）" },
+            { Language.Korean, "▲ 클라이언트 모드 (스카우트마스터 등 룸 오브젝트는 호스트 필요)" },
+            { Language.Italian, "▲ Modalità Client (Gli oggetti di stanza richiedono l'Host)" }
+        }},
+        { "creatures.select_type", new Dictionary<Language, string> {
+            { Language.English, "Select Creature Type" },
+            { Language.SimplifiedChinese, "选择生物类型" },
+            { Language.TraditionalChinese, "選擇生物類型" },
+            { Language.Japanese, "クリーチャータイプ選択" },
+            { Language.Korean, "생물 유형 선택" },
+            { Language.Italian, "Seleziona Tipo Creatura" }
+        }},
+        { "creatures.type.scoutmaster", new Dictionary<Language, string> {
+            { Language.English, "Scoutmaster (Boss / Big Ghost)" },
+            { Language.SimplifiedChinese, "教官 (Scoutmaster / 大幽灵)" },
+            { Language.TraditionalChinese, "教官 (Scoutmaster / 大幽靈)" },
+            { Language.Japanese, "スカウトマスター (教官/大幽霊)" },
+            { Language.Korean, "스카우트마스터 (교관/대형 유령)" },
+            { Language.Italian, "Scoutmaster (Boss / Grande Spettro)" }
+        }},
+        { "creatures.type.scoutmaster_desc", new Dictionary<Language, string> {
+            { Language.English, "The menacing shadow boss. Stalks, teleports, grabs players and violently hurls them off cliffs." },
+            { Language.SimplifiedChinese, "令人胆寒的黑影向导Boss。能瞬移追踪、抓取队员并残暴地抛下万丈悬崖。" },
+            { Language.TraditionalChinese, "令人膽寒的黑影嚮導Boss。能瞬移追蹤、抓取隊員並殘暴地拋下萬丈懸崖。" },
+            { Language.Japanese, "不気味な黒い影のボス。テレポート追跡し、プレイヤーを掴んで崖下へ投げ飛ばします。" },
+            { Language.Korean, "공포스러운 그림자 보스. 순간이동으로 추적하고 플레이어를 붙잡아 절벽 아래로 내던집니다." },
+            { Language.Italian, "L'inquietante boss ombra. Insegue, teletrasporta, afferra i giocatori e li scaglia dai dirupi." }
+        }},
+        { "creatures.type.bigghost", new Dictionary<Language, string> {
+            { Language.English, "Player Ghost (Specter)" },
+            { Language.SimplifiedChinese, "玩家灵体 (Player Ghost)" },
+            { Language.TraditionalChinese, "玩家靈體 (Player Ghost)" },
+            { Language.Japanese, "プレイヤーゴースト (霊体)" },
+            { Language.Korean, "플레이어 고스트 (영체)" },
+            { Language.Italian, "Fantasma Giocatore (Spettro)" }
+        }},
+        { "creatures.type.bigghost_desc", new Dictionary<Language, string> {
+            { Language.English, "Ethereal floating specter. Supports custom size scaling (up to 5x Big Ghost) and target following." },
+            { Language.SimplifiedChinese, "半透明漂浮幽灵。支持自定义体型倍率缩放（可达5倍大幽灵）并跟随目标。" },
+            { Language.TraditionalChinese, "半透明漂浮幽靈。支援自訂體型倍率縮放（可達5倍大幽靈）並跟隨目標。" },
+            { Language.Japanese, "浮遊する霊体。最大5倍までのサイズ拡大とターゲット追尾をサポート。" },
+            { Language.Korean, "떠다니는 반투명 영체. 최대 5배 거대 유령 크기 조절 및 대상 추적 지원." },
+            { Language.Italian, "Spettro etereo fluttuante. Supporta la scala dimensionale (fino a 5x) e l'inseguimento del bersaglio." }
+        }},
+        { "creatures.type.zombie", new Dictionary<Language, string> {
+            { Language.English, "Mushroom Zombie" },
+            { Language.SimplifiedChinese, "真菌丧尸 (Mushroom Zombie)" },
+            { Language.TraditionalChinese, "真菌喪屍 (Mushroom Zombie)" },
+            { Language.Japanese, "キノコゾンビ" },
+            { Language.Korean, "버섯 좀비" },
+            { Language.Italian, "Zombie Fungino" }
+        }},
+        { "creatures.type.zombie_desc", new Dictionary<Language, string> {
+            { Language.English, "Fungal-infected crawler that wakes from slumber, lunges, bites and spreads spore madness." },
+            { Language.SimplifiedChinese, "真菌寄生丧尸。能苏醒突袭、飞扑撕咬攀登者并传播孢子感染。" },
+            { Language.TraditionalChinese, "真菌寄生喪屍。能甦醒突襲、飛撲撕咬攀登者並傳播孢子感染。" },
+            { Language.Japanese, "キノコに寄生されたゾンビ。跳躍して噛みつき、胞子感染を広げます。" },
+            { Language.Korean, "버섯에 기생당한 좀비. 도약하여 생존자를 물어뜯고 포자를 퍼뜨립니다." },
+            { Language.Italian, "Zombie parassitato dai funghi. Balza, morde i sopravvissuti e diffonde spore." }
+        }},
+        { "creatures.type.scorpion", new Dictionary<Language, string> {
+            { Language.English, "Scorpion (Mob & Item)" },
+            { Language.SimplifiedChinese, "荒漠毒蝎 (Scorpion)" },
+            { Language.TraditionalChinese, "荒漠毒蠍 (Scorpion)" },
+            { Language.Japanese, "砂漠のサソリ" },
+            { Language.Korean, "사막 전갈" },
+            { Language.Italian, "Scorpione del Deserto" }
+        }},
+        { "creatures.type.scorpion_desc", new Dictionary<Language, string> {
+            { Language.English, "Deadly desert arachnid. Attacks players, inflicts poison, but can also be caught, held, or cooked and eaten!" },
+            { Language.SimplifiedChinese, "致命荒漠毒虫。会攻击施加剧毒，但也可被玩家捡入背包、手持或在篝火上烤熟食用！" },
+            { Language.TraditionalChinese, "致命荒漠毒蟲。會攻擊施加劇毒，但也可被玩家撿入背包、手持或在篝火上烤熟食用！" },
+            { Language.Japanese, "危険な毒サソリ。攻撃して毒を与えますが、拾って調理し食べることも可能！" },
+            { Language.Korean, "치명적인 사막 전갈. 중독 공격을 가하지만, 가방에 줍거나 모닥불에 구워 먹을 수도 있습니다!" },
+            { Language.Italian, "Aracnide velenoso del deserto. Avvelena i giocatori, ma può essere raccolto, cotto e mangiato!" }
+        }},
+        { "creatures.type.beetle", new Dictionary<Language, string> {
+            { Language.English, "Giant Beetle (Mob & Item)" },
+            { Language.SimplifiedChinese, "巨型甲虫 (Giant Beetle)" },
+            { Language.TraditionalChinese, "巨型甲蟲 (Giant Beetle)" },
+            { Language.Japanese, "巨大カブトムシ" },
+            { Language.Korean, "거대 딱정벌레" },
+            { Language.Italian, "Scarabeo Gigante" }
+        }},
+        { "creatures.type.beetle_desc", new Dictionary<Language, string> {
+            { Language.English, "Heavily armored insect that rams into players with massive knockback force." },
+            { Language.SimplifiedChinese, "重装重壳甲虫。会以巨大冲击力将玩家击飞出数米远。" },
+            { Language.TraditionalChinese, "重裝重殼甲蟲。會以巨大衝擊力將玩家擊飛出數米遠。" },
+            { Language.Japanese, "重装甲の昆虫。強力なノックバック衝撃でプレイヤーを吹き飛ばします。" },
+            { Language.Korean, "단단한 갑각을 지닌 곤충. 거대한 넉백 힘으로 플레이어를 날려버립니다." },
+            { Language.Italian, "Insetto corazzato che carica i giocatori respingendoli con forza devastante." }
+        }},
+        { "creatures.type.bees", new Dictionary<Language, string> {
+            { Language.English, "Killer Bee Swarm (Beehive)" },
+            { Language.SimplifiedChinese, "杀人蜂群 (Killer Bees)" },
+            { Language.TraditionalChinese, "殺人蜂群 (Killer Bees)" },
+            { Language.Japanese, "キラービーの群れ" },
+            { Language.Korean, "살인벌 떼" },
+            { Language.Italian, "Sciame di Vespe Assassine" }
+        }},
+        { "creatures.type.bees_desc", new Dictionary<Language, string> {
+            { Language.English, "Spawns an active wild beehive that unleashes a raging swarm buzzing after all survivors." },
+            { Language.SimplifiedChinese, "生成野外蜂巢并释放暴怒蜂群，嗡鸣追击周围所有攀登者。" },
+            { Language.TraditionalChinese, "生成野外蜂巢並釋放暴怒蜂群，嗡鳴追擊周圍所有攀登者。" },
+            { Language.Japanese, "野生の蜂の巣を生成し、激怒した蜂の群れがサバイバーを追跡します。" },
+            { Language.Korean, "야생 벌집을 생성하고 성난 벌 떼를 풀어 주변의 모든 생존자를 공격합니다." },
+            { Language.Italian, "Genera un alveare selvatico che rilascia uno sciame infuriato contro i superstiti." }
+        }},
+        { "creatures.spawn_anchor", new Dictionary<Language, string> {
+            { Language.English, "Spawn Reference Anchor" },
+            { Language.SimplifiedChinese, "生成基准位置" },
+            { Language.TraditionalChinese, "生成基準位置" },
+            { Language.Japanese, "生成の基準位置" },
+            { Language.Korean, "생성 기준 위치" },
+            { Language.Italian, "Punto di Riferimento" }
+        }},
+        { "creatures.anchor_self", new Dictionary<Language, string> {
+            { Language.English, "In Front of Self" },
+            { Language.SimplifiedChinese, "自己身前" },
+            { Language.TraditionalChinese, "自己身前" },
+            { Language.Japanese, "自分の前方" },
+            { Language.Korean, "자신의 앞" },
+            { Language.Italian, "Davanti a Sé" }
+        }},
+        { "creatures.anchor_player", new Dictionary<Language, string> {
+            { Language.English, "Near Selected Player" },
+            { Language.SimplifiedChinese, "选中队友身前" },
+            { Language.TraditionalChinese, "選中隊友身前" },
+            { Language.Japanese, "選択した仲間の前方" },
+            { Language.Korean, "선택한 팀원 앞" },
+            { Language.Italian, "Vicino al Giocatore" }
+        }},
+        { "creatures.anchor_crosshair", new Dictionary<Language, string> {
+            { Language.English, "Crosshair Aim Point" },
+            { Language.SimplifiedChinese, "准星视线落点" },
+            { Language.TraditionalChinese, "準星視線落點" },
+            { Language.Japanese, "照準の着地点" },
+            { Language.Korean, "조준선 지면 착탄점" },
+            { Language.Italian, "Punto di Mira / Mirino" }
+        }},
+        { "creatures.spawn_distance", new Dictionary<Language, string> {
+            { Language.English, "Spawn Distance: {0:F1}m" },
+            { Language.SimplifiedChinese, "生成距离: {0:F1} 米" },
+            { Language.TraditionalChinese, "生成距離: {0:F1} 米" },
+            { Language.Japanese, "生成距離: {0:F1}m" },
+            { Language.Korean, "생성 거리: {0:F1}m" },
+            { Language.Italian, "Distanza Generazione: {0:F1}m" }
+        }},
+        { "creatures.ghost_scale", new Dictionary<Language, string> {
+            { Language.English, "Ghost Scale: {0:F1}x" },
+            { Language.SimplifiedChinese, "幽灵体型倍率: {0:F1} 倍" },
+            { Language.TraditionalChinese, "幽靈體型倍率: {0:F1} 倍" },
+            { Language.Japanese, "ゴースト拡大倍率: {0:F1}x" },
+            { Language.Korean, "유령 크기 배율: {0:F1}배" },
+            { Language.Italian, "Scala Spettro: {0:F1}x" }
+        }},
+        { "creatures.aggro_target", new Dictionary<Language, string> {
+            { Language.English, "Target & Aggro Binding" },
+            { Language.SimplifiedChinese, "仇恨目标绑定" },
+            { Language.TraditionalChinese, "仇恨目標綁定" },
+            { Language.Japanese, "ターゲット / 敵対指定" },
+            { Language.Korean, "어그로 대상 지정" },
+            { Language.Italian, "Bersaglio Aggro" }
+        }},
+        { "creatures.target_self", new Dictionary<Language, string> {
+            { Language.English, "Lock Onto Myself" },
+            { Language.SimplifiedChinese, "锁定自己" },
+            { Language.TraditionalChinese, "鎖定自己" },
+            { Language.Japanese, "自分を狙わせる" },
+            { Language.Korean, "자신에게 어그로 고정" },
+            { Language.Italian, "Aggro su Me Stesso" }
+        }},
+        { "creatures.target_selected", new Dictionary<Language, string> {
+            { Language.English, "Lock Onto Selected Player" },
+            { Language.SimplifiedChinese, "锁定选中的队友" },
+            { Language.TraditionalChinese, "鎖定選中的隊友" },
+            { Language.Japanese, "選択した仲間を狙わせる" },
+            { Language.Korean, "선택한 팀원에게 어그로 고정" },
+            { Language.Italian, "Aggro su Giocatore Selezionato" }
+        }},
+        { "creatures.target_none", new Dictionary<Language, string> {
+            { Language.English, "Free AI Roam" },
+            { Language.SimplifiedChinese, "自由漫游寻路" },
+            { Language.TraditionalChinese, "自由漫遊尋路" },
+            { Language.Japanese, "自由徘徊" },
+            { Language.Korean, "자유 배회" },
+            { Language.Italian, "Vagabondaggio Libero" }
+        }},
+        { "creatures.btn_spawn", new Dictionary<Language, string> {
+            { Language.English, "Spawn Creature" },
+            { Language.SimplifiedChinese, "立即生成生物" },
+            { Language.TraditionalChinese, "立即生成生物" },
+            { Language.Japanese, "クリーチャーを生成" },
+            { Language.Korean, "생물 즉시 생성" },
+            { Language.Italian, "Genera Creatura Ora" }
+        }},
+        { "creatures.success", new Dictionary<Language, string> {
+            { Language.English, "Spawned {0} at safe ground ({1:F1}m away)!" },
+            { Language.SimplifiedChinese, "已在安全地面成功生成 {0}（距离 {1:F1} 米）！" },
+            { Language.TraditionalChinese, "已在安全地面成功生成 {0}（距離 {1:F1} 米）！" },
+            { Language.Japanese, "安全な地面に {0} を生成しました (距離 {1:F1}m)！" },
+            { Language.Korean, "안전한 지면에 {0} 생성 완료 ({1:F1}m 거리)!" },
+            { Language.Italian, "Generato {0} su terreno sicuro a {1:F1}m!" }
+        }},
+        { "creatures.cooldown", new Dictionary<Language, string> {
+            { Language.English, "Please wait a moment before spawning another creature..." },
+            { Language.SimplifiedChinese, "刷怪冷却中，请稍后再试..." },
+            { Language.TraditionalChinese, "刷怪冷卻中，請稍後再試..." },
+            { Language.Japanese, "連続生成クールダウン中です。少しお待ちください..." },
+            { Language.Korean, "연속 생성 쿨다운 중입니다. 잠시 후 다시 시도하세요..." },
+            { Language.Italian, "Attendi un istante prima di generare un'altra creatura..." }
+        }},
+        { "creatures.no_ground", new Dictionary<Language, string> {
+            { Language.English, "Failed to find solid ground at target position. Try moving closer or adjusting distance." },
+            { Language.SimplifiedChinese, "目标位置未检测到坚实地面，无法生成生物。请调整距离或移动位置。" },
+            { Language.TraditionalChinese, "目標位置未檢測到堅實地面，無法生成生物。請調整距離或移動位置。" },
+            { Language.Japanese, "目標地点に安定した地面が見つかりません。距離を調整してください。" },
+            { Language.Korean, "목표 위치에서 안정적인 지면을 찾지 못했습니다. 거리를 조절해 보세요." },
+            { Language.Italian, "Impossibile trovare terreno solido nella posizione bersaglio. Regola la distanza." }
+        }},
+        // Item Attributes & Enchantments
+        { "items.attributes_title", new Dictionary<Language, string> {
+            { Language.English, "ITEM ATTRIBUTES & ENCHANTMENT" },
+            { Language.SimplifiedChinese, "物品属性定制与附魔" },
+            { Language.TraditionalChinese, "物品屬性定制與附魔" },
+            { Language.Japanese, "アイテム属性カスタム＆エンチャント" },
+            { Language.Korean, "아이템 속성 커스텀 및 마법 부여" },
+            { Language.Italian, "ATTRIBUTI E INCANTAMENTO OGGETTI" }
+        }},
+        { "items.mushroom_customization", new Dictionary<Language, string> {
+            { Language.English, "Mushroom Spawn Customization" },
+            { Language.SimplifiedChinese, "蘑菇生成属性定制" },
+            { Language.TraditionalChinese, "蘑菇生成屬性定制" },
+            { Language.Japanese, "キノコ生成属性カスタム" },
+            { Language.Korean, "버섯 생성 속성 설정" },
+            { Language.Italian, "Personalizzazione Funghi Generati" }
+        }},
+        { "items.mushroom_mode_vanilla", new Dictionary<Language, string> {
+            { Language.English, "Default (Vanilla)" },
+            { Language.SimplifiedChinese, "原版随机" },
+            { Language.TraditionalChinese, "原版隨機" },
+            { Language.Japanese, "デフォルト（ランダム）" },
+            { Language.Korean, "기본값 (랜덤)" },
+            { Language.Italian, "Predefinito (Casuale)" }
+        }},
+        { "items.mushroom_mode_purified", new Dictionary<Language, string> {
+            { Language.English, "Purified (Good Only)" },
+            { Language.SimplifiedChinese, "纯良无毒 (仅良性效果)" },
+            { Language.TraditionalChinese, "純良無毒 (僅良性效果)" },
+            { Language.Japanese, "無毒化（有益効果のみ）" },
+            { Language.Korean, "정화됨 (유익한 효과만)" },
+            { Language.Italian, "Purificato (Solo Benefici)" }
+        }},
+        { "items.mushroom_mode_toxic", new Dictionary<Language, string> {
+            { Language.English, "Toxic (Bad Only)" },
+            { Language.SimplifiedChinese, "剧毒恶搞 (仅恶性效果)" },
+            { Language.TraditionalChinese, "劇毒惡搞 (僅惡性效果)" },
+            { Language.Japanese, "劇毒化（有害効果のみ）" },
+            { Language.Korean, "맹독 (유해한 효과만)" },
+            { Language.Italian, "Tossico (Solo Malus)" }
+        }},
+        { "items.mushroom_mode_specific", new Dictionary<Language, string> {
+            { Language.English, "Specific Effect:" },
+            { Language.SimplifiedChinese, "指定效果:" },
+            { Language.TraditionalChinese, "指定效果:" },
+            { Language.Japanese, "指定効果:" },
+            { Language.Korean, "지정 효과:" },
+            { Language.Italian, "Effetto Specifico:" }
+        }},
+        { "items.mushroom_effect_0", new Dictionary<Language, string> {
+            { Language.English, "Luminous Glow (Body Light)" },
+            { Language.SimplifiedChinese, "0: 夜光荧光 (身体照明)" },
+            { Language.TraditionalChinese, "0: 夜光熒光 (身體照明)" },
+            { Language.Japanese, "0: 発光（体温照明）" },
+            { Language.Korean, "0: 발광 (신체 조명)" },
+            { Language.Italian, "0: Bagliore Luminoso" }
+        }},
+        { "items.mushroom_effect_1", new Dictionary<Language, string> {
+            { Language.English, "Super Speed (Run & Climb)" },
+            { Language.SimplifiedChinese, "1: 超绝神速 (移动与攀爬)" },
+            { Language.TraditionalChinese, "1: 超絕神速 (移動與攀爬)" },
+            { Language.Japanese, "1: 神速（移動＆登山）" },
+            { Language.Korean, "1: 초고속 (이동 및 등반)" },
+            { Language.Italian, "1: Super Velocità" }
+        }},
+        { "items.mushroom_effect_2", new Dictionary<Language, string> {
+            { Language.English, "Moon Low Gravity (High Jump)" },
+            { Language.SimplifiedChinese, "2: 月球低重力 (大跳跃)" },
+            { Language.TraditionalChinese, "2: 月球低重力 (大跳躍)" },
+            { Language.Japanese, "2: 低重力（大ジャンプ）" },
+            { Language.Korean, "2: 저중력 (슈퍼 점프)" },
+            { Language.Italian, "2: Bassa Gravità Lunare" }
+        }},
+        { "items.mushroom_effect_3", new Dictionary<Language, string> {
+            { Language.English, "Golden Invincibility" },
+            { Language.SimplifiedChinese, "3: 金身绝对无敌 (免疫一切)" },
+            { Language.TraditionalChinese, "3: 金身絕對無敵 (免疫一切)" },
+            { Language.Japanese, "3: 完全無敵（黄金身）" },
+            { Language.Korean, "3: 절대 무적 (골든 바디)" },
+            { Language.Italian, "3: Invincibilità Dorata" }
+        }},
+        { "items.mushroom_effect_4", new Dictionary<Language, string> {
+            { Language.English, "Full Cleanse (Heal All)" },
+            { Language.SimplifiedChinese, "4: 完全净化全愈 (状态清空)" },
+            { Language.TraditionalChinese, "4: 完全淨化全愈 (狀態清空)" },
+            { Language.Japanese, "4: 完全浄化（全回復）" },
+            { Language.Korean, "4: 완전 정화 (모든 치유)" },
+            { Language.Italian, "4: Purificazione Totale" }
+        }},
+        { "items.mushroom_effect_5", new Dictionary<Language, string> {
+            { Language.English, "Spore Blast (Fart Skyward)" },
+            { Language.SimplifiedChinese, "5: 孢子爆炸/屁崩冲天" },
+            { Language.TraditionalChinese, "5: 孢子爆炸/屁崩沖天" },
+            { Language.Japanese, "5: 胞子爆発（吹き飛び）" },
+            { Language.Korean, "5: 포자 폭발 (공중 날림)" },
+            { Language.Italian, "5: Esplosione di Spore" }
+        }},
+        { "items.mushroom_effect_6", new Dictionary<Language, string> {
+            { Language.English, "Total Blindness (Black Screen)" },
+            { Language.SimplifiedChinese, "6: 全屏致盲黑屏" },
+            { Language.TraditionalChinese, "6: 全屏致盲黑屏" },
+            { Language.Japanese, "6: 暗闇（全画面盲目）" },
+            { Language.Korean, "6: 시야 상실 (암흑)" },
+            { Language.Italian, "6: Cecità Totale" }
+        }},
+        { "items.mushroom_effect_7", new Dictionary<Language, string> {
+            { Language.English, "Trip & Fall (Slip Down)" },
+            { Language.SimplifiedChinese, "7: 脱力摔倒滑坠" },
+            { Language.TraditionalChinese, "7: 脫力摔倒滑墜" },
+            { Language.Japanese, "7: 転倒滑落" },
+            { Language.Korean, "7: 미끄러짐 및 넘어짐" },
+            { Language.Italian, "7: Caduta e Scivolone" }
+        }},
+        { "items.mushroom_effect_8", new Dictionary<Language, string> {
+            { Language.English, "Parasitic Spores Infestation" },
+            { Language.SimplifiedChinese, "8: 孢子寄生感染" },
+            { Language.TraditionalChinese, "8: 孢子寄生感染" },
+            { Language.Japanese, "8: 胞子寄生感染" },
+            { Language.Korean, "8: 기생 포자 감염" },
+            { Language.Italian, "8: Infestazione da Spore" }
+        }},
+        { "items.mushroom_effect_9", new Dictionary<Language, string> {
+            { Language.English, "Limb Numbness (No Grip)" },
+            { Language.SimplifiedChinese, "9: 四肢麻木脱力" },
+            { Language.TraditionalChinese, "9: 四肢麻木脫力" },
+            { Language.Japanese, "9: 四肢麻痺" },
+            { Language.Korean, "9: 사지 마비" },
+            { Language.Italian, "9: Intorpidimento Totale" }
+        }},
+        { "items.blowgun_enchantment", new Dictionary<Language, string> {
+            { Language.English, "Blowgun Dart Ammunition" },
+            { Language.SimplifiedChinese, "吹箭筒弹药实时附魔" },
+            { Language.TraditionalChinese, "吹箭筒彈藥實時附魔" },
+            { Language.Japanese, "吹き矢弾薬リアルタイム付与" },
+            { Language.Korean, "바람총 탄약 실시간 마법부여" },
+            { Language.Italian, "Incantamento Dardi Cerbottana" }
+        }},
+        { "items.dart_enable", new Dictionary<Language, string> {
+            { Language.English, "Enchant Dart Ammunition" },
+            { Language.SimplifiedChinese, "启用吹箭筒弹药附魔" },
+            { Language.TraditionalChinese, "啟用吹箭筒彈藥附魔" },
+            { Language.Japanese, "吹き矢弾薬エンチャント有効化" },
+            { Language.Korean, "바람총 탄약 마법부여 활성화" },
+            { Language.Italian, "Attiva Incanto Dardi" }
+        }},
+        { "items.dart_ammo_buffs", new Dictionary<Language, string> {
+            { Language.English, "Beneficial Darts:" },
+            { Language.SimplifiedChinese, "增益与治疗弹:" },
+            { Language.TraditionalChinese, "增益與治療彈:" },
+            { Language.Japanese, "強化・治療弾:" },
+            { Language.Korean, "강화 및 치유 탄약:" },
+            { Language.Italian, "Dardi Benefici e Cure:" }
+        }},
+        { "items.dart_ammo_debuffs", new Dictionary<Language, string> {
+            { Language.English, "Debuff & Prank Darts:" },
+            { Language.SimplifiedChinese, "负面与恶搞弹:" },
+            { Language.TraditionalChinese, "負面與惡搞彈:" },
+            { Language.Japanese, "妨害・悪ふざけ弾:" },
+            { Language.Korean, "디버프 및 장난 탄약:" },
+            { Language.Italian, "Dardi Malus e Scherzi:" }
+        }},
+        { "items.dart_invincible", new Dictionary<Language, string> {
+            { Language.English, "Invincible" },
+            { Language.SimplifiedChinese, "金身无敌" },
+            { Language.TraditionalChinese, "金身無敵" },
+            { Language.Japanese, "無敵" },
+            { Language.Korean, "무적" },
+            { Language.Italian, "Invincibile" }
+        }},
+        { "items.dart_speed", new Dictionary<Language, string> {
+            { Language.English, "Speed" },
+            { Language.SimplifiedChinese, "超绝神速" },
+            { Language.TraditionalChinese, "超絕神速" },
+            { Language.Japanese, "神速" },
+            { Language.Korean, "신속" },
+            { Language.Italian, "Velocità" }
+        }},
+        { "items.dart_stamina", new Dictionary<Language, string> {
+            { Language.English, "Infinite Stamina" },
+            { Language.SimplifiedChinese, "无限耐力" },
+            { Language.TraditionalChinese, "無限耐力" },
+            { Language.Japanese, "無限スタミナ" },
+            { Language.Korean, "무한 스태미나" },
+            { Language.Italian, "Resistenza Infinita" }
+        }},
+        { "items.dart_cleanse", new Dictionary<Language, string> {
+            { Language.English, "Full Cleanse" },
+            { Language.SimplifiedChinese, "全愈净化" },
+            { Language.TraditionalChinese, "全愈淨化" },
+            { Language.Japanese, "完全浄化" },
+            { Language.Korean, "완전 치유" },
+            { Language.Italian, "Guarigione Totale" }
+        }},
+        { "items.dart_lowgrav", new Dictionary<Language, string> {
+            { Language.English, "Low Grav" },
+            { Language.SimplifiedChinese, "低重力" },
+            { Language.TraditionalChinese, "低重力" },
+            { Language.Japanese, "低重力" },
+            { Language.Korean, "저중력" },
+            { Language.Italian, "Bassa Gravità" }
+        }},
+        { "items.dart_glow", new Dictionary<Language, string> {
+            { Language.English, "Glow" },
+            { Language.SimplifiedChinese, "夜光发光" },
+            { Language.TraditionalChinese, "夜光發光" },
+            { Language.Japanese, "発光" },
+            { Language.Korean, "발광" },
+            { Language.Italian, "Bagliore" }
+        }},
+        { "items.dart_revive", new Dictionary<Language, string> {
+            { Language.English, "Medical Revive" },
+            { Language.SimplifiedChinese, "医疗复活" },
+            { Language.TraditionalChinese, "醫療復活" },
+            { Language.Japanese, "医療蘇生" },
+            { Language.Korean, "의료 부활" },
+            { Language.Italian, "Rianimazione Medica" }
+        }},
+        { "items.dart_poison", new Dictionary<Language, string> {
+            { Language.English, "Poison" },
+            { Language.SimplifiedChinese, "致命剧毒" },
+            { Language.TraditionalChinese, "致命劇毒" },
+            { Language.Japanese, "劇毒" },
+            { Language.Korean, "맹독" },
+            { Language.Italian, "Veleno" }
+        }},
+        { "items.dart_starvation", new Dictionary<Language, string> {
+            { Language.English, "Starvation" },
+            { Language.SimplifiedChinese, "极度饥饿" },
+            { Language.TraditionalChinese, "極度飢餓" },
+            { Language.Japanese, "飢餓" },
+            { Language.Korean, "극심한 허기" },
+            { Language.Italian, "Fame Estrema" }
+        }},
+        { "items.dart_sleep", new Dictionary<Language, string> {
+            { Language.English, "Hypnosis/Sleep" },
+            { Language.SimplifiedChinese, "深度昏睡" },
+            { Language.TraditionalChinese, "深度昏睡" },
+            { Language.Japanese, "催眠・昏睡" },
+            { Language.Korean, "수면 및 혼수" },
+            { Language.Italian, "Sonnolenza Profonda" }
+        }},
+        { "items.dart_fall", new Dictionary<Language, string> {
+            { Language.English, "Slip & Fall" },
+            { Language.SimplifiedChinese, "脱力扑街" },
+            { Language.TraditionalChinese, "脫力撲街" },
+            { Language.Japanese, "転倒滑落" },
+            { Language.Korean, "넘어뜨리기" },
+            { Language.Italian, "Caduta a Terra" }
+        }},
+        { "items.dart_thorns", new Dictionary<Language, string> {
+            { Language.English, "Thorns" },
+            { Language.SimplifiedChinese, "万刺穿身" },
+            { Language.TraditionalChinese, "萬刺穿身" },
+            { Language.Japanese, "茨の針" },
+            { Language.Korean, "가시 찌르기" },
+            { Language.Italian, "Spine Infisse" }
+        }},
+        { "items.dart_spores", new Dictionary<Language, string> {
+            { Language.English, "Spores" },
+            { Language.SimplifiedChinese, "孢子寄生" },
+            { Language.TraditionalChinese, "孢子寄生" },
+            { Language.Japanese, "胞子感染" },
+            { Language.Korean, "포자 감염" },
+            { Language.Italian, "Spore Fungine" }
+        }},
+        { "items.dart_blind", new Dictionary<Language, string> {
+            { Language.English, "Blindness" },
+            { Language.SimplifiedChinese, "全屏致盲" },
+            { Language.TraditionalChinese, "全屏致盲" },
+            { Language.Japanese, "全盲目" },
+            { Language.Korean, "암흑 실명" },
+            { Language.Italian, "Cecità" }
+        }},
+        { "items.dart_numb", new Dictionary<Language, string> {
+            { Language.English, "Numbness" },
+            { Language.SimplifiedChinese, "肢体麻木" },
+            { Language.TraditionalChinese, "肢體麻木" },
+            { Language.Japanese, "四肢麻痺" },
+            { Language.Korean, "사지 마비" },
+            { Language.Italian, "Intorpidimento" }
+        }},
+        { "items.dart_chaos", new Dictionary<Language, string> {
+            { Language.English, "Chaos (Random Every Shot)" },
+            { Language.SimplifiedChinese, "混沌随机 (每枪随机一种效果)" },
+            { Language.TraditionalChinese, "混沌隨機 (每槍隨機一種效果)" },
+            { Language.Japanese, "カオス（毎射ランダム効果）" },
+            { Language.Korean, "카오스 (발사마다 무작위 효과)" },
+            { Language.Italian, "Caos (Effetto Casuale ad Ogni Colpo)" }
+        }},
+        { "items.extended_attributes", new Dictionary<Language, string> {
+            { Language.English, "Extended Item Attributes" },
+            { Language.SimplifiedChinese, "扩展物品属性" },
+            { Language.TraditionalChinese, "擴展物品屬性" },
+            { Language.Japanese, "拡張アイテム属性" },
+            { Language.Korean, "확장 아이템 속성" },
+            { Language.Italian, "Attributi Oggetti Estesi" }
+        }},
+        { "items.food_poison_immunity", new Dictionary<Language, string> {
+            { Language.English, "Food Poison Immunity (Spoiled/Toxic)" },
+            { Language.SimplifiedChinese, "食物防腐免毒 (免疫变质与毒食物)" },
+            { Language.TraditionalChinese, "食物防腐免毒 (免疫變質與毒食物)" },
+            { Language.Japanese, "食中毒完全無効（腐敗・有毒食）" },
+            { Language.Korean, "식중독 완전 면역 (부패 및 독 음식)" },
+            { Language.Italian, "Immunità da Intossicazione Alimentare" }
+        }},
+        { "items.infinite_tool_charge", new Dictionary<Language, string> {
+            { Language.English, "Infinite Torch & Tool Charge" },
+            { Language.SimplifiedChinese, "火把与工具无限耐久/充能" },
+            { Language.TraditionalChinese, "火把與工具無限耐久/充能" },
+            { Language.Japanese, "松明・ツール無限燃料/耐久" },
+            { Language.Korean, "횃불 및 도구 무한 내구도/충전" },
+            { Language.Italian, "Carica Infinita Torce e Strumenti" }
         }}
     };
 

@@ -375,6 +375,39 @@ public static class Utilities
                     {
                         Globals.playerObj.photonView.RPC("SyncInventoryRPC", RpcTarget.Others, new object[] { syncData, true });
                     }
+
+                    if (Globals.mushroomSpawnMode != Globals.MushroomSpawnMode.Vanilla && Globals.items[itemIndex] != null)
+                    {
+                        var comp = Globals.items[itemIndex].GetComponent<Action_RandomMushroomEffect>();
+                        if (comp != null && Globals.playerObj != null)
+                        {
+                            var playerMushroomComps = Globals.playerObj.GetComponentsInChildren<Action_RandomMushroomEffect>(true);
+                            if (playerMushroomComps != null)
+                            {
+                                int effectToSet = 0;
+                                switch (Globals.mushroomSpawnMode)
+                                {
+                                    case Globals.MushroomSpawnMode.Purified:
+                                        int[] goods = Action_RandomMushroomEffect.GoodEffects ?? new int[] { 0, 1, 2, 3, 4 };
+                                        effectToSet = goods[UnityEngine.Random.Range(0, goods.Length)];
+                                        break;
+                                    case Globals.MushroomSpawnMode.Toxic:
+                                        int[] bads = Action_RandomMushroomEffect.BadEffects ?? new int[] { 5, 6, 7, 8, 9 };
+                                        effectToSet = bads[UnityEngine.Random.Range(0, bads.Length)];
+                                        break;
+                                    case Globals.MushroomSpawnMode.Specific:
+                                        effectToSet = Mathf.Clamp(Globals.selectedMushroomEffect, 0, 9);
+                                        break;
+                                }
+                                for (int pm = 0; pm < playerMushroomComps.Length; pm++)
+                                {
+                                    playerMushroomComps[pm].useDebugEffect = true;
+                                    playerMushroomComps[pm].debugEffect = effectToSet;
+                                }
+                            }
+                        }
+                    }
+
                     if (Logger != null)
                         Logger.LogInfo(string.Format("[Inventory] Assigned {0} to slot {1}", Globals.itemNames[itemIndex], slot + 1));
                 }
@@ -649,14 +682,21 @@ public static class Utilities
                 var item = Globals.items[itemIndex];
                 if (item != null)
                 {
+                    Vector3 spawnPos = Vector3.zero;
                     if (Character.localCharacter != null)
                     {
-                        Vector3 spawnPos = CalculateGroundSpawnPosition(Character.localCharacter, 2.0f);
+                        spawnPos = CalculateGroundSpawnPosition(Character.localCharacter, 2.0f);
                         ItemDatabase.Add(item, spawnPos);
                     }
                     else
                     {
                         ItemDatabase.Add(item);
+                    }
+
+                    // Mushroom custom attribute injection (Only when spawning via mod)
+                    if (Globals.mushroomSpawnMode != Globals.MushroomSpawnMode.Vanilla)
+                    {
+                        InjectMushroomCustomization(spawnPos);
                     }
 
                     string itemName = null;
@@ -674,6 +714,80 @@ public static class Utilities
                 Globals.GlobalNotifier.ShowError("生成物品失败: " + ex.Message);
             }
         });
+    }
+
+    public static void InjectMushroomCustomization(Vector3 spawnPos)
+    {
+        try
+        {
+            Action_RandomMushroomEffect targetComp = null;
+            if (spawnPos != Vector3.zero)
+            {
+                var colliders = Physics.OverlapSphere(spawnPos, 3.5f);
+                if (colliders != null)
+                {
+                    for (int c = 0; c < colliders.Length; c++)
+                    {
+                        var comp = colliders[c].GetComponentInParent<Action_RandomMushroomEffect>();
+                        if (comp != null)
+                        {
+                            targetComp = comp;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (targetComp == null)
+            {
+                var allMushrooms = UnityEngine.Object.FindObjectsOfType<Action_RandomMushroomEffect>();
+                float closestDist = float.MaxValue;
+                if (allMushrooms != null)
+                {
+                    for (int m = 0; m < allMushrooms.Length; m++)
+                    {
+                        float d = (spawnPos != Vector3.zero) ? Vector3.Distance(allMushrooms[m].transform.position, spawnPos) : 0f;
+                        if (d < closestDist && d < 10f)
+                        {
+                            closestDist = d;
+                            targetComp = allMushrooms[m];
+                        }
+                    }
+                }
+            }
+
+            if (targetComp != null)
+            {
+                int effectToSet = 0;
+                switch (Globals.mushroomSpawnMode)
+                {
+                    case Globals.MushroomSpawnMode.Purified:
+                        int[] goods = Action_RandomMushroomEffect.GoodEffects;
+                        if (goods == null || goods.Length == 0) goods = new int[] { 0, 1, 2, 3, 4 };
+                        effectToSet = goods[UnityEngine.Random.Range(0, goods.Length)];
+                        break;
+                    case Globals.MushroomSpawnMode.Toxic:
+                        int[] bads = Action_RandomMushroomEffect.BadEffects;
+                        if (bads == null || bads.Length == 0) bads = new int[] { 5, 6, 7, 8, 9 };
+                        effectToSet = bads[UnityEngine.Random.Range(0, bads.Length)];
+                        break;
+                    case Globals.MushroomSpawnMode.Specific:
+                        effectToSet = Mathf.Clamp(Globals.selectedMushroomEffect, 0, 9);
+                        break;
+                }
+
+                targetComp.useDebugEffect = true;
+                targetComp.debugEffect = effectToSet;
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Mushroom] Injected custom effect {0} (mode: {1}) into spawned mushroom.", effectToSet, Globals.mushroomSpawnMode));
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogWarning("[Mushroom] InjectMushroomCustomization exception: " + ex);
+        }
     }
 
     public static void RechargeInventorySlot(int slot, float rechargeValue)
@@ -3515,71 +3629,245 @@ public static class Utilities
         });
     }
 
-    public static void SpawnScoutmasterForPlayer(int playerIndex)
+    /// <summary>
+    /// Spawns a creature/monster entity with defensive ground alignment and aggro binding.
+    /// </summary>
+    public static void SpawnCreature(Globals.CreatureType type, Globals.CreatureSpawnAnchor anchor, float distance, int targetPlayerIndex, float ghostScale = 3.0f)
     {
+        // 1.0s spamming cooldown protection
+        if (Time.unscaledTime - Globals.lastCreatureSpawnTime < 1.0f)
+        {
+            Globals.GlobalNotifier.ShowError(Localization.T("creatures.cooldown"), 2.5f);
+            return;
+        }
+
+        // Host verification for networked RoomObjects
+        bool isHost = PhotonNetwork.IsMasterClient;
+        if (!isHost && (type == Globals.CreatureType.Scoutmaster || type == Globals.CreatureType.MushroomZombie))
+        {
+            Globals.GlobalNotifier.ShowError(Localization.T("creatures.host_required"), 4f);
+            if (Logger != null)
+                Logger.LogWarning("[Creatures] RoomObject creation requires MasterClient authority.");
+            return;
+        }
+
+        Globals.lastCreatureSpawnTime = Time.unscaledTime;
+
         UnityMainThreadDispatcher.Enqueue(() =>
         {
-            if (!PhotonNetwork.IsMasterClient)
+            try
             {
-                if (Logger != null)
-                    Logger.LogWarning("[Scoutmaster] Only the MasterClient can spawn the Scoutmaster.");
-                return;
-            }
+                var localChar = Character.localCharacter;
+                if (localChar == null)
+                    return;
 
-            if (playerIndex < 0 || playerIndex >= Character.AllCharacters.Count)
-            {
-                if (Logger != null)
-                    Logger.LogWarning("[Scoutmaster] Invalid player index.");
-                return;
-            }
+                Vector3 basePos = localChar.transform.position;
+                Vector3 forwardDir = localChar.transform.forward;
+                forwardDir.y = 0;
+                if (forwardDir.sqrMagnitude > 0.001f) forwardDir.Normalize();
+                else forwardDir = Vector3.forward;
 
-            Character targetCharacter = Character.AllCharacters[playerIndex];
-            Vector3 targetPos = GetCharacterPosition(targetCharacter);
-            Vector3 spawnOrigin = targetPos + new Vector3(UnityEngine.Random.Range(-10f, 10f), 25f, UnityEngine.Random.Range(-10f, 10f));
-            Vector3 down = Vector3.down;
+                Vector3 desiredPos = basePos + forwardDir * distance;
 
-            RaycastHit hit;
-            if (Physics.Raycast(spawnOrigin, down, out hit, 100f, ~0))
-            {
-                Vector3 spawnPoint = hit.point + Vector3.up * 1f;
-                Quaternion rotation = Quaternion.identity;
-
-                GameObject scoutObj = PhotonNetwork.InstantiateRoomObject("Character_Scoutmaster", spawnPoint, rotation, 0, null);
-                var character = scoutObj.GetComponent<Character>();
-                if (character != null)
-                    character.data.spawnPoint = character.transform;
-
-                var scoutmaster = scoutObj.GetComponent<Scoutmaster>();
-                if (scoutmaster != null)
+                if (anchor == Globals.CreatureSpawnAnchor.SelectedPlayer)
                 {
-                    try
+                    if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Character.AllCharacters.Count)
                     {
-                        var method = typeof(Scoutmaster).GetMethod("SetCurrentTarget", BindingFlags.Instance | BindingFlags.NonPublic);
-                        if (method != null)
+                        var selChar = Character.AllCharacters[Globals.selectedPlayer];
+                        if (selChar != null)
                         {
-                            method.Invoke(scoutmaster, new object[] { targetCharacter, 15f });
-                            if (Logger != null)
-                                Logger.LogInfo(string.Format("[Scoutmaster] Target set to {0}", targetCharacter.characterName));
+                            basePos = selChar.transform.position;
+                            forwardDir = selChar.transform.forward;
+                            forwardDir.y = 0;
+                            if (forwardDir.sqrMagnitude > 0.001f) forwardDir.Normalize();
+                            else forwardDir = Vector3.forward;
+                            desiredPos = basePos + forwardDir * distance;
                         }
-                        else
-                        {
-                            if (Logger != null)
-                                Logger.LogWarning("[Scoutmaster] Reflection failed — method not found.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        if (Logger != null)
-                            Logger.LogError("[Scoutmaster] Reflection error: " + ex);
                     }
                 }
+                else if (anchor == Globals.CreatureSpawnAnchor.Crosshair)
+                {
+                    Camera cam = Camera.main;
+                    if (cam != null)
+                    {
+                        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+                        RaycastHit aimHit;
+                        if (Physics.Raycast(ray, out aimHit, 150f, ~0))
+                        {
+                            desiredPos = aimHit.point;
+                            forwardDir = (desiredPos - basePos);
+                            forwardDir.y = 0;
+                            if (forwardDir.sqrMagnitude > 0.001f) forwardDir.Normalize();
+                            else forwardDir = Vector3.forward;
+                        }
+                    }
+                }
+
+                // Defensive Ground Alignment
+                Physics.SyncTransforms();
+                Vector3 spawnPos = desiredPos;
+                RaycastHit groundHit;
+                if (Physics.Raycast(desiredPos + Vector3.up * 25f, Vector3.down, out groundHit, 70f, ~0))
+                {
+                    spawnPos = groundHit.point + Vector3.up * 0.5f;
+                }
+                else
+                {
+                    spawnPos = ResolveSafeGroundPosition(desiredPos);
+                    if (spawnPos == desiredPos)
+                    {
+                        Globals.GlobalNotifier.ShowError(Localization.T("creatures.no_ground"), 4f);
+                        if (Logger != null)
+                            Logger.LogWarning("[Creatures] No valid ground found to spawn creature.");
+                        return;
+                    }
+                }
+
+                // Determine aggro target character
+                Character targetChar = null;
+                if (targetPlayerIndex == -1)
+                {
+                    targetChar = localChar;
+                }
+                else if (targetPlayerIndex >= 0 && targetPlayerIndex < Character.AllCharacters.Count)
+                {
+                    targetChar = Character.AllCharacters[targetPlayerIndex];
+                }
+
+                Quaternion rotation = Quaternion.LookRotation(-forwardDir);
+
+                // Spawning Pipeline per Creature Type
+                switch (type)
+                {
+                    case Globals.CreatureType.Scoutmaster:
+                    {
+                        GameObject scoutObj = PhotonNetwork.InstantiateRoomObject("Character_Scoutmaster", spawnPos, rotation, 0, null);
+                        if (scoutObj != null)
+                        {
+                            var character = scoutObj.GetComponent<Character>();
+                            if (character != null)
+                                character.data.spawnPoint = scoutObj.transform;
+
+                            var sm = scoutObj.GetComponent<Scoutmaster>();
+                            if (sm != null && targetChar != null)
+                            {
+                                try
+                                {
+                                    var method = typeof(Scoutmaster).GetMethod("SetCurrentTarget", BindingFlags.Instance | BindingFlags.NonPublic);
+                                    if (method != null)
+                                    {
+                                        method.Invoke(sm, new object[] { targetChar, 9999f });
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (Logger != null)
+                                        Logger.LogError("[Creatures] Scoutmaster aggro set error: " + ex);
+                                }
+                            }
+                        }
+                        break;
+                    }
+
+                    case Globals.CreatureType.BigGhost:
+                    {
+                        GameObject ghostObj = PhotonNetwork.Instantiate("PlayerGhost", spawnPos + Vector3.up * 1.5f, rotation, 0, null);
+                        if (ghostObj != null)
+                        {
+                            float s = Mathf.Clamp(ghostScale, 0.5f, 10f);
+                            ghostObj.transform.localScale = Vector3.one * s;
+
+                            var pg = ghostObj.GetComponent<PlayerGhost>();
+                            if (pg != null && targetChar != null && targetChar.refs != null && targetChar.refs.view != null)
+                            {
+                                try
+                                {
+                                    pg.m_view.RPC("RPCA_SetTarget", Photon.Pun.RpcTarget.All, new object[] { targetChar.refs.view });
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (Logger != null)
+                                        Logger.LogError("[Creatures] PlayerGhost target set error: " + ex);
+                                }
+                            }
+                        }
+                        break;
+                    }
+
+                    case Globals.CreatureType.MushroomZombie:
+                    {
+                        GameObject zombieObj = PhotonNetwork.InstantiateRoomObject("MushroomZombie_Player", spawnPos, rotation, 0, null);
+                        if (zombieObj != null)
+                        {
+                            var character = zombieObj.GetComponent<Character>();
+                            if (character != null)
+                                character.data.spawnPoint = zombieObj.transform;
+
+                            var mz = zombieObj.GetComponent<MushroomZombie>();
+                            if (mz != null && targetChar != null)
+                            {
+                                mz.currentTarget = targetChar;
+                                try
+                                {
+                                    var method = typeof(MushroomZombie).GetMethod("SetCurrentTarget", BindingFlags.Instance | BindingFlags.NonPublic);
+                                    if (method != null)
+                                    {
+                                        method.Invoke(mz, new object[] { targetChar, 9999f });
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                        break;
+                    }
+
+                    case Globals.CreatureType.Scorpion:
+                    {
+                        PhotonNetwork.Instantiate("0_Items/Scorpion", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        break;
+                    }
+
+                    case Globals.CreatureType.Beetle:
+                    {
+                        PhotonNetwork.Instantiate("0_Items/Beetle", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        break;
+                    }
+
+                    case Globals.CreatureType.BeeSwarm:
+                    {
+                        GameObject hiveObj = PhotonNetwork.Instantiate("0_Items/Beehive", spawnPos + Vector3.up * 0.5f, Quaternion.identity, 0, null);
+                        if (hiveObj != null)
+                        {
+                            var beehive = hiveObj.GetComponent<Beehive>();
+                            if (beehive != null && beehive.currentBees != null && beehive.currentBees.photonView != null)
+                            {
+                                beehive.currentBees.photonView.RPC("SetBeesAngryRPC", Photon.Pun.RpcTarget.AllBuffered, new object[] { true });
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                string typeKey = "creatures.type." + type.ToString().ToLower();
+                if (type == Globals.CreatureType.BeeSwarm) typeKey = "creatures.type.bees";
+                string typeName = Localization.T(typeKey);
+                Globals.GlobalNotifier.ShowError(string.Format(Localization.T("creatures.success"), typeName, distance), 3.5f);
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Creatures] Successfully spawned {0} at {1} (Distance: {2:F1}m)", type, spawnPos, distance));
             }
-            else
+            catch (Exception ex)
             {
                 if (Logger != null)
-                    Logger.LogWarning("[Scoutmaster] No valid ground to spawn.");
+                    Logger.LogError("[Creatures] SpawnCreature exception: " + ex);
+                Globals.GlobalNotifier.ShowError("Spawn Creature Failed: " + ex.Message, 4f);
             }
         });
+    }
+
+    public static void SpawnScoutmasterForPlayer(int playerIndex)
+    {
+        SpawnCreature(Globals.CreatureType.Scoutmaster, Globals.CreatureSpawnAnchor.SelectedPlayer, 5f, playerIndex);
     }
 
     public static bool PlayerHasBackpack(Player player)

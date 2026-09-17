@@ -67,6 +67,18 @@ public class EventComponent : MonoBehaviour
                 }
             }
             catch { }
+
+            if (Globals.infiniteToolCharge)
+            {
+                try
+                {
+                    for (int s = 0; s < 3; s++)
+                    {
+                        Utilities.RechargeInventorySlot(s, 100f);
+                    }
+                }
+                catch { }
+            }
         }
 
         locationSnapshotTimer += Time.deltaTime;

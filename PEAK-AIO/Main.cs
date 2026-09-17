@@ -1,6 +1,7 @@
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
+using Photon.Pun;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +28,7 @@ public class PeakMod : BaseUnityPlugin
     private GUIStyle cardBoxStyle;
     private GUIStyle primaryBtnStyle;
     private GUIStyle dangerBtnStyle;
+    private GUIStyle regularBtnStyle;
     private GUIStyle sectionHeaderStyle;
     private GUIStyle subHeaderStyle;
     private GUIStyle labelStyle;
@@ -224,6 +226,7 @@ public class PeakMod : BaseUnityPlugin
         defaultBtn.margin = new RectOffset(2, 2, 2, 2);
         defaultBtn.padding = new RectOffset(6, 6, 4, 4);
         customSkin.button = defaultBtn;
+        regularBtnStyle = defaultBtn;
 
         // Primary Button
         primaryBtnStyle = new GUIStyle(defaultBtn);
@@ -566,7 +569,7 @@ public class PeakMod : BaseUnityPlugin
     private void DrawSidebar()
     {
         string[] sidebarKeys = new string[] {
-            "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.about", "tab.language", "tab.debug"
+            "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.creatures", "tab.about", "tab.language", "tab.debug"
         };
 
         for (int i = 0; i < sidebarKeys.Length; i++)
@@ -609,12 +612,15 @@ public class PeakMod : BaseUnityPlugin
                 DrawWorldTab();
                 break;
             case 5:
-                DrawAboutTab();
+                DrawCreaturesTab();
                 break;
             case 6:
-                DrawLanguageTab();
+                DrawAboutTab();
                 break;
             case 7:
+                DrawLanguageTab();
+                break;
+            case 8:
                 DrawDebugTab();
                 break;
             default:
@@ -927,11 +933,173 @@ public class PeakMod : BaseUnityPlugin
                 {
                     GUILayout.EndHorizontal();
                 }
+
+                GUILayout.Space(6);
+                DrawItemAttributesSection();
             }
         }
         finally
         {
             GUILayout.EndScrollView();
+        }
+    }
+
+    private void DrawItemAttributesSection()
+    {
+        GUILayout.BeginVertical(cardBoxStyle);
+        try
+        {
+            GUILayout.Label(Localization.T("items.attributes_title"), sectionHeaderStyle);
+            GUILayout.Space(4);
+
+            // 1. Mushroom Customization
+            GUILayout.Label(Localization.T("items.mushroom_customization"), boldLabelStyle);
+            GUILayout.BeginHorizontal();
+
+            bool isVanilla = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Vanilla);
+            bool isPurified = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Purified);
+            bool isToxic = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Toxic);
+            bool isSpecific = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Specific);
+
+            if (GUILayout.Toggle(isVanilla, Localization.T("items.mushroom_mode_vanilla"), GUILayout.Width(130)) && !isVanilla)
+            {
+                Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Vanilla;
+            }
+            if (GUILayout.Toggle(isPurified, Localization.T("items.mushroom_mode_purified"), GUILayout.Width(170)) && !isPurified)
+            {
+                Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Purified;
+            }
+            if (GUILayout.Toggle(isToxic, Localization.T("items.mushroom_mode_toxic"), GUILayout.Width(170)) && !isToxic)
+            {
+                Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Toxic;
+            }
+            if (GUILayout.Toggle(isSpecific, Localization.T("items.mushroom_mode_specific"), GUILayout.Width(110)) && !isSpecific)
+            {
+                Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Specific;
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Specific)
+            {
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                for (int e = 0; e <= 4; e++)
+                {
+                    bool isCur = (Globals.selectedMushroomEffect == e);
+                    GUIStyle bStyle = isCur ? primaryBtnStyle : regularBtnStyle;
+                    if (GUILayout.Button(Localization.T("items.mushroom_effect_" + e), bStyle, GUILayout.Height(22)))
+                    {
+                        Globals.selectedMushroomEffect = e;
+                    }
+                }
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                for (int e = 5; e <= 9; e++)
+                {
+                    bool isCur = (Globals.selectedMushroomEffect == e);
+                    GUIStyle bStyle = isCur ? dangerBtnStyle : regularBtnStyle;
+                    if (GUILayout.Button(Localization.T("items.mushroom_effect_" + e), bStyle, GUILayout.Height(22)))
+                    {
+                        Globals.selectedMushroomEffect = e;
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(8);
+
+            // 2. Blowgun Dart Ammo Enchantment
+            GUILayout.Label(Localization.T("items.blowgun_enchantment"), boldLabelStyle);
+            GUILayout.BeginHorizontal();
+            bool prevDart = Globals.dartAmmoEnabled;
+            bool newDart = GUILayout.Toggle(prevDart, Localization.T("items.dart_enable"), GUILayout.Width(240));
+            if (newDart != prevDart)
+            {
+                Globals.dartAmmoEnabled = newDart;
+                ConfigManager.DartAmmoEnabled.Value = newDart;
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            if (Globals.dartAmmoEnabled)
+            {
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(Localization.T("items.dart_ammo_buffs"), tipLabelStyle, GUILayout.Width(100));
+                DrawDartAmmoButton(Globals.DartAmmoType.Invincibility, "items.dart_invincible", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.SpeedBoost, "items.dart_speed", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.InfiniteStamina, "items.dart_stamina", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.FullCleanse, "items.dart_cleanse", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.LowGravity, "items.dart_lowgrav", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Glow, "items.dart_glow", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Revive, "items.dart_revive", primaryBtnStyle);
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(Localization.T("items.dart_ammo_debuffs"), tipLabelStyle, GUILayout.Width(100));
+                DrawDartAmmoButton(Globals.DartAmmoType.Poison, "items.dart_poison", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Starvation, "items.dart_starvation", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Sleep, "items.dart_sleep", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.TripFall, "items.dart_fall", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Thorns, "items.dart_thorns", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Spores, "items.dart_spores", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Blind, "items.dart_blind", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Numb, "items.dart_numb", dangerBtnStyle);
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(104);
+                DrawDartAmmoButton(Globals.DartAmmoType.Chaos, "items.dart_chaos", regularBtnStyle);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(8);
+
+            // 3. Extended Item Attributes
+            GUILayout.Label(Localization.T("items.extended_attributes"), boldLabelStyle);
+            GUILayout.BeginHorizontal();
+
+            bool curFoodPoison = Globals.foodPoisonImmunity;
+            bool newFoodPoison = GUILayout.Toggle(curFoodPoison, Localization.T("items.food_poison_immunity"), GUILayout.Width(300));
+            if (newFoodPoison != curFoodPoison)
+            {
+                Globals.foodPoisonImmunity = newFoodPoison;
+                ConfigManager.FoodPoisonImmunity.Value = newFoodPoison;
+            }
+
+            bool curTool = Globals.infiniteToolCharge;
+            bool newTool = GUILayout.Toggle(curTool, Localization.T("items.infinite_tool_charge"), GUILayout.Width(280));
+            if (newTool != curTool)
+            {
+                Globals.infiniteToolCharge = newTool;
+                ConfigManager.InfiniteToolCharge.Value = newTool;
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+        }
+        finally
+        {
+            GUILayout.EndVertical();
+        }
+    }
+
+    private void DrawDartAmmoButton(Globals.DartAmmoType ammoType, string locKey, GUIStyle activeStyle)
+    {
+        bool isSelected = (Globals.selectedDartAmmoType == ammoType);
+        GUIStyle style = isSelected ? activeStyle : regularBtnStyle;
+        string text = Localization.T(locKey);
+        if (GUILayout.Button(text, style, GUILayout.Height(22)))
+        {
+            Globals.selectedDartAmmoType = ammoType;
+            ConfigManager.SelectedDartAmmoType.Value = (int)ammoType;
         }
     }
 
@@ -1951,7 +2119,197 @@ public class PeakMod : BaseUnityPlugin
     }
 
     // ==========================================
-    // TAB 5: ABOUT
+    // TAB 5: CREATURES (CREATURE SPAWNER)
+    // ==========================================
+    private void DrawCreaturesTab()
+    {
+        Globals.creaturesScroll = GUILayout.BeginScrollView(Globals.creaturesScroll);
+
+        // Header and Description
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("creatures.title"), sectionHeaderStyle);
+        GUILayout.FlexibleSpace();
+
+        // Host Authority Status Badge
+        bool isHost = PhotonNetwork.IsMasterClient;
+        GUIStyle badgeStyle = isHost ? badgeCompletedStyle : badgePendingStyle;
+        string badgeText = isHost ? Localization.T("creatures.host_badge_ready") : Localization.T("creatures.host_badge_warning");
+        GUILayout.Label(badgeText, badgeStyle, GUILayout.Height(22));
+        GUILayout.EndHorizontal();
+
+        GUILayout.Label(Localization.T("creatures.desc"), tipLabelStyle);
+        GUILayout.Space(6);
+
+        // --- 1. Creature Type Selection Grid ---
+        GUILayout.Label(Localization.T("creatures.select_type"), subHeaderStyle);
+        GUILayout.Space(2);
+
+        Globals.CreatureType[] types = new Globals.CreatureType[] {
+            Globals.CreatureType.Scoutmaster,
+            Globals.CreatureType.BigGhost,
+            Globals.CreatureType.MushroomZombie,
+            Globals.CreatureType.Scorpion,
+            Globals.CreatureType.Beetle,
+            Globals.CreatureType.BeeSwarm
+        };
+
+        for (int row = 0; row < 3; row++)
+        {
+            GUILayout.BeginHorizontal();
+            for (int col = 0; col < 2; col++)
+            {
+                int index = row * 2 + col;
+                if (index < types.Length)
+                {
+                    var cType = types[index];
+                    bool isSelected = (Globals.selectedCreatureType == cType);
+                    string key = (cType == Globals.CreatureType.BeeSwarm) ? "creatures.type.bees" : ("creatures.type." + cType.ToString().ToLower());
+                    string typeLabel = Localization.T(key);
+
+                    GUIStyle btnStyle = isSelected ? sidebarActiveBtnStyle : primaryBtnStyle;
+                    if (GUILayout.Button(typeLabel, btnStyle, GUILayout.Height(28)))
+                    {
+                        Globals.selectedCreatureType = cType;
+                    }
+                    if (col == 0) GUILayout.Space(6);
+                }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4);
+        }
+
+        // Selected Creature Description Card
+        GUILayout.BeginVertical(cardBoxStyle);
+        string curDescKey = (Globals.selectedCreatureType == Globals.CreatureType.BeeSwarm)
+            ? "creatures.type.bees_desc"
+            : ("creatures.type." + Globals.selectedCreatureType.ToString().ToLower() + "_desc");
+        GUILayout.Label(Localization.T(curDescKey), labelStyle);
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
+        // --- 2. Spawn Anchor & Spatial Parameters ---
+        GUILayout.Label(Localization.T("creatures.spawn_anchor"), subHeaderStyle);
+        GUILayout.Space(2);
+
+        GUILayout.BeginHorizontal();
+        bool isAnchorSelf = (Globals.creatureSpawnAnchor == Globals.CreatureSpawnAnchor.Self);
+        if (GUILayout.Button(Localization.T("creatures.anchor_self"), isAnchorSelf ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureSpawnAnchor = Globals.CreatureSpawnAnchor.Self;
+        }
+        GUILayout.Space(4);
+
+        bool isAnchorPlayer = (Globals.creatureSpawnAnchor == Globals.CreatureSpawnAnchor.SelectedPlayer);
+        if (GUILayout.Button(Localization.T("creatures.anchor_player"), isAnchorPlayer ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureSpawnAnchor = Globals.CreatureSpawnAnchor.SelectedPlayer;
+        }
+        GUILayout.Space(4);
+
+        bool isAnchorCrosshair = (Globals.creatureSpawnAnchor == Globals.CreatureSpawnAnchor.Crosshair);
+        if (GUILayout.Button(Localization.T("creatures.anchor_crosshair"), isAnchorCrosshair ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureSpawnAnchor = Globals.CreatureSpawnAnchor.Crosshair;
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+
+        // Distance Slider
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(string.Format(Localization.T("creatures.spawn_distance"), Globals.creatureSpawnDistance), boldLabelStyle, GUILayout.Width(170));
+        Globals.creatureSpawnDistance = GUILayout.HorizontalSlider(Globals.creatureSpawnDistance, 1.0f, 50.0f);
+        GUILayout.Space(8);
+        if (GUILayout.Button("5m", sidebarBtnStyle, GUILayout.Width(36), GUILayout.Height(20))) Globals.creatureSpawnDistance = 5f;
+        if (GUILayout.Button("10m", sidebarBtnStyle, GUILayout.Width(38), GUILayout.Height(20))) Globals.creatureSpawnDistance = 10f;
+        if (GUILayout.Button("20m", sidebarBtnStyle, GUILayout.Width(38), GUILayout.Height(20))) Globals.creatureSpawnDistance = 20f;
+        if (GUILayout.Button("35m", sidebarBtnStyle, GUILayout.Width(38), GUILayout.Height(20))) Globals.creatureSpawnDistance = 35f;
+        GUILayout.EndHorizontal();
+
+        // Ghost Scale Slider (Only shown if BigGhost selected)
+        if (Globals.selectedCreatureType == Globals.CreatureType.BigGhost)
+        {
+            GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(string.Format(Localization.T("creatures.ghost_scale"), Globals.creatureGhostScale), boldLabelStyle, GUILayout.Width(170));
+            Globals.creatureGhostScale = GUILayout.HorizontalSlider(Globals.creatureGhostScale, 1.0f, 5.0f);
+            GUILayout.Space(8);
+            if (GUILayout.Button("1x", sidebarBtnStyle, GUILayout.Width(32), GUILayout.Height(20))) Globals.creatureGhostScale = 1f;
+            if (GUILayout.Button("2x", sidebarBtnStyle, GUILayout.Width(32), GUILayout.Height(20))) Globals.creatureGhostScale = 2f;
+            if (GUILayout.Button("3x", sidebarBtnStyle, GUILayout.Width(32), GUILayout.Height(20))) Globals.creatureGhostScale = 3f;
+            if (GUILayout.Button("5x", sidebarBtnStyle, GUILayout.Width(32), GUILayout.Height(20))) Globals.creatureGhostScale = 5f;
+            GUILayout.EndHorizontal();
+        }
+
+        GUILayout.Space(8);
+
+        // --- 3. Aggro & Behavior Target Binding ---
+        GUILayout.Label(Localization.T("creatures.aggro_target"), subHeaderStyle);
+        GUILayout.Space(2);
+
+        GUILayout.BeginHorizontal();
+        bool isTargetSelf = (Globals.creatureAggroTargetIndex == -1);
+        if (GUILayout.Button(Localization.T("creatures.target_self"), isTargetSelf ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureAggroTargetIndex = -1;
+        }
+        GUILayout.Space(4);
+
+        bool isTargetPlayer = (Globals.creatureAggroTargetIndex >= 0);
+        string targetPlayerLabel = Localization.T("creatures.target_selected");
+        if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Character.AllCharacters.Count)
+        {
+            var pChar = Character.AllCharacters[Globals.selectedPlayer];
+            if (pChar != null && !string.IsNullOrEmpty(pChar.characterName))
+                targetPlayerLabel = string.Format("{0} ({1})", Localization.T("creatures.target_selected"), pChar.characterName);
+        }
+        if (GUILayout.Button(targetPlayerLabel, isTargetPlayer ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureAggroTargetIndex = (Globals.selectedPlayer >= 0) ? Globals.selectedPlayer : 0;
+        }
+        GUILayout.Space(4);
+
+        bool isTargetNone = (Globals.creatureAggroTargetIndex == -2);
+        if (GUILayout.Button(Localization.T("creatures.target_none"), isTargetNone ? sidebarActiveBtnStyle : primaryBtnStyle, GUILayout.Height(24)))
+        {
+            Globals.creatureAggroTargetIndex = -2;
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(12);
+
+        // --- 4. Main Spawn Button ---
+        bool requiresHost = (Globals.selectedCreatureType == Globals.CreatureType.Scoutmaster || Globals.selectedCreatureType == Globals.CreatureType.MushroomZombie);
+        bool canSpawn = isHost || !requiresHost;
+
+        if (!canSpawn)
+        {
+            GUI.enabled = false;
+        }
+
+        if (GUILayout.Button(Localization.T("creatures.btn_spawn"), dangerBtnStyle, GUILayout.Height(32)))
+        {
+            Utilities.SpawnCreature(
+                Globals.selectedCreatureType,
+                Globals.creatureSpawnAnchor,
+                Globals.creatureSpawnDistance,
+                Globals.creatureAggroTargetIndex,
+                Globals.creatureGhostScale
+            );
+        }
+
+        if (!canSpawn)
+        {
+            GUI.enabled = true;
+            GUILayout.Label(Localization.T("creatures.host_required"), tipLabelStyle);
+        }
+
+        GUILayout.EndScrollView();
+    }
+
+    // ==========================================
+    // TAB 6: ABOUT
     // ==========================================
     private void DrawAboutTab()
     {

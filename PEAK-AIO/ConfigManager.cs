@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Logging;
 using BepInEx.Configuration;
 using UnityEngine;
@@ -38,6 +39,12 @@ public static class ConfigManager
 
     // Teleport
     public static ConfigEntry<bool> TeleportToPing;
+
+    // Item Attributes & Blowgun Enchantment
+    public static ConfigEntry<bool> DartAmmoEnabled;
+    public static ConfigEntry<int> SelectedDartAmmoType;
+    public static ConfigEntry<bool> FoodPoisonImmunity;
+    public static ConfigEntry<bool> InfiniteToolCharge;
 
     // General
     public static ConfigEntry<KeyCode> MenuToggleKey;
@@ -83,6 +90,18 @@ public static class ConfigManager
         RechargeAmountSlot1 = config.Bind("Inventory", "RechargeAmountSlot1", 100f, new ConfigDescription("Recharge amount for slot 1", new AcceptableValueRange<float>(0f, 999f)));
         RechargeAmountSlot2 = config.Bind("Inventory", "RechargeAmountSlot2", 100f, new ConfigDescription("Recharge amount for slot 2", new AcceptableValueRange<float>(0f, 999f)));
         RechargeAmountSlot3 = config.Bind("Inventory", "RechargeAmountSlot3", 100f, new ConfigDescription("Recharge amount for slot 3", new AcceptableValueRange<float>(0f, 999f)));
+
+        // Item Attributes & Blowgun Enchantment
+        DartAmmoEnabled = config.Bind("ItemAttributes", "DartAmmoEnabled", false, "Enable custom enchanted dart ammunition for blowgun");
+        SelectedDartAmmoType = config.Bind("ItemAttributes", "SelectedDartAmmoType", 0, "Selected dart ammo effect type index");
+        FoodPoisonImmunity = config.Bind("ItemAttributes", "FoodPoisonImmunity", false, "Immunity to food poisoning from spoiled food or poisonous mushrooms");
+        InfiniteToolCharge = config.Bind("ItemAttributes", "InfiniteToolCharge", false, "Keep held tools and torches perpetually charged");
+
+        Globals.dartAmmoEnabled = DartAmmoEnabled.Value;
+        if (SelectedDartAmmoType.Value >= 0 && SelectedDartAmmoType.Value < Enum.GetValues(typeof(Globals.DartAmmoType)).Length)
+            Globals.selectedDartAmmoType = (Globals.DartAmmoType)SelectedDartAmmoType.Value;
+        Globals.foodPoisonImmunity = FoodPoisonImmunity.Value;
+        Globals.infiniteToolCharge = InfiniteToolCharge.Value;
 
         // Language
         LanguageIndex = config.Bind("UI", "Language", 0, new ConfigDescription("Language: 0=English, 1=简体中文, 2=日本語, 3=한국어, 4=Italiano, 5=繁體中文", new AcceptableValueRange<int>(0, 5)));

@@ -139,4 +139,75 @@ public static class Globals
             CurrentErrorMessage = null;
         }
     }
+
+    // Creature Spawner State
+    public enum CreatureType
+    {
+        Scoutmaster,
+        BigGhost,
+        MushroomZombie,
+        Scorpion,
+        Beetle,
+        BeeSwarm
+    }
+
+    public enum CreatureSpawnAnchor
+    {
+        Self,
+        SelectedPlayer,
+        Crosshair
+    }
+
+    public static CreatureType selectedCreatureType = CreatureType.Scoutmaster;
+    public static CreatureSpawnAnchor creatureSpawnAnchor = CreatureSpawnAnchor.Self;
+    public static float creatureSpawnDistance = 5.0f;
+    public static int creatureAggroTargetIndex = -1; // -1: Self, >=0: Selected Player index
+    public static float creatureGhostScale = 3.0f;
+    public static float lastCreatureSpawnTime = 0f;
+    public static Vector2 creaturesScroll = Vector2.zero;
+
+    // ==========================================
+    // Item Attributes & Enchantment States
+    // ==========================================
+    public enum MushroomSpawnMode
+    {
+        Vanilla,
+        Purified,       // Random Good (0-4)
+        Toxic,          // Random Bad (5-9)
+        Specific        // Specific Effect (0-9)
+    }
+
+    public enum DartAmmoType
+    {
+        // Buffs
+        Invincibility,
+        SpeedBoost,
+        InfiniteStamina,
+        FullCleanse,
+        LowGravity,
+        Glow,
+        Revive,
+
+        // Debuffs
+        Poison,
+        Starvation,
+        Sleep,
+        TripFall,
+        Thorns,
+        Spores,
+        Blind,
+        Numb,
+
+        // Chaos
+        Chaos
+    }
+
+    public static MushroomSpawnMode mushroomSpawnMode = MushroomSpawnMode.Vanilla;
+    public static int selectedMushroomEffect = 3; // Default: Invincibility
+
+    public static bool dartAmmoEnabled = false;
+    public static DartAmmoType selectedDartAmmoType = DartAmmoType.Invincibility;
+
+    public static bool foodPoisonImmunity = false;
+    public static bool infiniteToolCharge = false;
 }
