@@ -785,5 +785,64 @@ public class Patch_PlayerHandler_KickRoutine
     }
 }
 
+/// <summary>
+/// Safeguard patch for PlayerGhost: prevents NullReferenceException when spawned without an owner
+/// (as a standalone Big Ghost creature) and provides dynamic floating & following kinematics.
+/// </summary>
+[HarmonyPatch(typeof(PlayerGhost), "Update")]
+public static class Patch_PlayerGhost_Update
+{
+    static bool Prefix(PlayerGhost __instance)
+    {
+        // Standalone spawned Big Ghost without an owner: intercept and execute autonomous floating kinematics
+        if (__instance.m_owner == null)
+        {
+            try
+            {
+                // 1. Follow & Float Kinematics
+                if (__instance.m_target != null)
+                {
+                    Vector3 center = __instance.m_target.Center;
+                    if (center != Vector3.zero)
+                    {
+                        Vector3 targetOffset = -__instance.m_target.transform.forward * 2.2f + Vector3.up * 1.8f;
+                        targetOffset.y += Mathf.Sin(Time.time * 2.5f) * 0.35f;
+
+                        Vector3 desiredPos = center + targetOffset;
+                        __instance.transform.position = Vector3.Lerp(__instance.transform.position, desiredPos, Time.deltaTime * 3.5f);
+                    }
+                }
+                else
+                {
+                    // Gentle hover in place
+                    Vector3 curPos = __instance.transform.position;
+                    curPos.y += Mathf.Sin(Time.time * 2.0f) * 0.005f;
+                    __instance.transform.position = curPos;
+                }
+
+                // 2. Billboard face towards main camera
+                if (MainCamera.instance != null && MainCamera.instance.cam != null)
+                {
+                    Vector3 lookDir = MainCamera.instance.cam.transform.position - __instance.transform.position;
+                    if (lookDir.sqrMagnitude > 0.001f)
+                    {
+                        __instance.transform.rotation = Quaternion.LookRotation(lookDir);
+                    }
+                }
+            }
+            catch
+            {
+                // Defensive catch to prevent breaking frame loop
+            }
+
+            // Skip original Update to prevent NullReferenceException on m_owner.data
+            return false;
+        }
+
+        // Original player spectator ghost: pass through to native logic
+        return true;
+    }
+}
+
 
 
