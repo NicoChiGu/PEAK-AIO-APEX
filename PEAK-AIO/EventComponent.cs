@@ -86,7 +86,7 @@ public class EventComponent : MonoBehaviour
                             int viewId = ch.photonView != null ? ch.photonView.ViewID : ch.GetInstanceID();
                             Globals.playerSafeLocations[viewId] = new Globals.PlayerLocationSnapshot
                             {
-                                safePosition = ch.transform.position,
+                                safePosition = Utilities.GetCharacterPosition(ch),
                                 lastRecordedTime = Time.time
                             };
                         }

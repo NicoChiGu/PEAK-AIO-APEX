@@ -201,7 +201,7 @@ public class Patch_CharacterDie
                 {
                     int viewId = __instance.photonView.ViewID;
                     // 在尸体被传送到 (0, 5000, -5000) 之前，捕获真实世界坐标
-                    Vector3 rawDeathPos = (__instance.Center != Vector3.zero) ? __instance.Center : __instance.transform.position;
+                    Vector3 rawDeathPos = Utilities.GetCharacterPosition(__instance);
                     if (rawDeathPos.y > 4000f)
                     {
                         rawDeathPos = __instance.LastLivingPosition;
@@ -398,7 +398,7 @@ public class Patch_MapHandler_JumpToSegmentLogic
                 else if (activeSeg != null && activeSeg.reconnectSpawnPos != null)
                     safeVector = Utilities.ResolveSafeGroundPosition(activeSeg.reconnectSpawnPos.position);
                 else if (Character.localCharacter != null)
-                    safeVector = Utilities.ResolveSafeGroundPosition(Character.localCharacter.transform.position);
+                    safeVector = Utilities.ResolveSafeGroundPosition(Utilities.GetCharacterPosition(Character.localCharacter));
                 else
                     safeVector = (activeSeg != null && activeSeg.segmentParent != null) ? Utilities.ResolveSafeGroundPosition(activeSeg.segmentParent.transform.position) : Vector3.zero;
 

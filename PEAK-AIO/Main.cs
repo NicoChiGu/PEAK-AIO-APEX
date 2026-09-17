@@ -742,7 +742,7 @@ public class PeakMod : BaseUnityPlugin
         {
             if (Character.localCharacter != null)
             {
-                var pos = Character.localCharacter.transform.position;
+                var pos = Utilities.GetCharacterPosition(Character.localCharacter);
                 coordXStr = pos.x.ToString("F1");
                 coordYStr = pos.y.ToString("F1");
                 coordZStr = pos.z.ToString("F1");

@@ -388,26 +388,109 @@ public static class Utilities
         }
     }
 
+    /// <summary>
+    /// 安全获取角色（本地或远端）当前真实的物理世界中心坐标。
+    /// 彻底规避《PEAK》中布娃娃角色 Character.transform.position 永远静止在开局出生篝火点的引擎特性。
+    /// </summary>
+    public static Vector3 GetCharacterPosition(Character character)
+    {
+        if (character == null) return Vector3.zero;
+
+        // 1. 若角色已死，优先返回生前最后存活坐标或幽灵坐标（防止获取到被移至太空中的尸体）
+        if (character.data != null && character.data.dead)
+        {
+            Vector3 lastLive = character.LastLivingPosition;
+            if (lastLive.sqrMagnitude > 1f && lastLive.y < 4000f && lastLive.y > -30f)
+                return lastLive;
+
+            if (character.Ghost != null)
+            {
+                Vector3 gPos = character.Ghost.transform.position;
+                if (gPos.sqrMagnitude > 1f && gPos.y < 4000f && gPos.y > -30f)
+                    return gPos;
+            }
+        }
+
+        // 2. 优先使用游戏原生的 VirtualCenter（内部自动处理 alive/dead/warping 状态）
+        try
+        {
+            Vector3 vc = character.VirtualCenter;
+            if (vc.sqrMagnitude > 1f && vc.y < 4000f && vc.y > -30f)
+                return vc;
+        }
+        catch { }
+
+        // 3. 备选：原生 Center（躯干 Torso 变换坐标）
+        try
+        {
+            Vector3 center = character.Center;
+            if (center.sqrMagnitude > 1f && center.y < 4000f && center.y > -30f)
+                return center;
+        }
+        catch { }
+
+        // 4. 备选：臀部核心刚体物理坐标（与网络同步流 1:1 对应）
+        try
+        {
+            if (character.refs != null && character.refs.hip != null && character.refs.hip.Rig != null)
+            {
+                Vector3 hip = character.refs.hip.Rig.position;
+                if (hip.sqrMagnitude > 1f && hip.y < 4000f && hip.y > -30f)
+                    return hip;
+            }
+        }
+        catch { }
+
+        // 5. 备选：头部坐标
+        try
+        {
+            Vector3 head = character.Head;
+            if (head.sqrMagnitude > 1f && head.y < 4000f && head.y > -30f)
+                return head;
+        }
+        catch { }
+
+        // 6. 极端保底（若骨骼完全尚未初始化）
+        return character.transform.position;
+    }
+
+    /// <summary>
+    /// 获取角色水平面平视朝向向量（规避布娃娃 Character.transform.forward 不随视角旋转的问题）
+    /// </summary>
+    public static Vector3 GetCharacterForward(Character character)
+    {
+        if (character == null) return Vector3.forward;
+
+        if (character.data != null)
+        {
+            Vector3 dir = character.data.lookDirection_Flat;
+            dir.y = 0f;
+            if (dir.sqrMagnitude > 0.001f)
+                return dir.normalized;
+        }
+
+        if (character.refs != null && character.refs.rigCreator != null)
+        {
+            Vector3 rigFwd = character.refs.rigCreator.transform.forward;
+            rigFwd.y = 0f;
+            if (rigFwd.sqrMagnitude > 0.001f)
+                return rigFwd.normalized;
+        }
+
+        Vector3 tfFwd = character.transform.forward;
+        tfFwd.y = 0f;
+        if (tfFwd.sqrMagnitude > 0.001f)
+            return tfFwd.normalized;
+
+        return Vector3.forward;
+    }
+
     public static Vector3 CalculateGroundSpawnPosition(Character character, float forwardDist = 2.0f)
     {
         if (character == null) return Vector3.zero;
 
-        Vector3 lookDir = Vector3.zero;
-        if (character.data != null && character.data.lookDirection_Flat.sqrMagnitude > 0.001f)
-        {
-            lookDir = character.data.lookDirection_Flat.normalized;
-        }
-        else
-        {
-            lookDir = character.transform.forward;
-            lookDir.y = 0f;
-            if (lookDir.sqrMagnitude > 0.001f)
-                lookDir.Normalize();
-            else
-                lookDir = Vector3.forward;
-        }
-
-        Vector3 center = character.transform.position + Vector3.up * 0.5f;
+        Vector3 lookDir = GetCharacterForward(character);
+        Vector3 center = GetCharacterPosition(character);
         Vector3 targetHorizontal = center + lookDir * forwardDist;
         Vector3 rayStart = targetHorizontal + Vector3.up * 2.0f;
 
@@ -427,19 +510,76 @@ public static class Utilities
         bool isDead = (target.data != null && target.data.dead) || target.Ghost != null;
         bool isDowned = (target.data != null && (target.data.passedOut || target.data.fullyPassedOut));
 
-        // 1. 如果没有死亡（存活站立或仅倒地），复活位置即为当前原本坐标，绝不拉回历史营火或死亡地点
+        // 1. 如果没有死亡（存活站立或仅倒地昏迷）：复活在玩家当前原本坐标（贴地对齐），绝不拉回出生点或营火
         if (!isDead)
         {
-            Vector3 currentPos = target.transform.position;
-            if (isDowned && target.Head != Vector3.zero)
-            {
-                currentPos = target.Head;
-            }
-
+            Vector3 currentPos = GetCharacterPosition(target);
             return ResolveSafeGroundPosition(currentPos);
         }
 
-        // 2. 玩家已死亡：优先读取死亡发生时记录的现场物理世界坐标
+        // 2. 玩家已死亡：优先复活在他所在幽灵 (PlayerGhost) 的旁边
+        PlayerGhost ghost = target.Ghost;
+        if (ghost == null)
+        {
+            // 防御性搜索：场景中可能存在刚生成但引用尚未绑定的 PlayerGhost
+            var allGhosts = UnityEngine.Object.FindObjectsOfType<PlayerGhost>();
+            if (allGhosts != null)
+            {
+                for (int i = 0; i < allGhosts.Length; i++)
+                {
+                    var g = allGhosts[i];
+                    if (g != null)
+                    {
+                        if (g.m_owner == target)
+                        {
+                            ghost = g;
+                            break;
+                        }
+                        var gView = g.GetComponent<Photon.Pun.PhotonView>();
+                        if (gView != null && target.photonView != null && gView.Owner == target.photonView.Owner)
+                        {
+                            ghost = g;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (ghost != null && ghost.gameObject != null)
+        {
+            Vector3 ghostPos = ghost.transform.position;
+            // 幽灵漂浮在空中，先探测幽灵正下方的安全坚实地面
+            Vector3 groundPos = ResolveSafeGroundPosition(ghostPos);
+
+            // 校验幽灵正下方地面是否有效：高度合理且不是虚空未命中，垂直落差不过度悬殊（< 30m）
+            bool groundValid = groundPos.sqrMagnitude > 1f && groundPos.y > -30f && groundPos.y < 4000f &&
+                               Mathf.Abs(groundPos.y - ghostPos.y) > 0.05f && (ghostPos.y - groundPos.y) < 30f;
+            if (groundValid)
+            {
+                return groundPos;
+            }
+
+            // 若幽灵正下方是无底悬崖/虚空深渊，但幽灵正在观战跟随存活队友 (m_target)
+            if (ghost.m_target != null && ghost.m_target.data != null && !ghost.m_target.data.dead)
+            {
+                Vector3 teammatePos = GetCharacterPosition(ghost.m_target) + GetCharacterForward(ghost.m_target) * 1.0f;
+                Vector3 teammateGround = ResolveSafeGroundPosition(teammatePos);
+                if (teammateGround.sqrMagnitude > 1f && teammateGround.y > -30f && teammateGround.y < 4000f)
+                {
+                    return teammateGround;
+                }
+            }
+
+            // 若幽灵正下方地面稍高/稍低但仍是合法陆地，作为次选
+            if (groundPos.sqrMagnitude > 1f && groundPos.y > -30f && groundPos.y < 4000f && Mathf.Abs(groundPos.y - ghostPos.y) > 0.05f)
+            {
+                return groundPos;
+            }
+        }
+
+        // 3. 兜底分级链（若幽灵尚未生成，如死亡动画期间，或单人全灭无观战）：
+        // 3.1 优先读取死亡发生瞬间记录的现场物理世界坐标
         int viewId = (target.photonView != null) ? target.photonView.ViewID : target.GetInstanceID();
         Vector3 deathPos;
         if (Globals.playerDeathLocations.TryGetValue(viewId, out deathPos) && deathPos.sqrMagnitude > 1f && deathPos.y > -30f && deathPos.y < 4000f)
@@ -447,7 +587,7 @@ public static class Utilities
             return ResolveSafeGroundPosition(deathPos);
         }
 
-        // 3. 备选：生前最后一次安全地面快照
+        // 3.2 备选：生前最后一次安全地面快照
         Globals.PlayerLocationSnapshot snapshot;
         if (target.photonView != null && Globals.playerSafeLocations.TryGetValue(target.photonView.ViewID, out snapshot))
         {
@@ -457,19 +597,44 @@ public static class Utilities
             }
         }
 
-        // 4. 备选：角色属性 LastLivingPosition
+        // 3.3 备选：角色属性 LastLivingPosition
         if (target.LastLivingPosition.sqrMagnitude > 1f && target.LastLivingPosition.y > -30f && target.LastLivingPosition.y < 4000f)
         {
             return ResolveSafeGroundPosition(target.LastLivingPosition);
         }
 
-        // 5. 终极防御：若角色本体已被移动至太空且无快照，取当前本地玩家身旁安全地面，绝不抛向太空或错误营火
-        if (Character.localCharacter != null && Character.localCharacter != target)
+        // 3.4 备选：存活队友身边安全地面（优先本地玩家，否则遍历任意存活队友）
+        if (Character.localCharacter != null && Character.localCharacter != target && Character.localCharacter.data != null && !Character.localCharacter.data.dead)
         {
-            return ResolveSafeGroundPosition(Character.localCharacter.transform.position + Character.localCharacter.transform.forward * 1.5f);
+            return ResolveSafeGroundPosition(GetCharacterPosition(Character.localCharacter) + GetCharacterForward(Character.localCharacter) * 1.2f);
+        }
+        var characters = Character.AllCharacters;
+        if (characters != null)
+        {
+            for (int i = 0; i < characters.Count; i++)
+            {
+                var c = characters[i];
+                if (c != null && c != target && c.data != null && !c.data.dead)
+                {
+                    return ResolveSafeGroundPosition(GetCharacterPosition(c) + GetCharacterForward(c) * 1.2f);
+                }
+            }
         }
 
-        return ResolveSafeGroundPosition(target.transform.position);
+        // 3.5 关卡段落出生点保底（绝对禁止对死亡角色的 target.transform.position 发射射线，因为尸体在 (0, 5000, -5000) 太空）
+        Vector3 segmentSpawn;
+        Segment curSeg = WorldDataCache.currentSegment;
+        if (TryGetSegmentSpawnPosition(curSeg, out segmentSpawn))
+        {
+            return ResolveSafeGroundPosition(segmentSpawn);
+        }
+
+        if (SpawnPoint.LocalSpawnPoint != null)
+        {
+            return ResolveSafeGroundPosition(SpawnPoint.LocalSpawnPoint.transform.position);
+        }
+
+        return Vector3.zero;
     }
 
     public static void SpawnItemInWorld(int itemIndex)
@@ -743,11 +908,19 @@ public static class Utilities
 
                         if (!isDead)
                         {
-                            // 存活或仅倒地：原地恢复，严禁调用 RPCA_ReviveAtPosition，杜绝掉装与错误传送
+                            // 存活或仅倒地：复活在当前位置，原地唤醒，严禁调用 RPCA_ReviveAtPosition，杜绝掉装
                             if (isDowned)
                             {
                                 character.photonView.RPC("RPCA_UnPassOut", RpcTarget.All, Array.Empty<object>());
                             }
+                            character.photonView.RPC("RPCA_Revive", RpcTarget.All, new object[] { false });
+
+                            Vector3 safePos = GetSafeRevivePosition(character);
+                            if (safePos.sqrMagnitude > 1f && safePos.y > -30f && safePos.y < 4000f)
+                            {
+                                character.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { safePos, false });
+                            }
+
                             if (character.refs != null && character.refs.afflictions != null)
                             {
                                 character.refs.afflictions.ClearAllStatus(true);
@@ -771,7 +944,7 @@ public static class Utilities
                             continue;
                         }
 
-                        // 彻底死亡玩家：在死亡地点复活
+                        // 彻底死亡玩家：在其所在幽灵身旁复活
                         Vector3 revivePos = GetSafeRevivePosition(character);
 
                         character.photonView.RPC("RPCA_ReviveAtPosition", RpcTarget.All, new object[] {
@@ -849,7 +1022,7 @@ public static class Utilities
                             statusLockProp.SetValue(character, false, null);
                         }
 
-                        Vector3 pos = character.transform.position;
+                        Vector3 pos = GetCharacterPosition(character);
                         if (pos.y > 4000f || pos.sqrMagnitude < 0.1f)
                             pos = character.LastLivingPosition;
 
@@ -891,17 +1064,49 @@ public static class Utilities
                 if (characters == null || characters.Count == 0)
                     return;
 
-                Vector3 myPos = Character.localCharacter.transform.position;
-                Vector3 safeTarget = ResolveSafeGroundPosition(myPos);
+                Vector3 myPos = GetCharacterPosition(Character.localCharacter);
+                Vector3 myFwd = GetCharacterForward(Character.localCharacter);
+                float baseAngle = Mathf.Atan2(myFwd.x, myFwd.z) * Mathf.Rad2Deg;
 
+                List<Character> toWarp = new List<Character>();
                 for (int i = 0; i < characters.Count; i++)
+                {
+                    var ch = characters[i];
+                    if (ch == null || ch.photonView == null) continue;
+                    if (Globals.excludeSelfFromAllActions && ch.IsLocal)
+                        continue;
+                    toWarp.Add(ch);
+                }
+
+                int count = toWarp.Count;
+                float angleStep = count > 1 ? 360f / count : 0f;
+                float radius = 1.5f;
+
+                for (int i = 0; i < count; i++)
                 {
                     try
                     {
-                        var character = characters[i];
+                        var character = toWarp[i];
                         if (character == null || character.photonView == null) continue;
-                        if (Globals.excludeSelfFromAllActions && character.IsLocal)
-                            continue;
+                        if (character.IsLocal) continue; // 本地角色作为中心基准，无需位移
+
+                        Vector3 targetPos;
+                        if (count <= 1)
+                        {
+                            targetPos = myPos + myFwd * 1.0f;
+                        }
+                        else
+                        {
+                            float currentAngle = (baseAngle + i * angleStep) * Mathf.Deg2Rad;
+                            Vector3 offset = new Vector3(Mathf.Sin(currentAngle), 0f, Mathf.Cos(currentAngle)) * radius;
+                            targetPos = myPos + offset;
+                        }
+
+                        Vector3 safeTarget = ResolveSafeGroundPosition(targetPos);
+                        if (safeTarget.sqrMagnitude < 1f || safeTarget.y <= -30f || safeTarget.y >= 4000f)
+                        {
+                            safeTarget = ResolveSafeGroundPosition(myPos);
+                        }
 
                         character.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                             safeTarget, true
@@ -915,7 +1120,7 @@ public static class Utilities
                 }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Warp All To Me triggered. ExcludeSelf: {0}", Globals.excludeSelfFromAllActions));
+                    Logger.LogInfo(string.Format("[Lobby] Warp All To Me triggered. ExcludeSelf: {0}, Total: {1}", Globals.excludeSelfFromAllActions, count));
             }
             catch (Exception ex)
             {
@@ -943,11 +1148,21 @@ public static class Utilities
 
                 if (!isDead)
                 {
-                    // 1. 玩家未死亡（存活站立或仅倒地昏迷）：绝不能调用 RPCA_ReviveAtPosition，防止全身装备爆落到地上！
+                    // 1. 玩家未死亡（存活站立或仅倒地昏迷）：复活在玩家当前位置，绝不能调用 RPCA_ReviveAtPosition，防止全身装备爆落到地上！
                     if (isDowned)
                     {
                         // 原地唤醒倒地玩家
                         target.photonView.RPC("RPCA_UnPassOut", RpcTarget.All, Array.Empty<object>());
+                    }
+
+                    // 原地安全复活刷新状态（清除诅咒与异常，不掉装）
+                    target.photonView.RPC("RPCA_Revive", RpcTarget.All, new object[] { false });
+
+                    // 计算当前位置的安全地面，并安全微调托举（防卡进地形/缝隙中）
+                    Vector3 safePos = GetSafeRevivePosition(target);
+                    if (safePos.sqrMagnitude > 1f && safePos.y > -30f && safePos.y < 4000f)
+                    {
+                        target.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { safePos, false });
                     }
 
                     // 原地恢复状态，彻底清除诅咒、饥饿、中毒等负面
@@ -973,11 +1188,11 @@ public static class Utilities
                     }
 
                     if (Logger != null)
-                        Logger.LogInfo(string.Format("[Lobby] Player {0} is alive/downed; refreshed in-place without dropping items.", target.characterName));
+                        Logger.LogInfo(string.Format("[Lobby] Player {0} is alive/downed; revived at current position without dropping items.", target.characterName));
                     return;
                 }
 
-                // 2. 玩家彻底死亡：传送到其死亡位置复活（绝不传送到营火）
+                // 2. 玩家彻底死亡：传送到其所在幽灵身旁复活（绝不传送到出生点）
                 Vector3 revivePos = GetSafeRevivePosition(target);
 
                 // 发送 RPCA_ReviveAtPosition (applyStatus = false, 绝不施加诅咒/饥饿)
@@ -1042,7 +1257,7 @@ public static class Utilities
                     targetStatusProp.SetValue(target, false, null);
                 }
 
-                Vector3 pos = target.transform.position;
+                Vector3 pos = GetCharacterPosition(target);
                 if (pos.y > 4000f || pos.sqrMagnitude < 0.1f)
                     pos = target.LastLivingPosition;
 
@@ -1076,17 +1291,29 @@ public static class Utilities
             try
             {
                 var target = Globals.allPlayers[Globals.selectedPlayer];
-                if (target == null) return;
+                if (target == null || Character.localCharacter == null) return;
 
-                Vector3 targetPos = target.transform.position;
-                Vector3 safePos = ResolveSafeGroundPosition(targetPos);
+                // 1. 获取目标玩家真实物理坐标与朝向
+                Vector3 targetPos = GetCharacterPosition(target);
+                Vector3 targetFwd = GetCharacterForward(target);
+
+                // 2. 防穿模偏移：计算目标身旁约 0.8 米位置，彻底避免两人刚体完全重合产生物理互斥弹飞
+                Vector3 sideOffset = Vector3.Cross(targetFwd, Vector3.up).normalized * 0.8f;
+                Vector3 desiredPos = targetPos + sideOffset;
+                Vector3 safePos = ResolveSafeGroundPosition(desiredPos);
+
+                // 若侧方探测到悬崖或无效地面，优雅回退到目标正中心安全地面
+                if (safePos.sqrMagnitude < 1f || safePos.y <= -30f || safePos.y >= 4000f)
+                {
+                    safePos = ResolveSafeGroundPosition(targetPos);
+                }
 
                 Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                     safePos, true
                 });
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Warp to player requested for index {0}", Globals.selectedPlayer));
+                    Logger.LogInfo(string.Format("[Lobby] Warp to player requested for index {0} at {1}", Globals.selectedPlayer, safePos));
             }
             catch (Exception ex)
             {
@@ -1107,17 +1334,28 @@ public static class Utilities
             try
             {
                 var target = Globals.allPlayers[Globals.selectedPlayer];
-                if (target == null) return;
+                if (target == null || Character.localCharacter == null) return;
 
-                Vector3 myPos = Character.localCharacter.transform.position;
-                Vector3 safePos = ResolveSafeGroundPosition(myPos);
+                // 1. 获取本地玩家真实物理世界坐标与朝向
+                Vector3 myPos = GetCharacterPosition(Character.localCharacter);
+                Vector3 myFwd = GetCharacterForward(Character.localCharacter);
+
+                // 2. 防穿模偏移：将目标传送到自己正前方 1.0 米处，自然面迎目标且避免刚体挤压
+                Vector3 desiredPos = myPos + myFwd * 1.0f;
+                Vector3 safePos = ResolveSafeGroundPosition(desiredPos);
+
+                // 若前方落空，优雅回退到自己脚下安全地面
+                if (safePos.sqrMagnitude < 1f || safePos.y <= -30f || safePos.y >= 4000f)
+                {
+                    safePos = ResolveSafeGroundPosition(myPos);
+                }
 
                 target.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] {
                     safePos, true
                 });
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Warp to me requested for player index {0}", Globals.selectedPlayer));
+                    Logger.LogInfo(string.Format("[Lobby] Warp to me requested for player index {0} to {1}", Globals.selectedPlayer, safePos));
             }
             catch (Exception ex)
             {
@@ -1969,7 +2207,7 @@ public static class Utilities
         Campfire cf = GetSegmentCampfire(segmentIndex);
         if (cf == null) return false;
 
-        return Vector3.Distance(local.transform.position, cf.transform.position) <= maxDist;
+        return Vector3.Distance(GetCharacterPosition(local), cf.transform.position) <= maxDist;
     }
 
     public static bool IsCampfireLit(int segmentIndex)
@@ -2241,7 +2479,7 @@ public static class Utilities
         if (local == null)
             return MapHandler.CurrentSegmentNumber;
 
-        Vector3 pPos = local.transform.position;
+        Vector3 pPos = GetCharacterPosition(local);
         var mh = MapHandler.Instance;
         Segment officialSeg = MapHandler.CurrentSegmentNumber;
 
@@ -2329,7 +2567,7 @@ public static class Utilities
         Character local = Character.localCharacter;
         if (local != null)
         {
-            return local.transform.position.y;
+            return GetCharacterPosition(local).y;
         }
         return 0f;
     }
@@ -3296,7 +3534,7 @@ public static class Utilities
             }
 
             Character targetCharacter = Character.AllCharacters[playerIndex];
-            Vector3 targetPos = targetCharacter.transform.position;
+            Vector3 targetPos = GetCharacterPosition(targetCharacter);
             Vector3 spawnOrigin = targetPos + new Vector3(UnityEngine.Random.Range(-10f, 10f), 25f, UnityEngine.Random.Range(-10f, 10f));
             Vector3 down = Vector3.down;
 
@@ -3496,9 +3734,11 @@ public static class Utilities
         {
             Vector3 dropPos;
             if (Character.localCharacter != null)
-                dropPos = Character.localCharacter.Head + Character.localCharacter.transform.forward * 1.2f + Vector3.up * 0.2f;
-            else
+                dropPos = GetCharacterPosition(Character.localCharacter) + GetCharacterForward(Character.localCharacter) * 1.2f + Vector3.up * 0.2f;
+            else if (player != null)
                 dropPos = player.transform.position + Vector3.up * 0.5f;
+            else
+                dropPos = Vector3.zero;
 
             if (backpackSlot.prefab != null)
             {
