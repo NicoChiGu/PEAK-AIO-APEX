@@ -760,8 +760,89 @@ public class PeakMod : BaseUnityPlugin
 
         GUILayout.Space(12);
 
-        // Right Column: Modifiers / Sliders
-        GUILayout.BeginVertical(GUILayout.Width(290));
+        // Right Column: Status & Afflictions Management & Modifiers / Sliders
+        GUILayout.BeginVertical(GUILayout.Width(300));
+
+        // --- Status Effects & Debuffs Section ---
+        GUILayout.BeginVertical(cardBoxStyle);
+        GUILayout.Label(Localization.T("status.panel_title"), subHeaderStyle);
+
+        // Clear All Statuses button
+        if (GUILayout.Button(Localization.T("status.clear_all"), primaryBtnStyle, GUILayout.Height(26)))
+        {
+            Utilities.ClearAllAfflictions();
+        }
+        GUILayout.Label(Localization.T("tip.clear_afflictions"), tipLabelStyle);
+        GUILayout.Space(4);
+
+        // Status Selector with < and >
+        int curStatusIdx = Mathf.Clamp(Globals.selfSelectedStatusIndex, 0, Globals.AllStatusTypes.Length - 1);
+        CharacterAfflictions.STATUSTYPE curType = Globals.AllStatusTypes[curStatusIdx];
+        string curTypeName = Localization.GetStatusTypeName(curType);
+
+        GUILayout.Label(Localization.T("status.select_effect") + ":", boldLabelStyle);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("<", GUILayout.Width(30), GUILayout.Height(22)))
+        {
+            Globals.selfSelectedStatusIndex = (curStatusIdx - 1 + Globals.AllStatusTypes.Length) % Globals.AllStatusTypes.Length;
+        }
+        GUILayout.Label(curTypeName, subHeaderStyle, GUILayout.ExpandWidth(true));
+        if (GUILayout.Button(">", GUILayout.Width(30), GUILayout.Height(22)))
+        {
+            Globals.selfSelectedStatusIndex = (curStatusIdx + 1) % Globals.AllStatusTypes.Length;
+        }
+        GUILayout.EndHorizontal();
+
+        // Intensity Slider
+        GUILayout.Space(2);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(string.Format("{0}: {1:P0}", Localization.T("status.amount"), Globals.selfStatusAmount), GUILayout.Width(110));
+        Globals.selfStatusAmount = GUILayout.HorizontalSlider(Globals.selfStatusAmount, 0.1f, 1.0f);
+        GUILayout.EndHorizontal();
+
+        // Apply & Reduce Buttons
+        GUILayout.Space(4);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(Localization.T("status.add_effect"), dangerBtnStyle, GUILayout.Height(24)))
+        {
+            var charObj = Character.localCharacter;
+            if (charObj != null)
+            {
+                Utilities.AddStatusEffect(charObj, curType, Globals.selfStatusAmount);
+            }
+        }
+        if (GUILayout.Button(Localization.T("status.subtract_effect"), GUILayout.Height(24)))
+        {
+            var charObj = Character.localCharacter;
+            if (charObj != null)
+            {
+                Utilities.SubtractStatusEffect(charObj, curType, Globals.selfStatusAmount);
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        // Presets: Divine Purify / Near Death / Extreme Torture
+        GUILayout.Space(6);
+        GUILayout.Label("快捷预设 (Presets):", boldLabelStyle);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(Localization.T("status.preset_purify"), primaryBtnStyle, GUILayout.Height(22)))
+        {
+            Utilities.ApplyDivinePurify(Character.localCharacter);
+        }
+        if (GUILayout.Button(Localization.T("status.preset_critical"), dangerBtnStyle, GUILayout.Height(22)))
+        {
+            Utilities.ApplyCriticalInjury(Character.localCharacter);
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.Space(2);
+        if (GUILayout.Button(Localization.T("status.preset_torture"), dangerBtnStyle, GUILayout.Height(22)))
+        {
+            Utilities.ApplyTorturePreset(Character.localCharacter);
+        }
+
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
 
         GUILayout.Label(Localization.T("player.details"), sectionHeaderStyle);
 
@@ -1370,6 +1451,9 @@ public class PeakMod : BaseUnityPlugin
         if (GUILayout.Button(Localization.T("lobby.kill_all"), dangerBtnStyle, GUILayout.Height(24)))
             Utilities.KillAllPlayers();
 
+        if (GUILayout.Button(Localization.T("lobby.clear_all_afflictions_all"), primaryBtnStyle, GUILayout.Height(24)))
+            Utilities.ClearAllAfflictionsForAllPlayers();
+
         Globals.excludeSelfFromAllActions = GUILayout.Toggle(Globals.excludeSelfFromAllActions, Localization.T("lobby.exclude_self"));
 
         GUILayout.Space(4);
@@ -1431,6 +1515,68 @@ public class PeakMod : BaseUnityPlugin
 
             if (GUILayout.Button(Localization.T("lobby.warp_to_me"), GUILayout.Height(24)))
                 Utilities.WarpSelectedPlayerToMe();
+            GUILayout.EndHorizontal();
+
+            // --- Target Status Effects & Debuffs Section ---
+            GUILayout.Space(6);
+            GUILayout.Label(Localization.T("lobby.target_status_mgmt"), subHeaderStyle);
+
+            if (GUILayout.Button(Localization.T("status.clear_all"), primaryBtnStyle, GUILayout.Height(24)))
+            {
+                if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
+                {
+                    var targetChar = Globals.allPlayers[Globals.selectedPlayer];
+                    if (targetChar != null)
+                    {
+                        Utilities.ClearAllAfflictionsForCharacter(targetChar);
+                    }
+                }
+            }
+
+            int lobbyStatusIdx = Mathf.Clamp(Globals.lobbySelectedStatusIndex, 0, Globals.AllStatusTypes.Length - 1);
+            CharacterAfflictions.STATUSTYPE lobbyType = Globals.AllStatusTypes[lobbyStatusIdx];
+            string lobbyTypeName = Localization.GetStatusTypeName(lobbyType);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("<", GUILayout.Width(28), GUILayout.Height(20)))
+            {
+                Globals.lobbySelectedStatusIndex = (lobbyStatusIdx - 1 + Globals.AllStatusTypes.Length) % Globals.AllStatusTypes.Length;
+            }
+            GUILayout.Label(lobbyTypeName, boldLabelStyle, GUILayout.ExpandWidth(true));
+            if (GUILayout.Button(">", GUILayout.Width(28), GUILayout.Height(20)))
+            {
+                Globals.lobbySelectedStatusIndex = (lobbyStatusIdx + 1) % Globals.AllStatusTypes.Length;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(string.Format("{0}: {1:P0}", Localization.T("status.amount"), Globals.lobbyStatusAmount), GUILayout.Width(110));
+            Globals.lobbyStatusAmount = GUILayout.HorizontalSlider(Globals.lobbyStatusAmount, 0.1f, 1.0f);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("status.add_effect"), dangerBtnStyle, GUILayout.Height(22)))
+            {
+                if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
+                {
+                    var targetChar = Globals.allPlayers[Globals.selectedPlayer];
+                    if (targetChar != null)
+                    {
+                        Utilities.AddStatusEffect(targetChar, lobbyType, Globals.lobbyStatusAmount);
+                    }
+                }
+            }
+            if (GUILayout.Button(Localization.T("status.preset_torture"), dangerBtnStyle, GUILayout.Height(22)))
+            {
+                if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
+                {
+                    var targetChar = Globals.allPlayers[Globals.selectedPlayer];
+                    if (targetChar != null)
+                    {
+                        Utilities.ApplyTorturePreset(targetChar);
+                    }
+                }
+            }
             GUILayout.EndHorizontal();
 
             GUILayout.Space(8);

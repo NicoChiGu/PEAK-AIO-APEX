@@ -210,4 +210,26 @@ public static class Globals
 
     public static bool foodPoisonImmunity = false;
     public static bool infiniteToolCharge = false;
+
+    // Status & Afflictions Management
+    public static int selfSelectedStatusIndex = 0;
+    public static float selfStatusAmount = 0.5f;
+    public static int lobbySelectedStatusIndex = 0;
+    public static float lobbyStatusAmount = 0.5f;
+
+    public static readonly CharacterAfflictions.STATUSTYPE[] AllStatusTypes = new CharacterAfflictions.STATUSTYPE[]
+    {
+        CharacterAfflictions.STATUSTYPE.Injury,
+        CharacterAfflictions.STATUSTYPE.Hunger,
+        CharacterAfflictions.STATUSTYPE.Cold,
+        CharacterAfflictions.STATUSTYPE.Poison,
+        CharacterAfflictions.STATUSTYPE.Crab,
+        CharacterAfflictions.STATUSTYPE.Curse,
+        CharacterAfflictions.STATUSTYPE.Drowsy,
+        CharacterAfflictions.STATUSTYPE.Weight,
+        CharacterAfflictions.STATUSTYPE.Hot,
+        CharacterAfflictions.STATUSTYPE.Thorns,
+        CharacterAfflictions.STATUSTYPE.Spores,
+        CharacterAfflictions.STATUSTYPE.Web
+    };
 }

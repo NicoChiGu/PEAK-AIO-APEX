@@ -907,6 +907,269 @@ public static class Utilities
         });
     }
 
+    /// <summary>
+    /// 向指定角色施加状态效果（负面或属性衰减），支持本地角色、远端房主原生RPC、非房主Stick注入。
+    /// </summary>
+    public static void AddStatusEffect(Character target, CharacterAfflictions.STATUSTYPE statusType, float amount)
+    {
+        if (target == null) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                string targetName = target.photonView != null && target.photonView.Owner != null
+                    ? target.photonView.Owner.NickName
+                    : (target.IsLocal ? "Self" : "Player");
+
+                if (target.IsLocal)
+                {
+                    if (target.refs != null && target.refs.afflictions != null)
+                    {
+                        target.refs.afflictions.AddStatus(statusType, amount, false, true, true);
+                        target.refs.afflictions.PushStatuses(null);
+                        target.ClampStamina();
+                        if (GUIManager.instance != null && GUIManager.instance.bar != null)
+                        {
+                            GUIManager.instance.bar.ChangeBar();
+                        }
+                    }
+                }
+                else
+                {
+                    if (PhotonNetwork.IsMasterClient)
+                    {
+                        float[] data = new float[12];
+                        int idx = (int)statusType;
+                        if (idx >= 0 && idx < 12)
+                        {
+                            data[idx] = amount;
+                            if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
+                            {
+                                target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { data });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Vector3 center = target.Center;
+                        target.photonView.RPC("RPCA_Stick", RpcTarget.All, new object[] {
+                            BodypartType.Torso, center, center, statusType, amount
+                        });
+                        target.photonView.RPC("RPCA_Unstick", RpcTarget.All, Array.Empty<object>());
+                    }
+                }
+
+                string statusName = Localization.GetStatusTypeName(statusType);
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[PEAK AIO] Applied status {0} ({1:F2}) to {2}.", statusType, amount, targetName));
+                Globals.GlobalNotifier.ShowError(Localization.T("status.toast_applied", statusName, amount, targetName), 3.5f);
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] AddStatusEffect error: " + ex);
+                Globals.GlobalNotifier.ShowError("AddStatusEffect Failed: " + ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 减轻指定角色的状态效果数值。
+    /// </summary>
+    public static void SubtractStatusEffect(Character target, CharacterAfflictions.STATUSTYPE statusType, float amount)
+    {
+        if (target == null) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                string targetName = target.photonView != null && target.photonView.Owner != null
+                    ? target.photonView.Owner.NickName
+                    : (target.IsLocal ? "Self" : "Player");
+
+                if (target.IsLocal)
+                {
+                    if (target.refs != null && target.refs.afflictions != null)
+                    {
+                        target.refs.afflictions.SubtractStatus(statusType, amount, false, false);
+                        target.refs.afflictions.PushStatuses(null);
+                        target.ClampStamina();
+                        if (GUIManager.instance != null && GUIManager.instance.bar != null)
+                        {
+                            GUIManager.instance.bar.ChangeBar();
+                        }
+                    }
+                }
+                else
+                {
+                    if (PhotonNetwork.IsMasterClient)
+                    {
+                        float[] data = new float[12];
+                        int idx = (int)statusType;
+                        if (idx >= 0 && idx < 12)
+                        {
+                            data[idx] = -amount;
+                            if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
+                            {
+                                target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { data });
+                            }
+                        }
+                    }
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[PEAK AIO] Subtracted status {0} ({1:F2}) from {2}.", statusType, amount, targetName));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] SubtractStatusEffect error: " + ex);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 清除指定角色的所有负面状态（支持本地自身、远端房主全网清除、非房主拔刺与士气提振）。
+    /// </summary>
+    public static void ClearAllAfflictionsForCharacter(Character target)
+    {
+        if (target == null) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                string targetName = target.photonView != null && target.photonView.Owner != null
+                    ? target.photonView.Owner.NickName
+                    : (target.IsLocal ? "Self" : "Player");
+
+                if (target.IsLocal)
+                {
+                    ClearAllAfflictions();
+                }
+                else
+                {
+                    if (PhotonNetwork.IsMasterClient)
+                    {
+                        float[] clearData = new float[12];
+                        for (int i = 0; i < 12; i++)
+                        {
+                            clearData[i] = -2.0f;
+                        }
+                        if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
+                        {
+                            target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { clearData });
+                        }
+
+                        // 循环远程拔除荆棘
+                        for (int t = 0; t < 20; t++)
+                        {
+                            target.refs.afflictions.photonView.RPC("RemoveThornRPC", target.photonView.Owner, new object[] { t });
+                        }
+
+                        // 提振耐力
+                        target.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+                    }
+                    else
+                    {
+                        if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
+                        {
+                            for (int t = 0; t < 20; t++)
+                            {
+                                target.refs.afflictions.photonView.RPC("RemoveThornRPC", target.photonView.Owner, new object[] { t });
+                            }
+                        }
+                        target.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+                        Globals.GlobalNotifier.ShowError(Localization.T("status.non_host_hint"), 4f);
+                    }
+                }
+
+                Globals.GlobalNotifier.ShowError(Localization.T("status.toast_cleared", targetName), 3.5f);
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[PEAK AIO] Cleared all afflictions for {0}.", targetName));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] ClearAllAfflictionsForCharacter error: " + ex);
+                Globals.GlobalNotifier.ShowError("ClearAllAfflictions Failed: " + ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 一键清除全房间所有玩家的负面状态（可选排除自己）。
+    /// </summary>
+    public static void ClearAllAfflictionsForAllPlayers()
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (Character.AllCharacters == null || Character.AllCharacters.Count == 0)
+                {
+                    RefreshPlayerList();
+                }
+
+                var list = Character.AllCharacters ?? new List<Character>();
+                int count = 0;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var c = list[i];
+                    if (c == null) continue;
+                    if (Globals.excludeSelfFromAllActions && c.IsLocal) continue;
+
+                    ClearAllAfflictionsForCharacter(c);
+                    count++;
+                }
+
+                Globals.GlobalNotifier.ShowError(string.Format("已为 {0} 位玩家清除负面状态", count), 3.5f);
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] ClearAllAfflictionsForAllPlayers error: " + ex);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 恶搞/折磨预设：同时施加中毒 + 寒冷 + 饥饿 + 嗜睡 + 蛛网
+    /// </summary>
+    public static void ApplyTorturePreset(Character target)
+    {
+        if (target == null) return;
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Poison, 0.4f);
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Cold, 0.4f);
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Hunger, 0.4f);
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Drowsy, 0.4f);
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Web, 0.5f);
+    }
+
+    /// <summary>
+    /// 濒死重伤预设：直接施加 90% 负伤
+    /// </summary>
+    public static void ApplyCriticalInjury(Character target)
+    {
+        if (target == null) return;
+        AddStatusEffect(target, CharacterAfflictions.STATUSTYPE.Injury, 0.9f);
+    }
+
+    /// <summary>
+    /// 圣光净化预设：清空负面状态并完全补满额外耐力
+    /// </summary>
+    public static void ApplyDivinePurify(Character target)
+    {
+        if (target == null) return;
+        ClearAllAfflictionsForCharacter(target);
+        if (target.photonView != null)
+        {
+            target.photonView.RPC("MoraleBoost", RpcTarget.All, new object[] { 100f, 1 });
+        }
+    }
+
     public static void RefreshPlayerList()
     {
         UnityMainThreadDispatcher.Enqueue(() =>

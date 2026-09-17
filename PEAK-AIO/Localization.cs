@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 public enum Language
 {
@@ -2084,6 +2084,217 @@ public static class Localization
             { Language.Korean, "횃불 및 도구 무한 내구도/충전" },
             { Language.Italian, "Carica Infinita Torce e Strumenti" }
         }}
+,
+
+        // Status Effects & Debuffs
+        { "status.injury", new Dictionary<Language, string> {
+            { Language.English, "Injury" },
+            { Language.SimplifiedChinese, "负伤" },
+            { Language.TraditionalChinese, "受傷" },
+            { Language.Japanese, "負傷" },
+            { Language.Korean, "부상" },
+            { Language.Italian, "Ferita" }
+        }},
+        { "status.hunger", new Dictionary<Language, string> {
+            { Language.English, "Hunger" },
+            { Language.SimplifiedChinese, "饥饿" },
+            { Language.TraditionalChinese, "飢餓" },
+            { Language.Japanese, "空腹" },
+            { Language.Korean, "굶주림" },
+            { Language.Italian, "Fame" }
+        }},
+        { "status.cold", new Dictionary<Language, string> {
+            { Language.English, "Cold" },
+            { Language.SimplifiedChinese, "寒冷" },
+            { Language.TraditionalChinese, "寒冷" },
+            { Language.Japanese, "寒さ" },
+            { Language.Korean, "추위" },
+            { Language.Italian, "Freddo" }
+        }},
+        { "status.poison", new Dictionary<Language, string> {
+            { Language.English, "Poison" },
+            { Language.SimplifiedChinese, "中毒" },
+            { Language.TraditionalChinese, "中毒" },
+            { Language.Japanese, "毒" },
+            { Language.Korean, "독" },
+            { Language.Italian, "Veleno" }
+        }},
+        { "status.crab", new Dictionary<Language, string> {
+            { Language.English, "Parasitic Crab" },
+            { Language.SimplifiedChinese, "寄生蟹" },
+            { Language.TraditionalChinese, "寄生蟹" },
+            { Language.Japanese, "カニ寄生" },
+            { Language.Korean, "기생 게" },
+            { Language.Italian, "Granchio Parassita" }
+        }},
+        { "status.curse", new Dictionary<Language, string> {
+            { Language.English, "Curse" },
+            { Language.SimplifiedChinese, "诅咒" },
+            { Language.TraditionalChinese, "詛咒" },
+            { Language.Japanese, "呪い" },
+            { Language.Korean, "저주" },
+            { Language.Italian, "Maledizione" }
+        }},
+        { "status.drowsy", new Dictionary<Language, string> {
+            { Language.English, "Drowsiness" },
+            { Language.SimplifiedChinese, "嗜睡" },
+            { Language.TraditionalChinese, "嗜睡" },
+            { Language.Japanese, "眠気" },
+            { Language.Korean, "졸음" },
+            { Language.Italian, "Sonnolenza" }
+        }},
+        { "status.weight", new Dictionary<Language, string> {
+            { Language.English, "Overweight" },
+            { Language.SimplifiedChinese, "超重" },
+            { Language.TraditionalChinese, "超重" },
+            { Language.Japanese, "重量過多" },
+            { Language.Korean, "과체중" },
+            { Language.Italian, "Sovraccarico" }
+        }},
+        { "status.hot", new Dictionary<Language, string> {
+            { Language.English, "Overheat" },
+            { Language.SimplifiedChinese, "炎热" },
+            { Language.TraditionalChinese, "炎熱" },
+            { Language.Japanese, "暑さ" },
+            { Language.Korean, "더위" },
+            { Language.Italian, "Calore" }
+        }},
+        { "status.thorns", new Dictionary<Language, string> {
+            { Language.English, "Thorns" },
+            { Language.SimplifiedChinese, "荆棘" },
+            { Language.TraditionalChinese, "荊棘" },
+            { Language.Japanese, "トゲ" },
+            { Language.Korean, "가시" },
+            { Language.Italian, "Spine" }
+        }},
+        { "status.spores", new Dictionary<Language, string> {
+            { Language.English, "Spores" },
+            { Language.SimplifiedChinese, "孢子" },
+            { Language.TraditionalChinese, "孢子" },
+            { Language.Japanese, "胞子" },
+            { Language.Korean, "포자" },
+            { Language.Italian, "Spore" }
+        }},
+        { "status.web", new Dictionary<Language, string> {
+            { Language.English, "Spider Web" },
+            { Language.SimplifiedChinese, "蛛网" },
+            { Language.TraditionalChinese, "蛛網" },
+            { Language.Japanese, "クモの巣" },
+            { Language.Korean, "거미줄" },
+            { Language.Italian, "Ragnatela" }
+        }},
+        { "status.panel_title", new Dictionary<Language, string> {
+            { Language.English, "Status Effects & Debuffs" },
+            { Language.SimplifiedChinese, "状态效果与负面管理" },
+            { Language.TraditionalChinese, "狀態效果與負面管理" },
+            { Language.Japanese, "ステータス・デバフ管理" },
+            { Language.Korean, "상태 효과 및 디버프 관리" },
+            { Language.Italian, "Stato ed Effetti Negativi" }
+        }},
+        { "status.select_effect", new Dictionary<Language, string> {
+            { Language.English, "Select Debuff" },
+            { Language.SimplifiedChinese, "选择负面效果" },
+            { Language.TraditionalChinese, "選擇負面效果" },
+            { Language.Japanese, "状態異常を選択" },
+            { Language.Korean, "디버프 효과 선택" },
+            { Language.Italian, "Seleziona Effetto" }
+        }},
+        { "status.amount", new Dictionary<Language, string> {
+            { Language.English, "Intensity" },
+            { Language.SimplifiedChinese, "效果强度" },
+            { Language.TraditionalChinese, "效果強度" },
+            { Language.Japanese, "効果の強度" },
+            { Language.Korean, "효과 강도" },
+            { Language.Italian, "Intensità" }
+        }},
+        { "status.add_effect", new Dictionary<Language, string> {
+            { Language.English, "Apply Debuff" },
+            { Language.SimplifiedChinese, "施加负面效果" },
+            { Language.TraditionalChinese, "施加負面效果" },
+            { Language.Japanese, "効果を付与" },
+            { Language.Korean, "효과 부여" },
+            { Language.Italian, "Applica Effetto" }
+        }},
+        { "status.subtract_effect", new Dictionary<Language, string> {
+            { Language.English, "Reduce Debuff" },
+            { Language.SimplifiedChinese, "减轻负面效果" },
+            { Language.TraditionalChinese, "減輕負面效果" },
+            { Language.Japanese, "効果を軽減" },
+            { Language.Korean, "효과 완화" },
+            { Language.Italian, "Riduci Effetto" }
+        }},
+        { "status.clear_all", new Dictionary<Language, string> {
+            { Language.English, "Clear All Debuffs" },
+            { Language.SimplifiedChinese, "清除所有负面状态" },
+            { Language.TraditionalChinese, "清除所有負面狀態" },
+            { Language.Japanese, "全デバフ解除" },
+            { Language.Korean, "모든 디버프 해제" },
+            { Language.Italian, "Rimuovi Tutti i Debuff" }
+        }},
+        { "status.preset_torture", new Dictionary<Language, string> {
+            { Language.English, "Extreme Torture" },
+            { Language.SimplifiedChinese, "极限折磨 (恶搞)" },
+            { Language.TraditionalChinese, "極限折磨 (惡搞)" },
+            { Language.Japanese, "拷問プリセット" },
+            { Language.Korean, "고문 프리셋" },
+            { Language.Italian, "Tortura Estrema" }
+        }},
+        { "status.preset_critical", new Dictionary<Language, string> {
+            { Language.English, "Near Death" },
+            { Language.SimplifiedChinese, "濒死重伤" },
+            { Language.TraditionalChinese, "瀕死重傷" },
+            { Language.Japanese, "重傷プリセット" },
+            { Language.Korean, "빈사 중상" },
+            { Language.Italian, "Ferita Mortale" }
+        }},
+        { "status.preset_purify", new Dictionary<Language, string> {
+            { Language.English, "Divine Purify" },
+            { Language.SimplifiedChinese, "圣光净化 (全清+满耐力)" },
+            { Language.TraditionalChinese, "聖光淨化 (全清+滿耐力)" },
+            { Language.Japanese, "聖なる浄化 (全快)" },
+            { Language.Korean, "신성한 정화 (완전 회복)" },
+            { Language.Italian, "Purificazione Divina" }
+        }},
+        { "lobby.clear_all_afflictions_all", new Dictionary<Language, string> {
+            { Language.English, "Clear All Players' Debuffs" },
+            { Language.SimplifiedChinese, "清除全员负面状态" },
+            { Language.TraditionalChinese, "清除全員負面狀態" },
+            { Language.Japanese, "全員のデバフを解除" },
+            { Language.Korean, "모든 플레이어 디버프 해제" },
+            { Language.Italian, "Rimuovi Debuff a Tutti" }
+        }},
+        { "lobby.target_status_mgmt", new Dictionary<Language, string> {
+            { Language.English, "Target Player Status Management" },
+            { Language.SimplifiedChinese, "目标玩家状态管理" },
+            { Language.TraditionalChinese, "目標玩家狀態管理" },
+            { Language.Japanese, "対象プレイヤーのステータス管理" },
+            { Language.Korean, "대상 플레이어 상태 관리" },
+            { Language.Italian, "Gestione Stato Bersaglio" }
+        }},
+        { "status.non_host_hint", new Dictionary<Language, string> {
+            { Language.English, "Note: Non-host can apply debuffs, remove thorns and boost morale." },
+            { Language.SimplifiedChinese, "提示：非房主模式可对他人施加负面、拔除荆棘与提振耐力。" },
+            { Language.TraditionalChinese, "提示：非房主模式可對他人施加負面、拔除荊棘與提振耐力。" },
+            { Language.Japanese, "注意: 非ホスト時はデバフ付与・トゲ除去・スタミナ回復が有効です。" },
+            { Language.Korean, "참고: 방장이 아닐 경우 디버프 부여, 가시 제거 및 사기 진작이 적용됩니다." },
+            { Language.Italian, "Nota: Da non-host puoi applicare debuff, rimuovere spine e ripristinare vigore." }
+        }},
+        { "status.toast_applied", new Dictionary<Language, string> {
+            { Language.English, "Applied status: {0} ({1:P0}) to {2}" },
+            { Language.SimplifiedChinese, "已对 {2} 施加状态: {0} ({1:P0})" },
+            { Language.TraditionalChinese, "已對 {2} 施加狀態: {0} ({1:P0})" },
+            { Language.Japanese, "{2} に状態付与: {0} ({1:P0})" },
+            { Language.Korean, "{2} 에게 상태 부여됨: {0} ({1:P0})" },
+            { Language.Italian, "Applicato stato: {0} ({1:P0}) a {2}" }
+        }},
+        { "status.toast_cleared", new Dictionary<Language, string> {
+            { Language.English, "Cleared all afflictions for {0}" },
+            { Language.SimplifiedChinese, "已清除 {0} 的所有负面状态" },
+            { Language.TraditionalChinese, "已清除 {0} 的所有負面狀態" },
+            { Language.Japanese, "{0} の全デバフを解除しました" },
+            { Language.Korean, "모든 디버프가 해제되었습니다" },
+            { Language.Italian, "Rimossi tutti i debuff da {0}" }
+        }}
     };
 
     public static readonly string[] LanguageNames = new string[] { "English", "简体中文", "日本語", "한국어", "Italiano", "繁體中文" };
@@ -2124,5 +2335,25 @@ public static class Localization
     {
         if (index >= 0 && index < LanguageNames.Length)
             CurrentLanguage = (Language)index;
+    }
+
+    public static string GetStatusTypeName(CharacterAfflictions.STATUSTYPE type)
+    {
+        switch (type)
+        {
+            case CharacterAfflictions.STATUSTYPE.Injury: return T("status.injury");
+            case CharacterAfflictions.STATUSTYPE.Hunger: return T("status.hunger");
+            case CharacterAfflictions.STATUSTYPE.Cold: return T("status.cold");
+            case CharacterAfflictions.STATUSTYPE.Poison: return T("status.poison");
+            case CharacterAfflictions.STATUSTYPE.Crab: return T("status.crab");
+            case CharacterAfflictions.STATUSTYPE.Curse: return T("status.curse");
+            case CharacterAfflictions.STATUSTYPE.Drowsy: return T("status.drowsy");
+            case CharacterAfflictions.STATUSTYPE.Weight: return T("status.weight");
+            case CharacterAfflictions.STATUSTYPE.Hot: return T("status.hot");
+            case CharacterAfflictions.STATUSTYPE.Thorns: return T("status.thorns");
+            case CharacterAfflictions.STATUSTYPE.Spores: return T("status.spores");
+            case CharacterAfflictions.STATUSTYPE.Web: return T("status.web");
+            default: return type.ToString();
+        }
     }
 }
