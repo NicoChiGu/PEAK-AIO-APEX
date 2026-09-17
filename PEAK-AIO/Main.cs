@@ -2537,6 +2537,7 @@ public class PeakMod : BaseUnityPlugin
             {
                 Localization.SetLanguage(i);
                 ConfigManager.LanguageIndex.Value = i;
+                Utilities.pendingItemRefresh = true;
             }
             GUILayout.Space(3);
         }

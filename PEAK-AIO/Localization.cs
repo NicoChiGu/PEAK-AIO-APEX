@@ -2366,6 +2366,22 @@ public static class Localization
             { Language.Japanese, "切断時自動再接続 (Auto-Rejoin)" },
             { Language.Korean, "연결 끊김 시 자동 재접속" },
             { Language.Italian, "Riconnessione Automatica alla Stanza" }
+        }},
+        { "items.suffix_toxic", new Dictionary<Language, string> {
+            { Language.English, " (Toxic)" },
+            { Language.SimplifiedChinese, "(毒)" },
+            { Language.TraditionalChinese, "(毒)" },
+            { Language.Japanese, "（毒）" },
+            { Language.Korean, "(독)" },
+            { Language.Italian, " (Tossico)" }
+        }},
+        { "items.suffix_nontoxic", new Dictionary<Language, string> {
+            { Language.English, " (Safe)" },
+            { Language.SimplifiedChinese, "(无毒)" },
+            { Language.TraditionalChinese, "(無毒)" },
+            { Language.Japanese, "（無毒）" },
+            { Language.Korean, "(무독)" },
+            { Language.Italian, " (Non tossico)" }
         }}
     };
 

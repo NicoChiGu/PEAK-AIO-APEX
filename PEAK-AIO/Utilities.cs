@@ -95,6 +95,25 @@ public static class Utilities
         }
     }
 
+    public static bool IsItemToxic(Item item)
+    {
+        if (item == null) return false;
+        try
+        {
+            if (item.GetComponent<Action_InflictPoison>() != null)
+                return true;
+        }
+        catch { }
+        try
+        {
+            string n = item.name;
+            if (!string.IsNullOrEmpty(n) && (n.IndexOf("toxic", StringComparison.OrdinalIgnoreCase) >= 0 || n.IndexOf("poison", StringComparison.OrdinalIgnoreCase) >= 0))
+                return true;
+        }
+        catch { }
+        return false;
+    }
+
     public static void UpdateItemsSync()
     {
         if (isUpdatingItems) return;
@@ -106,7 +125,8 @@ public static class Utilities
             var itemSet = new HashSet<string>();
             var collectedItems = new List<Item>();
 
-            Action<Item, bool> tryAddItem = (item, requireAssetOnly) =>
+            Action<Item, bool> tryAddItem = null;
+            tryAddItem = (item, requireAssetOnly) =>
             {
                 if (item == null || item.gameObject == null) return;
                 if (requireAssetOnly)
@@ -123,14 +143,30 @@ public static class Utilities
                     if (!isAsset) return;
                 }
 
-                string key = null;
-                try { key = item.GetName(); } catch { }
-                if (string.IsNullOrEmpty(key)) key = item.name;
-                if (!string.IsNullOrEmpty(key) && !itemSet.Contains(key))
+                string prefabKey = item.name;
+                if (!string.IsNullOrEmpty(prefabKey))
                 {
-                    itemSet.Add(key);
-                    collectedItems.Add(item);
+                    if (prefabKey.EndsWith("(Clone)"))
+                        prefabKey = prefabKey.Substring(0, prefabKey.Length - 7);
+
+                    bool isToxic = IsItemToxic(item);
+                    string uniqueKey = prefabKey + (isToxic ? "_toxic" : "_safe");
+
+                    if (!itemSet.Contains(uniqueKey))
+                    {
+                        itemSet.Add(uniqueKey);
+                        collectedItems.Add(item);
+                    }
                 }
+
+                try
+                {
+                    if (item.isSecretlyOtherItemPrefab != null)
+                    {
+                        tryAddItem(item.isSecretlyOtherItemPrefab, requireAssetOnly);
+                    }
+                }
+                catch { }
             };
 
             // 1. Try to load from ItemDatabase singleton asset
@@ -230,16 +266,62 @@ public static class Utilities
                 }
             }
 
-            // Extract display names and sort alphabetically
+            // Pass 1: Identify items that have both toxic and non-toxic variants (e.g. Button, Bugle, Cluster mushrooms).
+            // Items with Action_RandomMushroomEffect (blind-box shroomberries) are excluded so they keep their clean name.
+            var toxicItemsByName = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            var safeItemsByName = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < collectedItems.Count; i++)
+            {
+                var item = collectedItems[i];
+                if (item == null) continue;
+
+                bool isRandom = false;
+                try { isRandom = item.GetComponent<Action_RandomMushroomEffect>() != null; } catch { }
+                if (isRandom) continue;
+
+                string baseName = null;
+                try { baseName = item.GetName(); } catch { }
+                if (string.IsNullOrEmpty(baseName)) baseName = item.name;
+                if (string.IsNullOrEmpty(baseName)) continue;
+
+                bool isToxic = IsItemToxic(item);
+                if (isToxic)
+                    toxicItemsByName[baseName] = true;
+                else
+                    safeItemsByName[baseName] = true;
+            }
+
+            // Pass 2: Extract display names.
+            // If and only if the item has both toxic and safe variants, append (Safe) / (Toxic).
+            // Other random or naturally non-toxic items (e.g. Chubby Shroom, tools) will NOT have any suffixes appended!
             var itemEntries = new List<KeyValuePair<Item, string>>(collectedItems.Count);
             for (int i = 0; i < collectedItems.Count; i++)
             {
                 var item = collectedItems[i];
                 if (item == null) continue;
+
                 string displayName = null;
                 try { displayName = item.GetName(); } catch { }
                 if (string.IsNullOrEmpty(displayName)) displayName = item.name;
                 if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+
+                bool isRandom = false;
+                try { isRandom = item.GetComponent<Action_RandomMushroomEffect>() != null; } catch { }
+
+                if (!isRandom && toxicItemsByName.ContainsKey(displayName) && safeItemsByName.ContainsKey(displayName))
+                {
+                    bool isToxic = IsItemToxic(item);
+                    if (isToxic)
+                    {
+                        displayName += Localization.T("items.suffix_toxic");
+                    }
+                    else
+                    {
+                        displayName += Localization.T("items.suffix_nontoxic");
+                    }
+                }
+
                 itemEntries.Add(new KeyValuePair<Item, string>(item, displayName));
             }
 
