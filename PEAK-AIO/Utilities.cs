@@ -2568,7 +2568,7 @@ public static class Utilities
     public class RouteNodeBadge
     {
         public int stepIndex;
-        public string icon = "📍";
+        public string icon = "";
         public string name = "";
         public char biomeChar = ' ';
         public Segment segment = Segment.Beach;
@@ -2642,47 +2642,12 @@ public static class Utilities
 
     public static string GetBiomeIcon(char c)
     {
-        switch (char.ToUpper(c))
-        {
-            case 'S': return "🏝️"; // Shore / Beach
-            case 'T': return "🌴"; // Tropics
-            case 'R': return "🌿"; // Roots
-            case 'A': return "🏔️"; // Alpine
-            case 'M': return "🏜️"; // Mesa
-            case 'V': return "🌋"; // Volcano / Caldera
-            case 'G': return "🌫️"; // Gloom / Swamp
-            case 'C': return "🏰"; // Citadel
-            case 'K': return "🔥"; // Kiln
-            case 'P': return "🚩"; // Peak
-            default: return "📍";
-        }
+        return "";
     }
 
     public static string GetBiomeIcon(Biome.BiomeType bt, Segment seg)
     {
-        if (seg == Segment.TheKiln) return IsCitadelActive() ? "🏰" : "🔥";
-        if (seg == Segment.Peak) return "🚩";
-        switch (bt)
-        {
-            case Biome.BiomeType.Shore: return "🏝️";
-            case Biome.BiomeType.Tropics: return "🌴";
-            case Biome.BiomeType.Roots: return "🌿";
-            case Biome.BiomeType.Alpine: return "🏔️";
-            case Biome.BiomeType.Volcano: return "🌋";
-            case Biome.BiomeType.Mesa: return "🏜️";
-            case Biome.BiomeType.Peak: return "🚩";
-            default:
-                switch (seg)
-                {
-                    case Segment.Beach: return "🏝️";
-                    case Segment.Tropics: return "🌴";
-                    case Segment.Alpine: return "🏔️";
-                    case Segment.Caldera: return "🌋";
-                    case Segment.TheKiln: return IsCitadelActive() ? "🏰" : "🔥";
-                    case Segment.Peak: return "🚩";
-                    default: return "📍";
-                }
-        }
+        return "";
     }
 
     public static List<RouteNodeBadge> BuildRouteBadges(string biomeId, Segment currentSeg, bool isCurrentMap, bool isInAirport, List<RouteSegmentInfo> liveRoute = null)

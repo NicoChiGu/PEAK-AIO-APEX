@@ -1768,7 +1768,7 @@ public class PeakMod : BaseUnityPlugin
                 statusMarker = " ✓";
             }
 
-            string badgeText = string.Format("{0} {1}.{2}{3}", b.icon, b.stepIndex, b.name, statusMarker);
+            string badgeText = string.Format("{0}. {1}{2}", b.stepIndex, b.name, statusMarker);
             GUILayout.Label(badgeText, bStyle, GUILayout.Height(24));
 
             if (i < badges.Count - 1)
@@ -1796,15 +1796,14 @@ public class PeakMod : BaseUnityPlugin
             {
                 GUILayout.Space(2);
                 GUILayout.BeginHorizontal();
-                string curDetail = string.Format("📍 {0}: {1} {2}. {3}",
+                string curDetail = string.Format("{0}: {1}. {2}",
                     Localization.T("world.current_node_tag"),
-                    activeBadge.icon,
                     activeBadge.stepIndex,
                     activeBadge.name);
 
                 if (activeBadge.hasCampfire)
                 {
-                    curDetail += activeBadge.isCampfireLit ? " [🔥✓]" : " [🔥]";
+                    curDetail += activeBadge.isCampfireLit ? " [✓]" : "";
                 }
                 if (activeBadge.altitude > 0f)
                 {
@@ -1826,7 +1825,7 @@ public class PeakMod : BaseUnityPlugin
             return;
 
         GUILayout.Space(6);
-        string overviewHeader = string.Format("📋 {0} ({1}/{2})",
+        string overviewHeader = string.Format("{0} ({1}/{2})",
             Localization.T("world.playlist_overview"),
             Utilities.WorldDataCache.currentPlaylistIndex + 1,
             Utilities.WorldDataCache.totalPlaylistCount);
@@ -1874,7 +1873,7 @@ public class PeakMod : BaseUnityPlugin
             if (!string.IsNullOrEmpty(item.formattedRoute))
             {
                 GUILayout.Space(2);
-                GUILayout.Label(string.Format("🗺️ {0}", item.formattedRoute), tipLabelStyle);
+                GUILayout.Label(string.Format("{0}", item.formattedRoute), tipLabelStyle);
             }
 
             if (item.nodes != null && item.nodes.Count > 0)
@@ -1918,7 +1917,7 @@ public class PeakMod : BaseUnityPlugin
         if (isInAirport)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label("🛫 " + Localization.T("world.airport_status"), boldLabelStyle);
+            GUILayout.Label(Localization.T("world.airport_status"), boldLabelStyle);
             GUILayout.FlexibleSpace();
             if (!string.IsNullOrEmpty(Utilities.WorldDataCache.countdownFormatted))
             {
@@ -1930,7 +1929,7 @@ public class PeakMod : BaseUnityPlugin
             if (Time.realtimeSinceStartup - Utilities.WorldDataCache.pendingAnnouncedTime < 25f &&
                 !string.IsNullOrEmpty(Utilities.WorldDataCache.pendingAnnouncedScene))
             {
-                string announceText = string.Format("🚀 {0}: {1} (Ascent: {2})",
+                string announceText = string.Format("{0}: {1} (Ascent: {2})",
                     Localization.T("world.loading_announced"),
                     Utilities.WorldDataCache.pendingAnnouncedScene,
                     Utilities.WorldDataCache.pendingAnnouncedAscent);
@@ -1939,7 +1938,7 @@ public class PeakMod : BaseUnityPlugin
 
             if (Utilities.WorldDataCache.isCustomScene)
             {
-                string customTitle = string.Format("✨ [{0}] {1}",
+                string customTitle = string.Format("[{0}] {1}",
                     Localization.T("world.custom_map_tag"),
                     Utilities.WorldDataCache.todaySceneName);
                 if (!string.IsNullOrEmpty(Utilities.WorldDataCache.playlistInfo))
@@ -1967,15 +1966,15 @@ public class PeakMod : BaseUnityPlugin
 
             // Route Ribbon in Airport
             GUILayout.Space(4);
-            GUILayout.Label(string.Format("🛫 {0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
+            GUILayout.Label(string.Format("{0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
             DrawRouteFlowRibbon(Utilities.WorldDataCache.currentMapBadges, false);
-            GUILayout.Label("ℹ️ " + Localization.T("world.airport_preview_tip"), tipLabelStyle);
+            GUILayout.Label(Localization.T("world.airport_preview_tip"), tipLabelStyle);
 
             // Playlist Queue (if multiple maps)
             DrawPlaylistQueueSection();
 
             GUILayout.Space(6);
-            GUILayout.Label("ℹ️ " + Localization.T("world.airport_teleport_hidden_hint"), tipLabelStyle);
+            GUILayout.Label(Localization.T("world.airport_teleport_hidden_hint"), tipLabelStyle);
         }
         else
         {
@@ -1990,7 +1989,7 @@ public class PeakMod : BaseUnityPlugin
             }
             if (Utilities.WorldDataCache.isCustomScene)
             {
-                statusText += "  [✨ " + Localization.T("world.custom_map_tag") + "]";
+                statusText += "  [" + Localization.T("world.custom_map_tag") + "]";
             }
             GUILayout.Label(statusText, boldLabelStyle);
 
@@ -2028,7 +2027,7 @@ public class PeakMod : BaseUnityPlugin
 
             // Route Ribbon in Island
             GUILayout.Space(4);
-            GUILayout.Label(string.Format("🧭 {0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
+            GUILayout.Label(string.Format("{0}:", Localization.T("world.route_flow_title")), subHeaderStyle);
             DrawRouteFlowRibbon(Utilities.WorldDataCache.currentMapBadges, true);
 
             // Playlist Queue (if multiple maps)
@@ -2137,9 +2136,8 @@ public class PeakMod : BaseUnityPlugin
 
                     GUILayout.BeginHorizontal();
 
-                    // Label for Level and Biome name with Biome Emoji Icon
-                    string icon = Utilities.GetBiomeIcon(r.biomeType, r.segment);
-                    string segLabel = string.Format("{0} {1}: {2}", icon, string.Format(Localization.T("world.level_label"), r.level), r.displayName);
+                    // Label for Level and Biome name
+                    string segLabel = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), r.level), r.displayName);
                     if (r.isCampfireLit)
                     {
                         segLabel += "  [✓]";

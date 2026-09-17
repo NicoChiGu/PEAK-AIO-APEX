@@ -928,92 +928,92 @@ public static class Localization
             { Language.Italian, "Vai al Segmento" }
         }},
         { "world.segment_beach", new Dictionary<Language, string> {
-            { Language.English, "Shore (Beach)" },
-            { Language.SimplifiedChinese, "海岸 (Beach)" },
-            { Language.TraditionalChinese, "海岸 (Beach)" },
-            { Language.Japanese, "海岸 (Beach)" },
-            { Language.Korean, "해안 (Beach)" },
-            { Language.Italian, "Spiaggia (Beach)" }
+            { Language.English, "Beach" },
+            { Language.SimplifiedChinese, "海岸" },
+            { Language.TraditionalChinese, "海岸" },
+            { Language.Japanese, "海岸" },
+            { Language.Korean, "해안" },
+            { Language.Italian, "Spiaggia" }
         }},
         { "world.segment_tropics", new Dictionary<Language, string> {
             { Language.English, "Tropics" },
-            { Language.SimplifiedChinese, "热带 (Tropics)" },
-            { Language.TraditionalChinese, "熱帶 (Tropics)" },
-            { Language.Japanese, "熱帯 (Tropics)" },
-            { Language.Korean, "열대 (Tropics)" },
-            { Language.Italian, "Tropici (Tropics)" }
+            { Language.SimplifiedChinese, "热带" },
+            { Language.TraditionalChinese, "熱帶" },
+            { Language.Japanese, "熱帯" },
+            { Language.Korean, "열대" },
+            { Language.Italian, "Tropici" }
         }},
         { "world.segment_alpine", new Dictionary<Language, string> {
             { Language.English, "Alpine" },
-            { Language.SimplifiedChinese, "高山 (Alpine)" },
-            { Language.TraditionalChinese, "高山 (Alpine)" },
-            { Language.Japanese, "高山 (Alpine)" },
-            { Language.Korean, "고산 (Alpine)" },
-            { Language.Italian, "Alpino (Alpine)" }
+            { Language.SimplifiedChinese, "高山" },
+            { Language.TraditionalChinese, "高山" },
+            { Language.Japanese, "高山" },
+            { Language.Korean, "고산" },
+            { Language.Italian, "Alpino" }
         }},
         { "world.segment_caldera", new Dictionary<Language, string> {
-            { Language.English, "Volcano (Caldera)" },
-            { Language.SimplifiedChinese, "火山 (Volcano)" },
-            { Language.TraditionalChinese, "火山 (Volcano)" },
-            { Language.Japanese, "火山 (Volcano)" },
-            { Language.Korean, "화산 (Volcano)" },
-            { Language.Italian, "Vulcano (Caldera)" }
+            { Language.English, "Volcano" },
+            { Language.SimplifiedChinese, "火山" },
+            { Language.TraditionalChinese, "火山" },
+            { Language.Japanese, "火山" },
+            { Language.Korean, "화산" },
+            { Language.Italian, "Vulcano" }
         }},
         { "world.segment_thekiln", new Dictionary<Language, string> {
             { Language.English, "The Kiln" },
-            { Language.SimplifiedChinese, "熔炉 (The Kiln)" },
-            { Language.TraditionalChinese, "熔爐 (The Kiln)" },
-            { Language.Japanese, "窯 (The Kiln)" },
-            { Language.Korean, "가마 (The Kiln)" },
-            { Language.Italian, "La Fornace (The Kiln)" }
+            { Language.SimplifiedChinese, "熔炉" },
+            { Language.TraditionalChinese, "熔爐" },
+            { Language.Japanese, "窯" },
+            { Language.Korean, "가마" },
+            { Language.Italian, "La Fornace" }
         }},
         { "world.segment_peak", new Dictionary<Language, string> {
             { Language.English, "The Peak" },
-            { Language.SimplifiedChinese, "顶峰 (The Peak)" },
-            { Language.TraditionalChinese, "頂峰 (The Peak)" },
-            { Language.Japanese, "頂上 (The Peak)" },
-            { Language.Korean, "정상 (The Peak)" },
-            { Language.Italian, "La Vetta (The Peak)" }
+            { Language.SimplifiedChinese, "顶峰" },
+            { Language.TraditionalChinese, "頂峰" },
+            { Language.Japanese, "頂上" },
+            { Language.Korean, "정상" },
+            { Language.Italian, "La Vetta" }
         }},
         { "world.segment_mesa", new Dictionary<Language, string> {
             { Language.English, "Mesa" },
-            { Language.SimplifiedChinese, "方山 (Mesa)" },
-            { Language.TraditionalChinese, "方山 (Mesa)" },
-            { Language.Japanese, "メサ (Mesa)" },
-            { Language.Korean, "메사 (Mesa)" },
-            { Language.Italian, "Mesa (Mesa)" }
+            { Language.SimplifiedChinese, "方山" },
+            { Language.TraditionalChinese, "方山" },
+            { Language.Japanese, "メサ" },
+            { Language.Korean, "메사" },
+            { Language.Italian, "Mesa" }
         }},
         { "world.segment_roots", new Dictionary<Language, string> {
             { Language.English, "Roots" },
-            { Language.SimplifiedChinese, "森蕈 (Roots)" },
-            { Language.TraditionalChinese, "森蕈 (Roots)" },
-            { Language.Japanese, "森蕈 (Roots)" },
-            { Language.Korean, "버섯숲 (Roots)" },
-            { Language.Italian, "Radici (Roots)" }
+            { Language.SimplifiedChinese, "森蕈" },
+            { Language.TraditionalChinese, "森蕈" },
+            { Language.Japanese, "森蕈" },
+            { Language.Korean, "버섯숲" },
+            { Language.Italian, "Radici" }
         }},
         { "world.segment_swamp", new Dictionary<Language, string> {
             { Language.English, "Swamp" },
-            { Language.SimplifiedChinese, "雾沼 (Swamp)" },
-            { Language.TraditionalChinese, "霧沼 (Swamp)" },
-            { Language.Japanese, "湿原 (Swamp)" },
-            { Language.Korean, "늪지대 (Swamp)" },
-            { Language.Italian, "Palude (Swamp)" }
+            { Language.SimplifiedChinese, "雾沼" },
+            { Language.TraditionalChinese, "霧沼" },
+            { Language.Japanese, "湿原" },
+            { Language.Korean, "늪지대" },
+            { Language.Italian, "Palude" }
         }},
         { "world.segment_citadel", new Dictionary<Language, string> {
             { Language.English, "The Citadel" },
-            { Language.SimplifiedChinese, "城塞 (The Citadel)" },
-            { Language.TraditionalChinese, "城塞 (The Citadel)" },
-            { Language.Japanese, "城塞 (The Citadel)" },
-            { Language.Korean, "성채 (The Citadel)" },
-            { Language.Italian, "La Cittadella (The Citadel)" }
+            { Language.SimplifiedChinese, "城塞" },
+            { Language.TraditionalChinese, "城塞" },
+            { Language.Japanese, "城塞" },
+            { Language.Korean, "성채" },
+            { Language.Italian, "La Cittadella" }
         }},
         { "world.segment_void", new Dictionary<Language, string> {
             { Language.English, "Void" },
-            { Language.SimplifiedChinese, "虚空 (Void)" },
-            { Language.TraditionalChinese, "虛空 (Void)" },
-            { Language.Japanese, "虚空 (Void)" },
-            { Language.Korean, "공허 (Void)" },
-            { Language.Italian, "Vuoto (Void)" }
+            { Language.SimplifiedChinese, "虚空" },
+            { Language.TraditionalChinese, "虛空" },
+            { Language.Japanese, "虚空" },
+            { Language.Korean, "공허" },
+            { Language.Italian, "Vuoto" }
         }},
         { "world.daily_route_info", new Dictionary<Language, string> {
             { Language.English, "Today's Island Flight Route" },
