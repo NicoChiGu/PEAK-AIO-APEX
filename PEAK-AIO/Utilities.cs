@@ -908,7 +908,7 @@ public static class Utilities
     }
 
     /// <summary>
-    /// 向指定角色施加状态效果（负面或属性衰减），支持本地角色、远端房主原生RPC、非房主Stick注入。
+    /// 向指定角色施加状态效果（负面或属性衰减），支持本地角色直接穿透免疫、远端房主原生RPC与全网广播。
     /// </summary>
     public static void AddStatusEffect(Character target, CharacterAfflictions.STATUSTYPE statusType, float amount)
     {
@@ -926,8 +926,10 @@ public static class Utilities
                 {
                     if (target.refs != null && target.refs.afflictions != null)
                     {
-                        target.refs.afflictions.AddStatus(statusType, amount, false, true, true);
-                        target.refs.afflictions.PushStatuses(null);
+                        // 使用底层 SetStatus 穿透 statusesLocked 与 m_inAirport 免疫（原生 AddStatus 会在 airport 或 locked 时静默失败）
+                        float cur = target.refs.afflictions.GetCurrentStatus(statusType);
+                        float next = Mathf.Clamp(cur + amount, 0f, 1f);
+                        target.refs.afflictions.SetStatus(statusType, next, true);
                         target.ClampStamina();
                         if (GUIManager.instance != null && GUIManager.instance.bar != null)
                         {
@@ -947,6 +949,21 @@ public static class Utilities
                             if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
                             {
                                 target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { data });
+                            }
+                        }
+
+                        // 房主直接更新本地镜像并向全房间（Others）广播 SyncStatusesRPC，解决远端不会回传导致UI不更新的问题
+                        if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.currentStatuses != null)
+                        {
+                            int typeIdx = (int)statusType;
+                            if (typeIdx >= 0 && typeIdx < target.refs.afflictions.currentStatuses.Length)
+                            {
+                                target.refs.afflictions.currentStatuses[typeIdx] = Mathf.Clamp(target.refs.afflictions.currentStatuses[typeIdx] + amount, 0f, 1f);
+                                byte[] syncArray = SerializeSyncData(new StatusSyncData
+                                {
+                                    statusList = new List<float>(target.refs.afflictions.currentStatuses)
+                                });
+                                target.photonView.RPC("SyncStatusesRPC", RpcTarget.Others, new object[] { syncArray });
                             }
                         }
                     }
@@ -993,8 +1010,9 @@ public static class Utilities
                 {
                     if (target.refs != null && target.refs.afflictions != null)
                     {
-                        target.refs.afflictions.SubtractStatus(statusType, amount, false, false);
-                        target.refs.afflictions.PushStatuses(null);
+                        float cur = target.refs.afflictions.GetCurrentStatus(statusType);
+                        float next = Mathf.Clamp(cur - amount, 0f, 1f);
+                        target.refs.afflictions.SetStatus(statusType, next, true);
                         target.ClampStamina();
                         if (GUIManager.instance != null && GUIManager.instance.bar != null)
                         {
@@ -1014,6 +1032,20 @@ public static class Utilities
                             if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.photonView != null)
                             {
                                 target.refs.afflictions.photonView.RPC("RPC_ApplyStatusesFromFloatArray", target.photonView.Owner, new object[] { data });
+                            }
+                        }
+
+                        if (target.refs != null && target.refs.afflictions != null && target.refs.afflictions.currentStatuses != null)
+                        {
+                            int typeIdx = (int)statusType;
+                            if (typeIdx >= 0 && typeIdx < target.refs.afflictions.currentStatuses.Length)
+                            {
+                                target.refs.afflictions.currentStatuses[typeIdx] = Mathf.Clamp(target.refs.afflictions.currentStatuses[typeIdx] - amount, 0f, 1f);
+                                byte[] syncArray = SerializeSyncData(new StatusSyncData
+                                {
+                                    statusList = new List<float>(target.refs.afflictions.currentStatuses)
+                                });
+                                target.photonView.RPC("SyncStatusesRPC", RpcTarget.Others, new object[] { syncArray });
                             }
                         }
                     }
@@ -1384,6 +1416,7 @@ public static class Utilities
                 if (characters == null || characters.Count == 0)
                     return;
 
+                int count = 0;
                 for (int i = 0; i < characters.Count; i++)
                 {
                     try
@@ -1407,7 +1440,31 @@ public static class Utilities
                         int viewId = character.photonView.ViewID;
                         Globals.playerDeathLocations[viewId] = ResolveSafeGroundPosition(pos);
 
-                        character.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
+                        if (character.IsLocal)
+                        {
+                            if (FlyPatch.IsFlying)
+                            {
+                                FlyPatch.SetFlying(false);
+                            }
+                            if (character.refs != null && character.refs.items != null)
+                            {
+                                character.refs.items.EquipSlot(Optionable<byte>.None);
+                            }
+                            character.photonView.RPC("RPCA_SetDead", RpcTarget.All, Array.Empty<object>());
+                            Character.Die();
+                        }
+                        else
+                        {
+                            // 广播双重死亡 RPC：先同步状态机与倒计时对齐，再广播彻底死亡掉落
+                            character.photonView.RPC("RPCA_SetDead", RpcTarget.All, Array.Empty<object>());
+                            character.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
+                            if (character.data != null)
+                            {
+                                character.data.dead = true;
+                                character.data.fullyPassedOut = true;
+                            }
+                        }
+                        count++;
                     }
                     catch (Exception ex)
                     {
@@ -1417,7 +1474,8 @@ public static class Utilities
                 }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Kill All triggered. ExcludeSelf: {0}", Globals.excludeSelfFromAllActions));
+                    Logger.LogInfo(string.Format("[Lobby] Kill All triggered ({0} players). ExcludeSelf: {1}", count, Globals.excludeSelfFromAllActions));
+                Globals.GlobalNotifier.ShowError(string.Format("全员击杀已触发，共处理 {0} 名玩家", count), 3.0f);
             }
             catch (Exception ex)
             {
@@ -1643,11 +1701,35 @@ public static class Utilities
                 int viewId = target.photonView.ViewID;
                 Globals.playerDeathLocations[viewId] = ResolveSafeGroundPosition(pos);
 
-                // 3. 执行死亡 RPC
-                target.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
+                // 3. 执行死亡处理
+                if (target.IsLocal)
+                {
+                    if (FlyPatch.IsFlying)
+                    {
+                        FlyPatch.SetFlying(false);
+                    }
+                    if (target.refs != null && target.refs.items != null)
+                    {
+                        target.refs.items.EquipSlot(Optionable<byte>.None);
+                    }
+                    target.photonView.RPC("RPCA_SetDead", RpcTarget.All, Array.Empty<object>());
+                    Character.Die();
+                }
+                else
+                {
+                    // 广播双重死亡 RPC：先同步状态机与倒计时对齐，再广播彻底死亡掉落
+                    target.photonView.RPC("RPCA_SetDead", RpcTarget.All, Array.Empty<object>());
+                    target.photonView.RPC("RPCA_Die", RpcTarget.All, new object[] { pos });
+                    if (target.data != null)
+                    {
+                        target.data.dead = true;
+                        target.data.fullyPassedOut = true;
+                    }
+                }
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Kill executed for player index {0}", Globals.selectedPlayer));
+                    Logger.LogInfo(string.Format("[Lobby] Kill executed for player index {0} ({1})", Globals.selectedPlayer, target.characterName));
+                Globals.GlobalNotifier.ShowError(string.Format("已击杀玩家: {0}", target.characterName), 3.0f);
             }
             catch (Exception ex)
             {
@@ -4458,20 +4540,20 @@ public static class Utilities
                 if (backpackSlot == null && player.itemSlots != null && player.itemSlots.Length > 3)
                     backpackSlot = player.itemSlots[3] as BackpackSlot;
 
-                if (backpackSlot == null)
-                {
-                    Globals.GlobalNotifier.ShowError(string.Format("玩家 '{0}' 的4号背包槽位为空", character.characterName));
-                    return;
-                }
-
                 // 1. 如果已有背包先卸下
-                if (!backpackSlot.IsEmpty())
+                if (backpackSlot != null && !backpackSlot.IsEmpty())
                 {
                     DropCurrentBackpack(player);
                 }
 
                 // 2. 准备背包物品与类型
                 Item bpPrefab = customItem != null ? customItem : FindBackpackPrefab(type);
+                if (bpPrefab == null)
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("未找到对应类型的背包预制体 ({0})", type));
+                    return;
+                }
+
                 string bpName = "";
                 try { if (bpPrefab != null) bpName = bpPrefab.GetName(); } catch { }
                 if (string.IsNullOrEmpty(bpName) && bpPrefab != null) bpName = bpPrefab.name;
@@ -4482,33 +4564,73 @@ public static class Utilities
                     type = GetBackpackTypeForItem(bpPrefab, bpName);
                 }
 
-                var data = new ItemInstanceData(Guid.NewGuid());
-                ItemInstanceDataHandler.AddInstanceData(data);
-
-                if (type == BackpackSlot.BackpackType.Jetpack)
+                // 3. 原生权威生成与拾取流程（彻底解决远端玩家 InventorySyncData 丢失 prefab 无法掏出背包的问题）
+                if (character.IsLocal)
                 {
-                    var fuel = data.RegisterNewEntry<FloatItemData>(DataEntryKey.Fuel);
-                    if (fuel != null) fuel.Value = 100f;
+                    var data = new ItemInstanceData(Guid.NewGuid());
+                    ItemInstanceDataHandler.AddInstanceData(data);
+
+                    if (type == BackpackSlot.BackpackType.Jetpack)
+                    {
+                        var fuel = data.RegisterNewEntry<FloatItemData>(DataEntryKey.Fuel);
+                        if (fuel != null) fuel.Value = 100f;
+                    }
+
+                    if (backpackSlot != null)
+                    {
+                        backpackSlot.backpackType = type;
+                        backpackSlot.SetItem(bpPrefab, data);
+                    }
+
+                    var syncObj = new InventorySyncData(
+                        player.itemSlots,
+                        backpackSlot,
+                        player.tempFullSlot
+                    );
+                    byte[] syncData = SerializeSyncData(syncObj);
+
+                    if (player.photonView != null)
+                    {
+                        player.photonView.RPC("SyncInventoryRPC", RpcTarget.All, new object[] { syncData, true });
+                    }
                 }
-
-                backpackSlot.backpackType = type;
-                backpackSlot.SetItem(bpPrefab, data);
-
-                // 3. 网络全量同步（发送给全部客户端使所有人及目标自身都能看到背包）
-                var syncObj = new InventorySyncData(
-                    player.itemSlots,
-                    backpackSlot,
-                    player.tempFullSlot
-                );
-                byte[] syncData = SerializeSyncData(syncObj);
-
-                if (player.photonView != null)
+                else
                 {
-                    player.photonView.RPC("SyncInventoryRPC", RpcTarget.All, new object[] { syncData, true });
+                    // 远端玩家：通过游戏原生权威生成器 InstantiateAndGrabRPC 生成并自动塞入目标4号背包槽
+                    if (GameUtils.instance != null)
+                    {
+                        GameUtils.instance.InstantiateAndGrab(bpPrefab, character, 0);
+                    }
+                    else if (PhotonNetwork.IsMasterClient)
+                    {
+                        Vector3 spawnPos = GetCharacterPosition(character) + GetCharacterForward(character) * 0.5f + Vector3.up * 0.2f;
+                        var spawnedGo = PhotonNetwork.InstantiateItemRoom(bpPrefab.gameObject.name, spawnPos, Quaternion.identity);
+                        if (spawnedGo != null)
+                        {
+                            var itemComp = spawnedGo.GetComponent<Item>();
+                            if (itemComp != null)
+                            {
+                                itemComp.Interact(character);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var gu = UnityEngine.Object.FindObjectOfType<GameUtils>();
+                        if (gu != null && gu.photonView != null)
+                        {
+                            gu.photonView.RPC("InstantiateAndGrabRPC", RpcTarget.MasterClient, new object[] {
+                                bpPrefab.gameObject.name,
+                                character.photonView,
+                                0
+                            });
+                        }
+                    }
                 }
 
                 if (Logger != null)
                     Logger.LogInfo(string.Format("[Lobby] Equipped {0} ({1}) to Slot 4 for player '{2}'", bpName, type, character.characterName));
+                Globals.GlobalNotifier.ShowError(string.Format("已为 '{0}' 装备 4 号背包: {1}", character.characterName, bpName), 3.0f);
             }
             catch (Exception ex)
             {
