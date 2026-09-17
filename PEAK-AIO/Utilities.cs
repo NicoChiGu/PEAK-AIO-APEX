@@ -5221,4 +5221,153 @@ public static class Utilities
             }
         });
     }
+
+    // ==========================================
+    // STEAM ACHIEVEMENTS SUBSYSTEM (CACHED & SYNCHRONOUS)
+    // ==========================================
+
+    public static class AchievementCache
+    {
+        public static readonly ACHIEVEMENTTYPE[] ValidAchievements;
+        private static readonly HashSet<ACHIEVEMENTTYPE> s_UnlockedSet = new HashSet<ACHIEVEMENTTYPE>();
+        public static int UnlockedCount { get; private set; }
+        public static int TotalCount
+        {
+            get { return ValidAchievements != null ? ValidAchievements.Length : 0; }
+        }
+        private static float s_LastRefreshTime = -100f;
+        private const float REFRESH_INTERVAL = 1.0f;
+
+        static AchievementCache()
+        {
+            var all = (ACHIEVEMENTTYPE[])Enum.GetValues(typeof(ACHIEVEMENTTYPE));
+            var list = new List<ACHIEVEMENTTYPE>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != ACHIEVEMENTTYPE.NONE)
+                    list.Add(all[i]);
+            }
+            ValidAchievements = list.ToArray();
+        }
+
+        public static bool IsUnlocked(ACHIEVEMENTTYPE type)
+        {
+            return s_UnlockedSet.Contains(type);
+        }
+
+        public static void MarkUnlocked(ACHIEVEMENTTYPE type)
+        {
+            if (s_UnlockedSet.Add(type))
+            {
+                UnlockedCount++;
+            }
+        }
+
+        public static void Invalidate()
+        {
+            s_LastRefreshTime = -100f;
+        }
+
+        public static void EnsureUpdated(bool force = false)
+        {
+            float now = Time.unscaledTime;
+            if (!force && (now - s_LastRefreshTime < REFRESH_INTERVAL))
+                return;
+
+            s_LastRefreshTime = now;
+            var instance = Singleton<AchievementManager>.Instance;
+            if (instance == null) return;
+
+            s_UnlockedSet.Clear();
+            int count = 0;
+            for (int i = 0; i < ValidAchievements.Length; i++)
+            {
+                var ach = ValidAchievements[i];
+                try
+                {
+                    if (instance.IsAchievementUnlocked(ach))
+                    {
+                        s_UnlockedSet.Add(ach);
+                        count++;
+                    }
+                }
+                catch { }
+            }
+            UnlockedCount = count;
+        }
+    }
+
+    public static bool IsAchievementUnlocked(ACHIEVEMENTTYPE type)
+    {
+        if (type == ACHIEVEMENTTYPE.NONE) return false;
+        return AchievementCache.IsUnlocked(type);
+    }
+
+    public static bool UnlockAchievement(ACHIEVEMENTTYPE type, bool showNotify = true)
+    {
+        try
+        {
+            if (type == ACHIEVEMENTTYPE.NONE) return false;
+            var instance = Singleton<AchievementManager>.Instance;
+            if (instance == null)
+            {
+                if (showNotify)
+                    Globals.GlobalNotifier.ShowError(Localization.T("achievements.not_in_game"));
+                return false;
+            }
+
+            var method = ConstantFields.GetThrowAchievementMethod();
+            if (method != null)
+            {
+                method.Invoke(instance, new object[] { type });
+                AchievementCache.MarkUnlocked(type);
+                if (showNotify)
+                {
+                    string name = Localization.GetAchievementName(type);
+                    Globals.GlobalNotifier.ShowSuccess(Localization.T("achievements.unlock_success", name));
+                }
+                return true;
+            }
+            else
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[Achievements] ThrowAchievement MethodInfo not found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogError(string.Format("[Achievements] Failed to unlock {0}: {1}", type, ex));
+            if (showNotify)
+                Globals.GlobalNotifier.ShowError(string.Format("Failed to unlock {0}: {1}", type, ex.Message));
+        }
+        return false;
+    }
+
+    public static void UnlockAllAchievementsSync()
+    {
+        try
+        {
+            var instance = Singleton<AchievementManager>.Instance;
+            if (instance == null)
+            {
+                Globals.GlobalNotifier.ShowError(Localization.T("achievements.not_in_game"));
+                return;
+            }
+
+            // Execute game native synchronous batch unlock
+            instance.DebugGetAllAchievements();
+
+            // Refresh cached statuses immediately
+            AchievementCache.EnsureUpdated(true);
+
+            Globals.GlobalNotifier.ShowSuccess(Localization.T("achievements.unlock_all_success", AchievementCache.TotalCount));
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogError("[Achievements] Error in UnlockAllAchievementsSync: " + ex);
+            Globals.GlobalNotifier.ShowError("Unlock All Error: " + ex.Message);
+        }
+    }
 }

@@ -477,8 +477,12 @@ public class PeakMod : BaseUnityPlugin
             try
             {
                 GUILayout.BeginHorizontal();
-                string title = string.Format("<color=#c24338><b>[{0}]</b></color> ({1}: {2:F1}s)",
-                    Localization.T("error.title"),
+                bool isSuccess = (Globals.GlobalNotifier.CurrentNotificationType == "SUCCESS");
+                string color = isSuccess ? "#4ea359" : "#c24338";
+                string prefix = isSuccess ? "[SUCCESS]" : string.Format("[{0}]", Localization.T("error.title"));
+                string title = string.Format("<color={0}><b>{1}</b></color> ({2}: {3:F1}s)",
+                    color,
+                    prefix,
                     Localization.T("error.auto_close"),
                     remaining);
                 GUILayout.Label(title, boldLabelStyle);
@@ -570,7 +574,7 @@ public class PeakMod : BaseUnityPlugin
     private void DrawSidebar()
     {
         string[] sidebarKeys = new string[] {
-            "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.creatures", "tab.about", "tab.language", "tab.debug"
+            "tab.player", "tab.items", "tab.lobby", "tab.world", "tab.creatures", "tab.achievements", "tab.about", "tab.language", "tab.debug"
         };
 
         for (int i = 0; i < sidebarKeys.Length; i++)
@@ -616,12 +620,15 @@ public class PeakMod : BaseUnityPlugin
                 DrawCreaturesTab();
                 break;
             case 6:
-                DrawAboutTab();
+                DrawAchievementsTab();
                 break;
             case 7:
-                DrawLanguageTab();
+                DrawAboutTab();
                 break;
             case 8:
+                DrawLanguageTab();
+                break;
+            case 9:
                 DrawDebugTab();
                 break;
             default:
@@ -2483,7 +2490,139 @@ public class PeakMod : BaseUnityPlugin
     }
 
     // ==========================================
-    // TAB 6: ABOUT
+    // TAB 6: ACHIEVEMENTS
+    // ==========================================
+    private void DrawAchievementsTab()
+    {
+        // 节流刷新底层成就状态缓存（每秒最多查询 1 次 Steamworks，消除每帧 IPC 开销）
+        Utilities.AchievementCache.EnsureUpdated();
+
+        Globals.achievementsScroll = GUILayout.BeginScrollView(Globals.achievementsScroll);
+
+        // 1. Header & Realtime Progress Badge
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("achievements.title"), sectionHeaderStyle);
+        GUILayout.FlexibleSpace();
+
+        int unlockedCount = Utilities.AchievementCache.UnlockedCount;
+        int totalValid = Utilities.AchievementCache.TotalCount;
+        bool allDone = (totalValid > 0 && unlockedCount >= totalValid);
+        GUIStyle badgeStyle = allDone ? badgeCompletedStyle : badgePendingStyle;
+        GUILayout.Label(Localization.T("achievements.count_format", unlockedCount, totalValid), badgeStyle, GUILayout.Height(22));
+        GUILayout.EndHorizontal();
+
+        GUILayout.Label(Localization.T("achievements.desc"), tipLabelStyle);
+        GUILayout.Space(6);
+
+        // 2. Control Bar Card (One-click unlock all + Search)
+        GUILayout.BeginVertical(cardBoxStyle);
+        GUILayout.BeginHorizontal();
+
+        if (GUILayout.Button(Localization.T("achievements.unlock_all"), primaryBtnStyle, GUILayout.Height(28), GUILayout.Width(220)))
+        {
+            Utilities.UnlockAllAchievementsSync();
+        }
+
+        GUILayout.Space(12);
+
+        GUILayout.Label("🔍", boldLabelStyle, GUILayout.Width(20), GUILayout.Height(28));
+        Globals.achievementSearchText = GUILayout.TextField(Globals.achievementSearchText, GUILayout.Height(26), GUILayout.ExpandWidth(true));
+        if (!string.IsNullOrEmpty(Globals.achievementSearchText))
+        {
+            if (GUILayout.Button("✕", dangerBtnStyle, GUILayout.Width(26), GUILayout.Height(26)))
+            {
+                Globals.achievementSearchText = "";
+            }
+        }
+
+        GUILayout.EndHorizontal();
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
+        // 3. Filtered Achievement List using cached array
+        var validAchievements = Utilities.AchievementCache.ValidAchievements;
+        string query = Globals.achievementSearchText != null ? Globals.achievementSearchText.Trim() : "";
+        List<ACHIEVEMENTTYPE> filtered = new List<ACHIEVEMENTTYPE>(validAchievements.Length);
+        for (int i = 0; i < validAchievements.Length; i++)
+        {
+            var type = validAchievements[i];
+            if (string.IsNullOrEmpty(query))
+            {
+                filtered.Add(type);
+            }
+            else
+            {
+                string locName = Localization.GetAchievementName(type);
+                string rawName = type.ToString();
+                if (locName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    rawName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    filtered.Add(type);
+                }
+            }
+        }
+
+        // Render in 2 columns
+        for (int i = 0; i < filtered.Count; i += 2)
+        {
+            GUILayout.BeginHorizontal();
+            DrawAchievementCard(filtered[i], 310);
+            if (i + 1 < filtered.Count)
+            {
+                GUILayout.Space(8);
+                DrawAchievementCard(filtered[i + 1], 310);
+            }
+            else
+            {
+                GUILayout.FlexibleSpace();
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4);
+        }
+
+        GUILayout.EndScrollView();
+    }
+
+    private void DrawAchievementCard(ACHIEVEMENTTYPE type, float width)
+    {
+        bool isUnlocked = Utilities.IsAchievementUnlocked(type);
+        string locName = Localization.GetAchievementName(type);
+        string rawName = type.ToString();
+
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(width));
+        GUILayout.BeginHorizontal();
+
+        // Left info column (clickable title to unlock)
+        GUILayout.BeginVertical();
+        if (GUILayout.Button(locName, boldLabelStyle))
+        {
+            Utilities.UnlockAchievement(type, true);
+        }
+        GUILayout.Label(rawName, tipLabelStyle);
+        GUILayout.EndVertical();
+
+        GUILayout.FlexibleSpace();
+
+        // Right status column & Action button
+        GUILayout.BeginVertical(GUILayout.Width(76));
+        GUIStyle statusBadge = isUnlocked ? badgeCompletedStyle : badgePendingStyle;
+        string statusText = isUnlocked ? Localization.T("achievements.status_unlocked") : Localization.T("achievements.status_locked");
+        GUILayout.Label(statusText, statusBadge, GUILayout.Height(18));
+        GUILayout.Space(2);
+
+        if (GUILayout.Button(Localization.T("achievements.btn_unlock"), primaryBtnStyle, GUILayout.Height(22)))
+        {
+            Utilities.UnlockAchievement(type, true);
+        }
+        GUILayout.EndVertical();
+
+        GUILayout.EndHorizontal();
+        GUILayout.EndVertical();
+    }
+
+    // ==========================================
+    // TAB 7: ABOUT
     // ==========================================
     private void DrawAboutTab()
     {

@@ -89,6 +89,11 @@ public static class Globals
     public static Vector2[] slotScrolls = new Vector2[4] { Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero };
     public static Vector2 lobbyPlayerScroll = Vector2.zero;
     public static Vector2 luggageScroll = Vector2.zero;
+    public static Vector2 achievementsScroll = Vector2.zero;
+    public static bool isUnlockingAllAchievements = false;
+    public static int unlockAllProgress = 0;
+    public static int unlockAllTotal = 0;
+    public static string achievementSearchText = "";
 
     // Inventory Snapshot & Anti-Duplication Revive System
     public class ItemSlotSnapshot
@@ -124,12 +129,22 @@ public static class Globals
     public static class GlobalNotifier
     {
         public static string CurrentErrorMessage = null;
+        public static string CurrentNotificationType = "ERROR";
         public static float ExpireTime = 0f;
         public static float Duration = 5f;
 
         public static void ShowError(string message, float duration = 5f)
         {
             CurrentErrorMessage = message;
+            CurrentNotificationType = "ERROR";
+            Duration = duration;
+            ExpireTime = Time.unscaledTime + duration;
+        }
+
+        public static void ShowSuccess(string message, float duration = 5f)
+        {
+            CurrentErrorMessage = message;
+            CurrentNotificationType = "SUCCESS";
             Duration = duration;
             ExpireTime = Time.unscaledTime + duration;
         }

@@ -57,6 +57,14 @@ public static class Localization
             { Language.Korean, "생물" },
             { Language.Italian, "CREATURE" }
         }},
+        { "tab.achievements", new Dictionary<Language, string> {
+            { Language.English, "ACHIEVE" },
+            { Language.SimplifiedChinese, "成就" },
+            { Language.TraditionalChinese, "成就" },
+            { Language.Japanese, "実績" },
+            { Language.Korean, "도전 과제" },
+            { Language.Italian, "OBIETTIVI" }
+        }},
         { "tab.about", new Dictionary<Language, string> {
             { Language.English, "ABOUT" },
             { Language.SimplifiedChinese, "关于" },
@@ -2382,6 +2390,594 @@ public static class Localization
             { Language.Japanese, "（無毒）" },
             { Language.Korean, "(무독)" },
             { Language.Italian, " (Non tossico)" }
+        }},
+
+        // Achievements Tab & UI Keys
+        { "achievements.title", new Dictionary<Language, string> {
+            { Language.English, "Steam Achievements" },
+            { Language.SimplifiedChinese, "Steam 成就管理" },
+            { Language.TraditionalChinese, "Steam 成就管理" },
+            { Language.Japanese, "Steam 実績管理" },
+            { Language.Korean, "Steam 도전 과제 관리" },
+            { Language.Italian, "Gestione Obiettivi Steam" }
+        }},
+        { "achievements.desc", new Dictionary<Language, string> {
+            { Language.English, "Click an achievement name to complete it individually. Or use async batch completion." },
+            { Language.SimplifiedChinese, "点击成就名称即可手动单项完成；支持一键异步安全完成全部成就。" },
+            { Language.TraditionalChinese, "點擊成就名稱即可手動單項完成；支援一鍵非同步安全完成全部成就。" },
+            { Language.Japanese, "実績名をクリックして個別に解除可能。全実績の非同期一括解除も行えます。" },
+            { Language.Korean, "도전 과제 이름을 클릭하여 개별 완료하거나, 비동기 일괄 완료를 사용할 수 있습니다." },
+            { Language.Italian, "Fai clic sul nome di un obiettivo per completarlo, oppure usa il completamento asincrono di tutti." }
+        }},
+        { "achievements.unlock_all", new Dictionary<Language, string> {
+            { Language.English, "Unlock All Achievements" },
+            { Language.SimplifiedChinese, "一键完成所有成就" },
+            { Language.TraditionalChinese, "一鍵完成所有成就" },
+            { Language.Japanese, "全実績を一括解除" },
+            { Language.Korean, "모든 도전 과제 일괄 완료" },
+            { Language.Italian, "Sblocca Tutti gli Obiettivi" }
+        }},
+        { "achievements.unlocking_progress", new Dictionary<Language, string> {
+            { Language.English, "Unlocking ({0}/{1})..." },
+            { Language.SimplifiedChinese, "正在异步完成中 ({0}/{1})..." },
+            { Language.TraditionalChinese, "正在非同步完成中 ({0}/{1})..." },
+            { Language.Japanese, "非同期解除中 ({0}/{1})..." },
+            { Language.Korean, "비동기 완료 처리 중 ({0}/{1})..." },
+            { Language.Italian, "Sblocco asincrono ({0}/{1})..." }
+        }},
+        { "achievements.search", new Dictionary<Language, string> {
+            { Language.English, "Search achievements..." },
+            { Language.SimplifiedChinese, "搜索成就名称..." },
+            { Language.TraditionalChinese, "搜尋成就名稱..." },
+            { Language.Japanese, "実績名で検索..." },
+            { Language.Korean, "도전 과제 검색..." },
+            { Language.Italian, "Cerca obiettivi..." }
+        }},
+        { "achievements.status_unlocked", new Dictionary<Language, string> {
+            { Language.English, "UNLOCKED" },
+            { Language.SimplifiedChinese, "已解锁" },
+            { Language.TraditionalChinese, "已解鎖" },
+            { Language.Japanese, "解除済" },
+            { Language.Korean, "완료됨" },
+            { Language.Italian, "SBLOCCATO" }
+        }},
+        { "achievements.status_locked", new Dictionary<Language, string> {
+            { Language.English, "LOCKED" },
+            { Language.SimplifiedChinese, "未解锁" },
+            { Language.TraditionalChinese, "未解鎖" },
+            { Language.Japanese, "未解除" },
+            { Language.Korean, "미완료" },
+            { Language.Italian, "BLOCCATO" }
+        }},
+        { "achievements.btn_unlock", new Dictionary<Language, string> {
+            { Language.English, "Complete" },
+            { Language.SimplifiedChinese, "完成" },
+            { Language.TraditionalChinese, "完成" },
+            { Language.Japanese, "解除" },
+            { Language.Korean, "완료" },
+            { Language.Italian, "Completa" }
+        }},
+        { "achievements.unlock_success", new Dictionary<Language, string> {
+            { Language.English, "Achievement completed: {0}" },
+            { Language.SimplifiedChinese, "成就已成功完成: {0}" },
+            { Language.TraditionalChinese, "成就已成功完成: {0}" },
+            { Language.Japanese, "実績を解除しました: {0}" },
+            { Language.Korean, "도전 과제 완료됨: {0}" },
+            { Language.Italian, "Obiettivo sbloccato: {0}" }
+        }},
+        { "achievements.unlock_all_success", new Dictionary<Language, string> {
+            { Language.English, "All {0} achievements completed successfully!" },
+            { Language.SimplifiedChinese, "全部 {0} 个成就已成功异步完成！" },
+            { Language.TraditionalChinese, "全部 {0} 個成就已成功非同步完成！" },
+            { Language.Japanese, "全 {0} 個の実績が正常に非同期解除されました！" },
+            { Language.Korean, "전체 {0}개 도전 과제가 비동기로 성공적으로 완료되었습니다!" },
+            { Language.Italian, "Tutti i {0} obiettivi sono stati sbloccati con successo in modo asincrono!" }
+        }},
+        { "achievements.not_in_game", new Dictionary<Language, string> {
+            { Language.English, "AchievementManager not ready. Please enter game first." },
+            { Language.SimplifiedChinese, "成就系统尚未就绪，请先进入游戏场景。" },
+            { Language.TraditionalChinese, "成就系統尚未就緒，請先進入遊戲場景。" },
+            { Language.Japanese, "実績マネージャーが未初期化です。ゲームに入ってください。" },
+            { Language.Korean, "도전 과제 관리자가 준비되지 않았습니다. 게임에 먼저 접속하세요." },
+            { Language.Italian, "AchievementManager non pronto. Entra prima in gioco." }
+        }},
+        { "achievements.count_format", new Dictionary<Language, string> {
+            { Language.English, "Progress: {0} / {1}" },
+            { Language.SimplifiedChinese, "当前进度: {0} / {1}" },
+            { Language.TraditionalChinese, "當前進度: {0} / {1}" },
+            { Language.Japanese, "進捗状況: {0} / {1}" },
+            { Language.Korean, "진행 현황: {0} / {1}" },
+            { Language.Italian, "Progresso: {0} / {1}" }
+        }},
+
+        // 61 Localized Steam Achievements
+        { "ach.TriedYourBestBadge", new Dictionary<Language, string> {
+            { Language.English, "Tried Your Best" },
+            { Language.SimplifiedChinese, "尽力而为" },
+            { Language.TraditionalChinese, "盡力而為" },
+            { Language.Japanese, "ベストを尽くした" },
+            { Language.Korean, "최선을 다했다" },
+            { Language.Italian, "Hai Fatto del Tuo Meglio" }
+        }},
+        { "ach.BeachcomberBadge", new Dictionary<Language, string> {
+            { Language.English, "Beachcomber" },
+            { Language.SimplifiedChinese, "海滩漫步" },
+            { Language.TraditionalChinese, "海灘漫步" },
+            { Language.Japanese, "ビーチコーマー" },
+            { Language.Korean, "해변 방랑자" },
+            { Language.Italian, "Passeggiatore da Spiaggia" }
+        }},
+        { "ach.TrailblazerBadge", new Dictionary<Language, string> {
+            { Language.English, "Trailblazer" },
+            { Language.SimplifiedChinese, "开路先锋" },
+            { Language.TraditionalChinese, "開路先鋒" },
+            { Language.Japanese, "先駆者" },
+            { Language.Korean, "개척자" },
+            { Language.Italian, "Pioniere" }
+        }},
+        { "ach.AlpinistBadge", new Dictionary<Language, string> {
+            { Language.English, "Alpinist" },
+            { Language.SimplifiedChinese, "登山家" },
+            { Language.TraditionalChinese, "登山家" },
+            { Language.Japanese, "アルピニスト" },
+            { Language.Korean, "알피니스트" },
+            { Language.Italian, "Alpinista" }
+        }},
+        { "ach.VolcanologyBadge", new Dictionary<Language, string> {
+            { Language.English, "Volcanology" },
+            { Language.SimplifiedChinese, "火山专家" },
+            { Language.TraditionalChinese, "火山專家" },
+            { Language.Japanese, "火山学者" },
+            { Language.Korean, "화산학자" },
+            { Language.Italian, "Vulcanologo" }
+        }},
+        { "ach.CookingBadge", new Dictionary<Language, string> {
+            { Language.English, "Camp Chef" },
+            { Language.SimplifiedChinese, "营地大厨" },
+            { Language.TraditionalChinese, "營地大廚" },
+            { Language.Japanese, "キャンプシェフ" },
+            { Language.Korean, "캠프 요리사" },
+            { Language.Italian, "Chef da Campo" }
+        }},
+        { "ach.HappyCamperBadge", new Dictionary<Language, string> {
+            { Language.English, "Happy Camper" },
+            { Language.SimplifiedChinese, "快乐露营" },
+            { Language.TraditionalChinese, "快樂露營" },
+            { Language.Japanese, "ハッピーキャンパー" },
+            { Language.Korean, "행복한 캠퍼" },
+            { Language.Italian, "Campeggiatore Felice" }
+        }},
+        { "ach.BoulderingBadge", new Dictionary<Language, string> {
+            { Language.English, "Bouldering" },
+            { Language.SimplifiedChinese, "抱石之星" },
+            { Language.TraditionalChinese, "抱石之星" },
+            { Language.Japanese, "ボルダリング" },
+            { Language.Korean, "볼더링" },
+            { Language.Italian, "Bouldering" }
+        }},
+        { "ach.ToxicologyBadge", new Dictionary<Language, string> {
+            { Language.English, "Toxicology" },
+            { Language.SimplifiedChinese, "毒理专家" },
+            { Language.TraditionalChinese, "毒理專家" },
+            { Language.Japanese, "毒物学" },
+            { Language.Korean, "독물학" },
+            { Language.Italian, "Tossicologia" }
+        }},
+        { "ach.ForagingBadge", new Dictionary<Language, string> {
+            { Language.English, "Foraging" },
+            { Language.SimplifiedChinese, "荒野采摘" },
+            { Language.TraditionalChinese, "荒野採摘" },
+            { Language.Japanese, "採取" },
+            { Language.Korean, "채집" },
+            { Language.Italian, "Raccolta" }
+        }},
+        { "ach.EsotericaBadge", new Dictionary<Language, string> {
+            { Language.English, "Esoterica" },
+            { Language.SimplifiedChinese, "远古秘法" },
+            { Language.TraditionalChinese, "遠古秘法" },
+            { Language.Japanese, "秘儀" },
+            { Language.Korean, "비전 마法" },
+            { Language.Italian, "Esoterismo" }
+        }},
+        { "ach.PeakBadge", new Dictionary<Language, string> {
+            { Language.English, "The Peak" },
+            { Language.SimplifiedChinese, "登顶勋章" },
+            { Language.TraditionalChinese, "登頂勳章" },
+            { Language.Japanese, "頂上到達" },
+            { Language.Korean, "정상 정복" },
+            { Language.Italian, "La Vetta" }
+        }},
+        { "ach.LoneWolfBadge", new Dictionary<Language, string> {
+            { Language.English, "Lone Wolf" },
+            { Language.SimplifiedChinese, "孤狼" },
+            { Language.TraditionalChinese, "孤狼" },
+            { Language.Japanese, "一匹狼" },
+            { Language.Korean, "외로운 늑대" },
+            { Language.Italian, "Lupo Solitario" }
+        }},
+        { "ach.ClutchBadge", new Dictionary<Language, string> {
+            { Language.English, "Clutch Revive" },
+            { Language.SimplifiedChinese, "绝境逢生" },
+            { Language.TraditionalChinese, "絕境逢生" },
+            { Language.Japanese, "逆転救助" },
+            { Language.Korean, "클러치 구출" },
+            { Language.Italian, "Salvataggio In Extremis" }
+        }},
+        { "ach.BalloonBadge", new Dictionary<Language, string> {
+            { Language.English, "Light as Air" },
+            { Language.SimplifiedChinese, "轻盈如燕" },
+            { Language.TraditionalChinese, "輕盈如燕" },
+            { Language.Japanese, "羽根のように軽く" },
+            { Language.Korean, "가벼운 착지" },
+            { Language.Italian, "Leggero come l'Aria" }
+        }},
+        { "ach.LeaveNoTraceBadge", new Dictionary<Language, string> {
+            { Language.English, "Leave No Trace" },
+            { Language.SimplifiedChinese, "无痕山林" },
+            { Language.TraditionalChinese, "無痕山林" },
+            { Language.Japanese, "足跡を残さず" },
+            { Language.Korean, "흔적을 남기지 않기" },
+            { Language.Italian, "Nessuna Traccia" }
+        }},
+        { "ach.SpeedClimberBadge", new Dictionary<Language, string> {
+            { Language.English, "Speed Climber" },
+            { Language.SimplifiedChinese, "极速攀登" },
+            { Language.TraditionalChinese, "極速攀登" },
+            { Language.Japanese, "スピードクライマー" },
+            { Language.Korean, "스피드 클라이머" },
+            { Language.Italian, "Scalatore Veloce" }
+        }},
+        { "ach.BingBongBadge", new Dictionary<Language, string> {
+            { Language.English, "Bing Bong" },
+            { Language.SimplifiedChinese, "叮咚玩偶" },
+            { Language.TraditionalChinese, "叮咚玩偶" },
+            { Language.Japanese, "ビンボン" },
+            { Language.Korean, "빙봉" },
+            { Language.Italian, "Bing Bong" }
+        }},
+        { "ach.NaturalistBadge", new Dictionary<Language, string> {
+            { Language.English, "Naturalist" },
+            { Language.SimplifiedChinese, "自然主义" },
+            { Language.TraditionalChinese, "自然主義" },
+            { Language.Japanese, "ナチュラリスト" },
+            { Language.Korean, "자연주의자" },
+            { Language.Italian, "Naturalista" }
+        }},
+        { "ach.GourmandBadge", new Dictionary<Language, string> {
+            { Language.English, "Gourmand" },
+            { Language.SimplifiedChinese, "顶级老饕" },
+            { Language.TraditionalChinese, "頂級老饕" },
+            { Language.Japanese, "美食家" },
+            { Language.Korean, "미식가" },
+            { Language.Italian, "Buongustaio" }
+        }},
+        { "ach.MycologyBadge", new Dictionary<Language, string> {
+            { Language.English, "Mycology" },
+            { Language.SimplifiedChinese, "真菌学家" },
+            { Language.TraditionalChinese, "真菌學家" },
+            { Language.Japanese, "菌類学者" },
+            { Language.Korean, "균류학자" },
+            { Language.Italian, "Micologia" }
+        }},
+        { "ach.FirstAidBadge", new Dictionary<Language, string> {
+            { Language.English, "First Aid" },
+            { Language.SimplifiedChinese, "急救大师" },
+            { Language.TraditionalChinese, "急救大師" },
+            { Language.Japanese, "応急手当" },
+            { Language.Korean, "응급 처치" },
+            { Language.Italian, "Primo Soccorso" }
+        }},
+        { "ach.SurvivalistBadge", new Dictionary<Language, string> {
+            { Language.English, "Survivalist" },
+            { Language.SimplifiedChinese, "求生大师" },
+            { Language.TraditionalChinese, "求生大師" },
+            { Language.Japanese, "サバイバリスト" },
+            { Language.Korean, "생존 전문가" },
+            { Language.Italian, "Sopravvissuto" }
+        }},
+        { "ach.AnimalSerenadingBadge", new Dictionary<Language, string> {
+            { Language.English, "Animal Serenading" },
+            { Language.SimplifiedChinese, "动物小夜曲" },
+            { Language.TraditionalChinese, "動物小夜曲" },
+            { Language.Japanese, "動物へのセレナーデ" },
+            { Language.Korean, "동물 세레나데" },
+            { Language.Italian, "Serenata agli Animali" }
+        }},
+        { "ach.ArboristBadge", new Dictionary<Language, string> {
+            { Language.English, "Arborist" },
+            { Language.SimplifiedChinese, "巨树巡礼" },
+            { Language.TraditionalChinese, "巨樹巡禮" },
+            { Language.Japanese, "巨木の巡礼" },
+            { Language.Korean, "거목 탐방" },
+            { Language.Italian, "Arboricoltore" }
+        }},
+        { "ach.MentorshipBadge", new Dictionary<Language, string> {
+            { Language.English, "Mentorship" },
+            { Language.SimplifiedChinese, "团长之教" },
+            { Language.TraditionalChinese, "團長之教" },
+            { Language.Japanese, "指導の教え" },
+            { Language.Korean, "멘토의 가르침" },
+            { Language.Italian, "Tutorato" }
+        }},
+        { "ach.KnotTyingBadge", new Dictionary<Language, string> {
+            { Language.English, "Knot Tying" },
+            { Language.SimplifiedChinese, "结绳高手" },
+            { Language.TraditionalChinese, "結繩高手" },
+            { Language.Japanese, "ロープ結びの達人" },
+            { Language.Korean, "매듭 묶기" },
+            { Language.Italian, "Nodi Perfetti" }
+        }},
+        { "ach.EmergencyPreparednessBadge", new Dictionary<Language, string> {
+            { Language.English, "Emergency Preparedness" },
+            { Language.SimplifiedChinese, "临危救难" },
+            { Language.TraditionalChinese, "臨危救難" },
+            { Language.Japanese, "緊急救護" },
+            { Language.Korean, "긴급 구호" },
+            { Language.Italian, "Pronto Intervento" }
+        }},
+        { "ach.AscenderBadge", new Dictionary<Language, string> {
+            { Language.English, "Ascender" },
+            { Language.SimplifiedChinese, "攀登先锋" },
+            { Language.TraditionalChinese, "攀登先鋒" },
+            { Language.Japanese, "アセンダー" },
+            { Language.Korean, "상승자" },
+            { Language.Italian, "Ascensore Umano" }
+        }},
+        { "ach.PlundererBadge", new Dictionary<Language, string> {
+            { Language.English, "Plunderer" },
+            { Language.SimplifiedChinese, "搜刮达人" },
+            { Language.TraditionalChinese, "搜刮達人" },
+            { Language.Japanese, "物色家" },
+            { Language.Korean, "약탈자" },
+            { Language.Italian, "Sciacallo" }
+        }},
+        { "ach.BookwormBadge", new Dictionary<Language, string> {
+            { Language.English, "Bookworm" },
+            { Language.SimplifiedChinese, "饱读诗书" },
+            { Language.TraditionalChinese, "飽讀詩書" },
+            { Language.Japanese, "本の虫" },
+            { Language.Korean, "책벌레" },
+            { Language.Italian, "Topo di Biblioteca" }
+        }},
+        { "ach.EnduranceBadge", new Dictionary<Language, string> {
+            { Language.English, "Endurance" },
+            { Language.SimplifiedChinese, "极限耐力" },
+            { Language.TraditionalChinese, "極限耐力" },
+            { Language.Japanese, "限界持久力" },
+            { Language.Korean, "극한 인내" },
+            { Language.Italian, "Resistenza Estrema" }
+        }},
+        { "ach.Ascent1", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 1" },
+            { Language.SimplifiedChinese, "攀登难度 1" },
+            { Language.TraditionalChinese, "攀登難度 1" },
+            { Language.Japanese, "アセント レベル 1" },
+            { Language.Korean, "등반 레벨 1" },
+            { Language.Italian, "Livello di Salita 1" }
+        }},
+        { "ach.Ascent2", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 2" },
+            { Language.SimplifiedChinese, "攀登难度 2" },
+            { Language.TraditionalChinese, "攀登難度 2" },
+            { Language.Japanese, "アセント レベル 2" },
+            { Language.Korean, "등반 레벨 2" },
+            { Language.Italian, "Livello di Salita 2" }
+        }},
+        { "ach.Ascent3", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 3" },
+            { Language.SimplifiedChinese, "攀登难度 3" },
+            { Language.TraditionalChinese, "攀登難度 3" },
+            { Language.Japanese, "アセント レベル 3" },
+            { Language.Korean, "등반 레벨 3" },
+            { Language.Italian, "Livello di Salita 3" }
+        }},
+        { "ach.Ascent4", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 4" },
+            { Language.SimplifiedChinese, "攀登难度 4" },
+            { Language.TraditionalChinese, "攀登難度 4" },
+            { Language.Japanese, "アセント レベル 4" },
+            { Language.Korean, "등반 레벨 4" },
+            { Language.Italian, "Livello di Salita 4" }
+        }},
+        { "ach.Ascent5", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 5" },
+            { Language.SimplifiedChinese, "攀登难度 5" },
+            { Language.TraditionalChinese, "攀登難度 5" },
+            { Language.Japanese, "アセント レベル 5" },
+            { Language.Korean, "등반 레벨 5" },
+            { Language.Italian, "Livello di Salita 5" }
+        }},
+        { "ach.Ascent6", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 6" },
+            { Language.SimplifiedChinese, "攀登难度 6" },
+            { Language.TraditionalChinese, "攀登難度 6" },
+            { Language.Japanese, "アセント レベル 6" },
+            { Language.Korean, "등반 레벨 6" },
+            { Language.Italian, "Livello di Salita 6" }
+        }},
+        { "ach.Ascent7", new Dictionary<Language, string> {
+            { Language.English, "Ascent Level 7" },
+            { Language.SimplifiedChinese, "攀登难度 7" },
+            { Language.TraditionalChinese, "攀登難度 7" },
+            { Language.Japanese, "アセント レベル 7" },
+            { Language.Korean, "등반 레벨 7" },
+            { Language.Italian, "Livello di Salita 7" }
+        }},
+        { "ach.ResourcefulnessBadge", new Dictionary<Language, string> {
+            { Language.English, "Resourcefulness" },
+            { Language.SimplifiedChinese, "荒野求生" },
+            { Language.TraditionalChinese, "荒野求生" },
+            { Language.Japanese, "臨機応変" },
+            { Language.Korean, "임기응변" },
+            { Language.Italian, "Ingegno" }
+        }},
+        { "ach.NomadBadge", new Dictionary<Language, string> {
+            { Language.English, "Nomad" },
+            { Language.SimplifiedChinese, "游牧探索" },
+            { Language.TraditionalChinese, "遊牧探索" },
+            { Language.Japanese, "遊牧民" },
+            { Language.Korean, "유목민" },
+            { Language.Italian, "Nomade" }
+        }},
+        { "ach.UltimateBadge", new Dictionary<Language, string> {
+            { Language.English, "Ultimate Frisbee" },
+            { Language.SimplifiedChinese, "极限飞盘" },
+            { Language.TraditionalChinese, "極限飛盤" },
+            { Language.Japanese, "究極フリスビー" },
+            { Language.Korean, "얼티밋 프리스비" },
+            { Language.Italian, "Frisbee Estremo" }
+        }},
+        { "ach.CoolCucumberBadge", new Dictionary<Language, string> {
+            { Language.English, "Cool Cucumber" },
+            { Language.SimplifiedChinese, "镇定自若" },
+            { Language.TraditionalChinese, "鎮定自若" },
+            { Language.Japanese, "冷静沈着" },
+            { Language.Korean, "침착한 생존" },
+            { Language.Italian, "Calma Glaciale" }
+        }},
+        { "ach.NeedlepointBadge", new Dictionary<Language, string> {
+            { Language.English, "Needlepoint" },
+            { Language.SimplifiedChinese, "针尖漫步" },
+            { Language.TraditionalChinese, "針尖漫步" },
+            { Language.Japanese, "サボテンまみれ" },
+            { Language.Korean, "가시투성이" },
+            { Language.Italian, "Punti di Spillo" }
+        }},
+        { "ach.AeronauticsBadge", new Dictionary<Language, string> {
+            { Language.English, "Aeronautics" },
+            { Language.SimplifiedChinese, "航空先驱" },
+            { Language.TraditionalChinese, "航空先驅" },
+            { Language.Japanese, "飛行先駆者" },
+            { Language.Korean, "항공 개척자" },
+            { Language.Italian, "Aeronautica" }
+        }},
+        { "ach.TwentyFourKaratBadge", new Dictionary<Language, string> {
+            { Language.English, "24 Karat Sacrifice" },
+            { Language.SimplifiedChinese, "纯金祭礼" },
+            { Language.TraditionalChinese, "純金祭禮" },
+            { Language.Japanese, "純金の生贄" },
+            { Language.Korean, "24캐럿 제물" },
+            { Language.Italian, "Sacrificio a 24 Carati" }
+        }},
+        { "ach.DaredevilBadge", new Dictionary<Language, string> {
+            { Language.English, "Daredevil Cannon" },
+            { Language.SimplifiedChinese, "亡命特技" },
+            { Language.TraditionalChinese, "亡命特技" },
+            { Language.Japanese, "命知らずの砲撃" },
+            { Language.Korean, "무모한 도전" },
+            { Language.Italian, "Scavezzacollo" }
+        }},
+        { "ach.MegaentomologyBadge", new Dictionary<Language, string> {
+            { Language.English, "Megaentomology" },
+            { Language.SimplifiedChinese, "巨虫脱险" },
+            { Language.TraditionalChinese, "巨蟲脫險" },
+            { Language.Japanese, "巨大昆虫脱出" },
+            { Language.Korean, "거대 곤충 탈출" },
+            { Language.Italian, "Mega-entomologia" }
+        }},
+        { "ach.AstronomyBadge", new Dictionary<Language, string> {
+            { Language.English, "Astronomy Gazer" },
+            { Language.SimplifiedChinese, "直视烈阳" },
+            { Language.TraditionalChinese, "直視烈陽" },
+            { Language.Japanese, "太陽直視" },
+            { Language.Korean, "태양 관측" },
+            { Language.Italian, "Osservatore Solare" }
+        }},
+        { "ach.BundledUpBadge", new Dictionary<Language, string> {
+            { Language.English, "Bundled Up" },
+            { Language.SimplifiedChinese, "严阵以待" },
+            { Language.TraditionalChinese, "嚴陣以待" },
+            { Language.Japanese, "防寒万全" },
+            { Language.Korean, "철통 방한" },
+            { Language.Italian, "Ben Coperto" }
+        }},
+        { "ach.ForestryBadge", new Dictionary<Language, string> {
+            { Language.English, "Forestry" },
+            { Language.SimplifiedChinese, "林业勋章" },
+            { Language.TraditionalChinese, "林業勳章" },
+            { Language.Japanese, "林業の証" },
+            { Language.Korean, "산림 훈장" },
+            { Language.Italian, "Silvicoltura" }
+        }},
+        { "ach.TreadLightlyBadge", new Dictionary<Language, string> {
+            { Language.English, "Tread Lightly" },
+            { Language.SimplifiedChinese, "轻足疾行" },
+            { Language.TraditionalChinese, "輕足疾行" },
+            { Language.Japanese, "忍び足" },
+            { Language.Korean, "사뿐한 걸음" },
+            { Language.Italian, "Passo Felpato" }
+        }},
+        { "ach.WebSecurityBadge", new Dictionary<Language, string> {
+            { Language.English, "Web Security" },
+            { Language.SimplifiedChinese, "蛛网脱险" },
+            { Language.TraditionalChinese, "蛛網脫險" },
+            { Language.Japanese, "クモの巣脱出" },
+            { Language.Korean, "거미줄 탈출" },
+            { Language.Italian, "Fuga dalla Tela" }
+        }},
+        { "ach.UndeadEncounterBadge", new Dictionary<Language, string> {
+            { Language.English, "Undead Encounter" },
+            { Language.SimplifiedChinese, "尸变逢生" },
+            { Language.TraditionalChinese, "屍變逢生" },
+            { Language.Japanese, "死霊との遭遇" },
+            { Language.Korean, "언데드 조우" },
+            { Language.Italian, "Incontro Non Morto" }
+        }},
+        { "ach.AdvancedMycologyBadge", new Dictionary<Language, string> {
+            { Language.English, "Advanced Mycology" },
+            { Language.SimplifiedChinese, "高阶真菌" },
+            { Language.TraditionalChinese, "高階真菌" },
+            { Language.Japanese, "高度な菌類学" },
+            { Language.Korean, "고급 균류학" },
+            { Language.Italian, "Micologia Avanzata" }
+        }},
+        { "ach.DisasterResponseBadge", new Dictionary<Language, string> {
+            { Language.English, "Disaster Response" },
+            { Language.SimplifiedChinese, "灾难搜救" },
+            { Language.TraditionalChinese, "災難搜救" },
+            { Language.Japanese, "災害救助" },
+            { Language.Korean, "재난 구조" },
+            { Language.Italian, "Soccorso in Calamità" }
+        }},
+        { "ach.CalciumIntakeBadge", new Dictionary<Language, string> {
+            { Language.English, "Calcium Intake" },
+            { Language.SimplifiedChinese, "补钙达人" },
+            { Language.TraditionalChinese, "補鈣達人" },
+            { Language.Japanese, "カルシウム補給" },
+            { Language.Korean, "칼슘 섭취" },
+            { Language.Italian, "Assunzione di Calcio" }
+        }},
+        { "ach.CompetitiveEatingBadge", new Dictionary<Language, string> {
+            { Language.English, "Competitive Eating" },
+            { Language.SimplifiedChinese, "大胃王" },
+            { Language.TraditionalChinese, "大胃王" },
+            { Language.Japanese, "大食い王" },
+            { Language.Korean, "푸드 파이터" },
+            { Language.Italian, "Gara di Mangiatrici" }
+        }},
+        { "ach.AppliedEsotericaBadge", new Dictionary<Language, string> {
+            { Language.English, "Applied Esoterica" },
+            { Language.SimplifiedChinese, "实用通灵" },
+            { Language.TraditionalChinese, "實用通靈" },
+            { Language.Japanese, "実用秘術" },
+            { Language.Korean, "응용 심령술" },
+            { Language.Italian, "Esoterismo Pratico" }
+        }},
+        { "ach.MycoacrobaticsBadge", new Dictionary<Language, string> {
+            { Language.English, "Mycoacrobatics" },
+            { Language.SimplifiedChinese, "蘑菇杂技" },
+            { Language.TraditionalChinese, "蘑菇雜技" },
+            { Language.Japanese, "キノコアクロバット" },
+            { Language.Korean, "버섯 곡예" },
+            { Language.Italian, "Mico-acrobazia" }
+        }},
+        { "ach.CryptogastronomyBadge", new Dictionary<Language, string> {
+            { Language.English, "Cryptogastronomy" },
+            { Language.SimplifiedChinese, "异食美食家" },
+            { Language.TraditionalChinese, "異食美食家" },
+            { Language.Japanese, "謎の美食家" },
+            { Language.Korean, "기이한 미식" },
+            { Language.Italian, "Cripto-gastronomia" }
         }}
     };
 
@@ -2443,5 +3039,13 @@ public static class Localization
             case CharacterAfflictions.STATUSTYPE.Web: return T("status.web");
             default: return type.ToString();
         }
+    }
+
+    public static string GetAchievementName(ACHIEVEMENTTYPE type)
+    {
+        string key = "ach." + type.ToString();
+        string name = T(key);
+        if (name != key) return name;
+        return type.ToString();
     }
 }

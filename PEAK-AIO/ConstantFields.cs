@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 
 internal static class ConstantFields
 {
@@ -113,6 +113,17 @@ internal static class ConstantFields
         return statusEnumValues;
     }
 
+    private static MethodInfo throwAchievementMethod;
+
+    public static MethodInfo GetThrowAchievementMethod()
+    {
+        if (throwAchievementMethod == null)
+        {
+            throwAchievementMethod = typeof(AchievementManager).GetMethod("ThrowAchievement", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+        return throwAchievementMethod;
+    }
+
     public static void RefreshAll()
     {
         infiniteStaminaProp = null;
@@ -126,5 +137,6 @@ internal static class ConstantFields
         ropeClimbSpeedModField = null;
         setStatusMethod = null;
         statusEnumValues = null;
+        throwAchievementMethod = null;
     }
 }
