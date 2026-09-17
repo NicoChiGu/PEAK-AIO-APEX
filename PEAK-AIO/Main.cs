@@ -1791,6 +1791,9 @@ public class PeakMod : BaseUnityPlugin
 
             // Playlist Queue (if multiple maps)
             DrawPlaylistQueueSection();
+
+            GUILayout.Space(6);
+            GUILayout.Label("ℹ️ " + Localization.T("world.airport_teleport_hidden_hint"), tipLabelStyle);
         }
         else
         {
@@ -1848,187 +1851,181 @@ public class PeakMod : BaseUnityPlugin
 
             // Playlist Queue (if multiple maps)
             DrawPlaylistQueueSection();
-        }
 
-        GUILayout.Space(6);
-
-        // Prominent Button(s): Teleport to Campfire / Light Campfire (Only on Island)
-        if (!isInAirport)
-        {
-            if (currentLevel < 6)
+            // 仅在进入海岛游戏且路线确认完毕后展示传送与区域跳转功能
+            if (Utilities.WorldDataCache.hasDeterminedRoute)
             {
-                int nextLevel = Utilities.WorldDataCache.nextLevelNumber;
-                string nextName = nextSegDisplayName;
+                GUILayout.Space(6);
 
-                if (!isAtCampfire)
+                // Prominent Button(s): Teleport to Campfire / Light Campfire
+                if (currentLevel < 6)
                 {
-                    string btnText;
-                    if (nextLevel < 5)
+                    int nextLevel = Utilities.WorldDataCache.nextLevelNumber;
+                    string nextName = nextSegDisplayName;
+
+                    if (!isAtCampfire)
                     {
-                        btnText = string.Format("{0} ({1} {2})",
-                            Localization.T("world.teleport_next_campfire"),
-                            string.Format(Localization.T("world.level_label"), nextLevel),
-                            nextName);
-                    }
-                    else if (nextLevel == 5)
-                    {
-                        btnText = Localization.T("world.teleport_kiln_safe");
+                        string btnText;
+                        if (nextLevel < 5)
+                        {
+                            btnText = string.Format("{0} ({1} {2})",
+                                Localization.T("world.teleport_next_campfire"),
+                                string.Format(Localization.T("world.level_label"), nextLevel),
+                                nextName);
+                        }
+                        else if (nextLevel == 5)
+                        {
+                            btnText = Localization.T("world.teleport_kiln_safe");
+                        }
+                        else
+                        {
+                            btnText = Localization.T("world.teleport_to_peak");
+                        }
+
+                        if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
+                        {
+                            Utilities.TeleportToNextCampfire();
+                        }
                     }
                     else
                     {
-                        btnText = Localization.T("world.teleport_to_peak");
-                    }
+                        // Player is already at the transition campfire!
+                        GUILayout.BeginHorizontal();
+                        string lightText = string.Format(Localization.T("world.light_campfire"), currentLevel);
+                        if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
+                        {
+                            Utilities.LightCurrentCampfire();
+                        }
 
-                    if (GUILayout.Button(btnText, primaryBtnStyle, GUILayout.Height(32)))
-                    {
-                        Utilities.TeleportToNextCampfire();
+                        GUILayout.Space(6);
+
+                        int afterNextLevel = nextLevel;
+                        string nextCampText;
+                        if (afterNextLevel < 5)
+                        {
+                            nextCampText = string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel);
+                        }
+                        else if (afterNextLevel == 5)
+                        {
+                            nextCampText = Localization.T("world.teleport_kiln_safe");
+                        }
+                        else
+                        {
+                            nextCampText = Localization.T("world.teleport_to_peak");
+                        }
+
+                        if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
+                        {
+                            Utilities.TeleportToNextCampfire();
+                        }
+                        GUILayout.EndHorizontal();
                     }
                 }
                 else
                 {
-                    // Player is already at the transition campfire!
+                    // At Peak
                     GUILayout.BeginHorizontal();
-                    string lightText = string.Format(Localization.T("world.light_campfire"), currentLevel);
-                    if (GUILayout.Button(lightText, primaryBtnStyle, GUILayout.Height(32)))
-                    {
-                        Utilities.LightCurrentCampfire();
-                    }
-
+                    GUI.enabled = false;
+                    GUILayout.Button(Localization.T("world.at_peak"), primaryBtnStyle, GUILayout.Height(32));
+                    GUI.enabled = true;
                     GUILayout.Space(6);
-
-                    int afterNextLevel = nextLevel;
-                    string nextCampText;
-                    if (afterNextLevel < 5)
+                    if (GUILayout.Button(Localization.T("world.summon_helicopter"), dangerBtnStyle, GUILayout.Height(32), GUILayout.Width(160)))
                     {
-                        nextCampText = string.Format(Localization.T("world.teleport_next_area_campfire"), afterNextLevel);
-                    }
-                    else if (afterNextLevel == 5)
-                    {
-                        nextCampText = Localization.T("world.teleport_kiln_safe");
-                    }
-                    else
-                    {
-                        nextCampText = Localization.T("world.teleport_to_peak");
-                    }
-
-                    if (GUILayout.Button(nextCampText, sidebarActiveBtnStyle, GUILayout.Height(32)))
-                    {
-                        Utilities.TeleportToNextCampfire();
+                        Utilities.SummonHelicopter();
                     }
                     GUILayout.EndHorizontal();
                 }
-            }
-            else
-            {
-                // At Peak
+
+                // Detailed Area & Campfire Jump Controls with Refresh Button
                 GUILayout.BeginHorizontal();
-                GUI.enabled = false;
-                GUILayout.Button(Localization.T("world.at_peak"), primaryBtnStyle, GUILayout.Height(32));
-                GUI.enabled = true;
-                GUILayout.Space(6);
-                if (GUILayout.Button(Localization.T("world.summon_helicopter"), dangerBtnStyle, GUILayout.Height(32), GUILayout.Width(160)))
+                GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button(Localization.T("world.refresh_route"), GUILayout.Width(110), GUILayout.Height(22)))
                 {
-                    Utilities.SummonHelicopter();
+                    Utilities.WorldDataCache.Invalidate();
+                    Utilities.WorldDataCache.EnsureUpdated(force: true);
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.Space(4);
+
+                for (int i = 0; i < route.Count; i++)
+                {
+                    var r = route[i];
+                    bool isCur = (r.segment == detectedSeg);
+
+                    GUILayout.BeginHorizontal();
+
+                    // Label for Level and Biome name with Biome Emoji Icon
+                    string icon = Utilities.GetBiomeIcon(r.biomeType, r.segment);
+                    string segLabel = string.Format("{0} {1}: {2}", icon, string.Format(Localization.T("world.level_label"), r.level), r.displayName);
+                    if (r.isCampfireLit)
+                    {
+                        segLabel += "  [✓]";
+                    }
+                    if (isCur)
+                    {
+                        segLabel += r.isAtCampfire
+                            ? string.Format("  [{0}]", Localization.T("world.at_campfire_tag"))
+                            : string.Format("  [{0}]", Localization.T("world.current_tag"));
+                    }
+                    GUILayout.Label(segLabel, isCur ? boldLabelStyle : labelStyle, GUILayout.Width(200));
+
+                    // Button 1: Jump to Start of segment (Safe start jump, does not light campfire)
+                    GUIStyle jumpBtnStyle = isCur ? sidebarActiveBtnStyle : primaryBtnStyle;
+                    string jumpStartText = string.Format("{0}", Localization.T("world.jump_to_start"));
+                    if (GUILayout.Button(jumpStartText, jumpBtnStyle, GUILayout.Height(24), GUILayout.Width(95)))
+                    {
+                        Utilities.JumpToSegmentStartSafe(r.segment);
+                    }
+
+                    GUILayout.Space(4);
+
+                    // Button 2: Teleport to Campfire (or Kiln safe point / Peak)
+                    if (r.hasCampfire)
+                    {
+                        if (GUILayout.Button(Localization.T("world.teleport_campfire"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
+                        {
+                            Utilities.JumpToSegmentCampfire(r.segment);
+                        }
+
+                        GUILayout.Space(3);
+
+                        // Button 3: Light Campfire
+                        if (GUILayout.Button(Localization.T("world.light_action"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(50)))
+                        {
+                            Utilities.LightCampfire(i);
+                        }
+                    }
+                    else if (r.segment == Segment.TheKiln)
+                    {
+                        if (GUILayout.Button(Localization.T("world.teleport_kiln_safe"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
+                        {
+                            Utilities.JumpToSegmentStartSafe(Segment.TheKiln);
+                        }
+                    }
+                    else
+                    {
+                        if (GUILayout.Button(Localization.T("world.teleport_to_peak"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
+                        {
+                            Utilities.JumpToSegmentStartSafe(Segment.Peak);
+                        }
+                    }
+
+                    GUILayout.EndHorizontal();
+
+                    if (i < route.Count - 1)
+                        GUILayout.Space(3);
+                }
+
+                GUILayout.Space(6);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button(Localization.T("world.return_airport"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(150)))
+                {
+                    Utilities.ReturnToAirport();
                 }
                 GUILayout.EndHorizontal();
             }
         }
-
-        // Detailed Area & Campfire Jump Controls with Refresh Button
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(Localization.T("world.jump_to_segment") + ":", subHeaderStyle);
-        GUILayout.FlexibleSpace();
-        if (GUILayout.Button(Localization.T("world.refresh_route"), GUILayout.Width(110), GUILayout.Height(22)))
-        {
-            Utilities.WorldDataCache.Invalidate();
-            Utilities.WorldDataCache.EnsureUpdated(force: true);
-        }
-        GUILayout.EndHorizontal();
-        GUILayout.Space(4);
-
-        for (int i = 0; i < route.Count; i++)
-        {
-            var r = route[i];
-            bool isCur = !isInAirport && (r.segment == detectedSeg);
-
-            GUILayout.BeginHorizontal();
-
-            // Label for Level and Biome name with Biome Emoji Icon
-            string icon = Utilities.GetBiomeIcon(r.biomeType, r.segment);
-            string segLabel = string.Format("{0} {1}: {2}", icon, string.Format(Localization.T("world.level_label"), r.level), r.displayName);
-            if (r.isCampfireLit)
-            {
-                segLabel += "  [✓]";
-            }
-            if (isCur)
-            {
-                segLabel += r.isAtCampfire
-                    ? string.Format("  [{0}]", Localization.T("world.at_campfire_tag"))
-                    : string.Format("  [{0}]", Localization.T("world.current_tag"));
-            }
-            GUILayout.Label(segLabel, isCur ? boldLabelStyle : labelStyle, GUILayout.Width(200));
-
-            // Controls disabled in Airport
-            GUI.enabled = !isInAirport;
-
-            // Button 1: Jump to Start of segment (Safe start jump, does not light campfire)
-            GUIStyle jumpBtnStyle = isCur ? sidebarActiveBtnStyle : primaryBtnStyle;
-            string jumpStartText = string.Format("{0}", Localization.T("world.jump_to_start"));
-            if (GUILayout.Button(jumpStartText, jumpBtnStyle, GUILayout.Height(24), GUILayout.Width(95)))
-            {
-                Utilities.JumpToSegmentStartSafe(r.segment);
-            }
-
-            GUILayout.Space(4);
-
-            // Button 2: Teleport to Campfire (or Kiln safe point / Peak)
-            if (r.hasCampfire)
-            {
-                if (GUILayout.Button(Localization.T("world.teleport_campfire"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(125)))
-                {
-                    Utilities.JumpToSegmentCampfire(r.segment);
-                }
-
-                GUILayout.Space(3);
-
-                // Button 3: Light Campfire
-                if (GUILayout.Button(Localization.T("world.light_action"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(50)))
-                {
-                    Utilities.LightCampfire(i);
-                }
-            }
-            else if (r.segment == Segment.TheKiln)
-            {
-                if (GUILayout.Button(Localization.T("world.teleport_kiln_safe"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
-                {
-                    Utilities.JumpToSegmentStartSafe(Segment.TheKiln);
-                }
-            }
-            else
-            {
-                if (GUILayout.Button(Localization.T("world.teleport_to_peak"), primaryBtnStyle, GUILayout.Height(24), GUILayout.Width(178)))
-                {
-                    Utilities.JumpToSegmentStartSafe(Segment.Peak);
-                }
-            }
-
-            GUI.enabled = true;
-
-            GUILayout.EndHorizontal();
-
-            if (i < route.Count - 1)
-                GUILayout.Space(3);
-        }
-
-        GUILayout.Space(6);
-        GUILayout.BeginHorizontal();
-        GUI.enabled = !isInAirport;
-        if (GUILayout.Button(Localization.T("world.return_airport"), sidebarBtnStyle, GUILayout.Height(24), GUILayout.Width(150)))
-        {
-            Utilities.ReturnToAirport();
-        }
-        GUI.enabled = true;
-        GUILayout.EndHorizontal();
 
         GUILayout.EndVertical();
 

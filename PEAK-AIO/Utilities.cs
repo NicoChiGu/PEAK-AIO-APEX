@@ -1586,24 +1586,22 @@ public static class Utilities
 
             if (vBiome != (Biome.BiomeType)(-1) && mh.BiomeIsPresent(vBiome))
             {
-                variantSeg = mh.GetVariantSegmentFromBiome((int)vBiome);
-                if (variantSeg != null) return true;
+                if (mh.variantSegments != null)
+                {
+                    for (int i = 0; i < mh.variantSegments.Length; i++)
+                    {
+                        var v = mh.variantSegments[i];
+                        if (v != null && v.biome == vBiome)
+                        {
+                            variantSeg = v;
+                            return true;
+                        }
+                    }
+                }
             }
         }
         catch { }
 
-        if (mh.variantSegments != null)
-        {
-            for (int i = 0; i < mh.variantSegments.Length; i++)
-            {
-                var v = mh.variantSegments[i];
-                if (v != null && mh.BiomeIsPresent(v.biome))
-                {
-                    variantSeg = v;
-                    return true;
-                }
-            }
-        }
         return false;
     }
 
@@ -1840,23 +1838,43 @@ public static class Utilities
 
                 Physics.SyncTransforms();
 
+                // 候选 0：海滩起点专属优先判定
+                if (segIdx == 0 && SpawnPoint.LocalSpawnPoint != null && SpawnPoint.LocalSpawnPoint.transform.position.sqrMagnitude > 1f)
+                {
+                    rawPos = SpawnPoint.LocalSpawnPoint.transform.position;
+                    foundPos = true;
+                }
+
                 // 候选 1：生效变体段落的 reconnectSpawnPos
-                if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
+                if (!foundPos && activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
                 {
                     rawPos = activeSeg.reconnectSpawnPos.position;
                     foundPos = true;
                 }
-                // 候选 2：生效变体段落的营火位置
-                if (!foundPos && activeSeg.segmentCampfire != null)
+
+                // 候选 2：基础段落的 reconnectSpawnPos
+                if (!foundPos && seg.reconnectSpawnPos != null && seg.reconnectSpawnPos.position.sqrMagnitude > 1f && seg.reconnectSpawnPos.position.y > -50f)
                 {
-                    Campfire cf = activeSeg.segmentCampfire.GetComponentInChildren<Campfire>(true);
-                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
+                    rawPos = seg.reconnectSpawnPos.position;
+                    foundPos = true;
+                }
+
+                // 候选 3：MountainProgressHandler 权威进度点 Transform
+                if (!foundPos && MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.progressPoints != null)
+                {
+                    var points = MountainProgressHandler.Instance.progressPoints;
+                    if (segIdx >= 0 && segIdx < points.Length && points[segIdx] != null && points[segIdx].transform != null)
                     {
-                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
-                        foundPos = true;
+                        var ptTf = points[segIdx].transform;
+                        if (ptTf.position.sqrMagnitude > 1f && ptTf.position.y > -50f)
+                        {
+                            rawPos = ptTf.position;
+                            foundPos = true;
+                        }
                     }
                 }
-                // 候选 2.5：核心解决 Caldera（第 4 关）无常规营火：自动定位 RespawnChest 石雕像（官方基地标志）
+
+                // 候选 4：RespawnChest 石雕像（Caldera 等段落的重生标志）
                 if (!foundPos && activeSeg.segmentParent != null)
                 {
                     RespawnChest chest = activeSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
@@ -1866,23 +1884,6 @@ public static class Utilities
                         foundPos = true;
                     }
                 }
-                // 候选 3：基础段落的 reconnectSpawnPos
-                if (!foundPos && seg.reconnectSpawnPos != null && seg.reconnectSpawnPos.position.sqrMagnitude > 1f && seg.reconnectSpawnPos.position.y > -50f)
-                {
-                    rawPos = seg.reconnectSpawnPos.position;
-                    foundPos = true;
-                }
-                // 候选 4：基础段落的营火位置
-                if (!foundPos && seg.segmentCampfire != null)
-                {
-                    Campfire cf = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
-                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
-                    {
-                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
-                        foundPos = true;
-                    }
-                }
-                // 候选 4.5：基础段落下的 RespawnChest
                 if (!foundPos && seg.segmentParent != null)
                 {
                     RespawnChest chest = seg.segmentParent.GetComponentInChildren<RespawnChest>(true);
@@ -1892,11 +1893,25 @@ public static class Utilities
                         foundPos = true;
                     }
                 }
-                // 候选 5：海滩初生点
-                if (!foundPos && segIdx == 0 && SpawnPoint.LocalSpawnPoint != null)
+
+                // 候选 5（最后兜底）：段落营火位置
+                if (!foundPos && activeSeg.segmentCampfire != null)
                 {
-                    rawPos = SpawnPoint.LocalSpawnPoint.transform.position;
-                    foundPos = true;
+                    Campfire cf = activeSeg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
+                    {
+                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
+                }
+                if (!foundPos && seg.segmentCampfire != null)
+                {
+                    Campfire cf = seg.segmentCampfire.GetComponentInChildren<Campfire>(true);
+                    if (cf != null && cf.transform.position.sqrMagnitude > 1f && cf.transform.position.y > -50f)
+                    {
+                        rawPos = cf.transform.position + cf.transform.forward * 1.5f;
+                        foundPos = true;
+                    }
                 }
             }
         }
@@ -2271,7 +2286,8 @@ public static class Utilities
 
     public static Campfire GetSegmentCampfire(int segmentIndex)
     {
-        if (segmentIndex < 0 || segmentIndex >= 5)
+        // 只有 0..3 段落（Beach, Tropics, Alpine, Caldera）可能存在营火，熔炉与山顶绝无营火
+        if (segmentIndex < 0 || segmentIndex >= 4)
             return null;
 
         if (s_CachedCampfires[segmentIndex] != null && s_CachedCampfires[segmentIndex].gameObject != null)
@@ -2612,7 +2628,7 @@ public static class Utilities
                 }
             }
 
-            // 1.5. 检查是否在 The Kiln 窑炉
+            // 1.5. 检查是否在 The Kiln 熔炉
             if (officialSeg == Segment.TheKiln)
             {
                 return Segment.TheKiln;
@@ -2626,10 +2642,10 @@ public static class Utilities
                 }
             }
 
-            // 2. 检查玩家是否正站在某个营火附近（12m内）
+            // 2. 检查玩家是否正站在某个营火附近（15m内），营火点燃则已迈入下一区域
             for (int i = 0; i < 4; i++)
             {
-                if (IsPlayerNearCampfire(i, 12f))
+                if (IsPlayerNearCampfire(i, 15f))
                 {
                     if (IsCampfireLit(i))
                     {
@@ -2639,33 +2655,13 @@ public static class Utilities
                 }
             }
 
-            // 3. 基于各段落物理海拔（由高至低：4 -> 0）逐级比对实际 Y 坐标
-            if (mh.segments != null && mh.segments.Length > 0)
+            // 3. 参考 MountainProgressHandler 达到的权威最大里程碑
+            if (MountainProgressHandler.Instance != null)
             {
-                for (int i = mh.segments.Length - 1; i >= 0; i--)
+                int maxProgress = MountainProgressHandler.Instance.maxProgressPointReached;
+                if (maxProgress > (int)officialSeg && maxProgress <= (int)Segment.Peak)
                 {
-                    var seg = mh.segments[i];
-                    if (seg != null)
-                    {
-                        Transform spawnTf = seg.reconnectSpawnPos;
-                        MapHandler.MapSegment vSeg;
-                        if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
-                        {
-                            spawnTf = vSeg.reconnectSpawnPos;
-                        }
-
-                        if (spawnTf != null)
-                        {
-                            float spawnY = spawnTf.position.y;
-                            if (i == 0 || spawnY > 5f)
-                            {
-                                if (pPos.y >= spawnY - 5f)
-                                {
-                                    return (Segment)i;
-                                }
-                            }
-                        }
-                    }
+                    return (Segment)maxProgress;
                 }
             }
 
@@ -2717,6 +2713,9 @@ public static class Utilities
                 name = GetBiomeDisplayName((Biome.BiomeType)(-1), defaultSegments[i]);
             }
 
+            // 仅前三关（Beach, Tropics, Alpine）默认必然有营火；Caldera 绝大部分无营火；熔炉与山顶绝无营火
+            bool hasCamp = (i < 3);
+
             route.Add(new RouteSegmentInfo
             {
                 level = i + 1,
@@ -2724,7 +2723,7 @@ public static class Utilities
                 biomeType = (Biome.BiomeType)(-1),
                 displayName = name,
                 isCurrent = (i == 0),
-                hasCampfire = (i < 5),
+                hasCampfire = hasCamp,
                 altitude = 0f,
                 isAtCampfire = false
             });
@@ -2750,60 +2749,88 @@ public static class Utilities
             Segment seg = defaultSegments[i];
             Biome.BiomeType bt = (Biome.BiomeType)(-1);
             float altitude = 0f;
+            string displayName = "";
+            bool hasCamp = false;
 
-            if (mapExists && mh.biomes != null && i < mh.biomes.Count)
+            if (i == 4)
             {
-                bt = mh.biomes[i];
-            }
-
-            if (mapExists && mh.segments != null && i < mh.segments.Length)
-            {
-                var mapSeg = mh.segments[i];
-                if (mapSeg != null)
-                {
-                    if (bt == (Biome.BiomeType)(-1))
-                    {
-                        try
-                        {
-                            bt = mapSeg.biome;
-                        }
-                        catch { }
-                    }
-
-                    Transform spawnTf = mapSeg.reconnectSpawnPos;
-                    MapHandler.MapSegment vSeg;
-                    if (TryGetVariantSegment(mh, mapSeg, out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
-                    {
-                        spawnTf = vSeg.reconnectSpawnPos;
-                    }
-
-                    if (spawnTf != null)
-                    {
-                        altitude = spawnTf.position.y;
-                    }
-                }
-            }
-            else if (i == 4)
-            {
+                // Level 5: The Kiln (熔炉) - 绝无营火，独立重生点
+                seg = Segment.TheKiln;
                 bt = (Biome.BiomeType)(-1);
+                displayName = Localization.T("world.segment_thekiln");
+                hasCamp = false;
                 Transform kilnRespawn = GetRespawnTheKiln(mh);
                 if (mapExists && kilnRespawn != null)
                 {
                     altitude = kilnRespawn.position.y;
                 }
+                else if (mapExists && mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
+                {
+                    altitude = mh.segments[4].reconnectSpawnPos.position.y;
+                }
             }
             else if (i == 5)
             {
+                // Level 6: The Peak (顶峰) - 绝无营火，停机坪安全点
+                seg = Segment.Peak;
                 bt = Biome.BiomeType.Peak;
+                displayName = Localization.T("world.segment_peak");
+                hasCamp = false;
                 if (mapExists && mh.respawnThePeak != null)
                 {
                     altitude = mh.respawnThePeak.position.y;
                 }
             }
+            else
+            {
+                // Level 1..4: Beach, Tropics, Alpine, Caldera
+                if (mapExists && mh.biomes != null && i < mh.biomes.Count)
+                {
+                    bt = mh.biomes[i];
+                }
 
-            string displayName = GetBiomeDisplayName(bt, seg);
+                if (mapExists && mh.segments != null && i < mh.segments.Length)
+                {
+                    var mapSeg = mh.segments[i];
+                    if (mapSeg != null)
+                    {
+                        if (bt == (Biome.BiomeType)(-1))
+                        {
+                            try
+                            {
+                                bt = mapSeg.biome;
+                            }
+                            catch { }
+                        }
+
+                        Transform spawnTf = mapSeg.reconnectSpawnPos;
+                        MapHandler.MapSegment vSeg;
+                        if (TryGetVariantSegment(mh, mapSeg, out vSeg) && vSeg != null && vSeg.reconnectSpawnPos != null)
+                        {
+                            spawnTf = vSeg.reconnectSpawnPos;
+                        }
+
+                        if (spawnTf != null)
+                        {
+                            altitude = spawnTf.position.y;
+                        }
+                    }
+                }
+
+                // 若为第 4 关沼泽（当天轮换 BiomeID 第 4 位为 'S'）
+                if (i == 3 && !string.IsNullOrEmpty(WorldDataCache.todayBiomeID) && WorldDataCache.todayBiomeID.Length > 3 && char.ToUpper(WorldDataCache.todayBiomeID[3]) == 'S')
+                {
+                    displayName = Localization.T("world.segment_swamp");
+                }
+                else
+                {
+                    displayName = GetBiomeDisplayName(bt, seg);
+                }
+
+                hasCamp = (i < 3) || (i == 3 && GetSegmentCampfire(3) != null);
+            }
+
             bool isCurrent = mapExists && (currentSeg == seg);
-            bool hasCamp = (i < 3) || (i == 3 && GetSegmentCampfire(3) != null);
             bool isAtCamp = hasCamp && isCurrent && IsPlayerNearCampfire(i, 12f);
             bool isCampLit = hasCamp && IsCampfireLit(i);
 
@@ -2824,6 +2851,25 @@ public static class Utilities
         return route;
     }
 
+    public static bool IsInAirport()
+    {
+        try
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (scene != null && !string.IsNullOrEmpty(scene.name) && string.Equals(scene.name, "Airport", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        catch { }
+
+        if (!GameHandler.IsOnIsland)
+            return true;
+
+        if (!MapHandler.Exists || MapHandler.Instance == null)
+            return true;
+
+        return false;
+    }
+
     public static class WorldDataCache
     {
         public static Segment currentSegment = Segment.Beach;
@@ -2835,6 +2881,14 @@ public static class Utilities
         public static int currentLevelNumber = 1;
         public static int nextLevelNumber = 2;
         public static bool isInAirport = true;
+
+        public static bool hasDeterminedRoute
+        {
+            get
+            {
+                return !isInAirport && route != null && route.Count == 6;
+            }
+        }
 
         // Custom Map & Playlist Support
         public static bool isCustomScene = false;
@@ -2922,7 +2976,7 @@ public static class Utilities
 
         private static void UpdateCacheInternal()
         {
-            isInAirport = (!MapHandler.Exists || MapHandler.Instance == null);
+            isInAirport = IsInAirport();
 
             var baker = SingletonAsset<MapBaker>.Instance;
             int customMapIdx = -1;
@@ -3441,11 +3495,6 @@ public static class Utilities
                             if (seg.wallPrevious != null && !seg.wallPrevious.activeSelf)
                                 seg.wallPrevious.SetActive(true);
                         }
-                    }
-
-                    if (Photon.Pun.PhotonNetwork.IsMasterClient && (int)MapHandler.CurrentSegmentNumber != segIdx)
-                    {
-                        try { MapHandler.JumpToSegment(segment); } catch { }
                     }
 
                     TeleportToCampfire(segIdx);

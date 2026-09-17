@@ -1151,6 +1151,14 @@ public static class Localization
             { Language.Korean, "항로 계획 완료. 섬 도착 후 구역 및 모닥불 진행 상황을 실시간 추적합니다." },
             { Language.Italian, "Rotta pianificata. Il monitoraggio in tempo reale si attiverà sull'isola." }
         }},
+        { "world.airport_teleport_hidden_hint", new Dictionary<Language, string> {
+            { Language.English, "Campfire teleportation and region jump controls will be available after entering the island and confirming the route." },
+            { Language.SimplifiedChinese, "进入海岛并确认路线后将开放营火传送与区域跳转功能。" },
+            { Language.TraditionalChinese, "進入海島並確認路線後將開放營火傳送與區域跳轉功能。" },
+            { Language.Japanese, "島に入りルートが確定すると、キャンプファイヤー転送とエリアジャンプが利用可能になります。" },
+            { Language.Korean, "섬에 진입하여 경로가 확정되면 모닥불 텔레포트 및 구역 이동 기능이 활성화됩니다." },
+            { Language.Italian, "Il teletrasporto ai falò e il salto di zona saranno disponibili dopo l'accesso all'isola e la conferma del percorso." }
+        }},
         { "world.current_node_tag", new Dictionary<Language, string> {
             { Language.English, "HERE" },
             { Language.SimplifiedChinese, "当前" },
