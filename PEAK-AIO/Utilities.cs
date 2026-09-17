@@ -4760,16 +4760,47 @@ public static class Utilities
                             ghostObj.transform.localScale = Vector3.one * s;
 
                             var pg = ghostObj.GetComponent<PlayerGhost>();
-                            if (pg != null && targetChar != null && targetChar.refs != null && targetChar.refs.view != null)
+                            if (pg != null)
                             {
-                                try
+                                // Ensure all ghost mesh/customization renderers are visible
+                                if (pg.PlayerRenderers != null)
                                 {
-                                    pg.m_view.RPC("RPCA_SetTarget", Photon.Pun.RpcTarget.All, new object[] { targetChar.refs.view });
+                                    for (int r = 0; r < pg.PlayerRenderers.Length; r++)
+                                    {
+                                        if (pg.PlayerRenderers[r] != null)
+                                        {
+                                            pg.PlayerRenderers[r].enabled = true;
+                                            try
+                                            {
+                                                pg.PlayerRenderers[r].material.SetColor("_PlayerColor", new Color(0.35f, 0.75f, 1f, 0.9f));
+                                            }
+                                            catch { }
+                                        }
+                                    }
                                 }
-                                catch (Exception ex)
+                                if (pg.EyeRenderers != null)
                                 {
-                                    if (Logger != null)
-                                        Logger.LogError("[Creatures] PlayerGhost target set error: " + ex);
+                                    for (int e = 0; e < pg.EyeRenderers.Length; e++)
+                                    {
+                                        if (pg.EyeRenderers[e] != null)
+                                            pg.EyeRenderers[e].enabled = true;
+                                    }
+                                }
+                                if (pg.mouthRenderer != null) pg.mouthRenderer.enabled = true;
+                                if (pg.accessoryRenderer != null) pg.accessoryRenderer.enabled = true;
+
+                                // Set target across network
+                                if (targetChar != null && targetChar.refs != null && targetChar.refs.view != null)
+                                {
+                                    try
+                                    {
+                                        pg.m_view.RPC("RPCA_SetTarget", Photon.Pun.RpcTarget.All, new object[] { targetChar.refs.view });
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        if (Logger != null)
+                                            Logger.LogError("[Creatures] PlayerGhost target set error: " + ex);
+                                    }
                                 }
                             }
                         }
@@ -4783,21 +4814,29 @@ public static class Utilities
                         {
                             var character = zombieObj.GetComponent<Character>();
                             if (character != null)
+                            {
                                 character.data.spawnPoint = zombieObj.transform;
+                                character.data.passedOut = false;
+                                character.data.fallSeconds = 0f;
+                            }
 
                             var mz = zombieObj.GetComponent<MushroomZombie>();
-                            if (mz != null && targetChar != null)
+                            if (mz != null)
                             {
-                                mz.currentTarget = targetChar;
-                                try
+                                mz.currentState = MushroomZombie.State.WakingUp;
+                                if (targetChar != null)
                                 {
-                                    var method = typeof(MushroomZombie).GetMethod("SetCurrentTarget", BindingFlags.Instance | BindingFlags.NonPublic);
-                                    if (method != null)
+                                    mz.currentTarget = targetChar;
+                                    try
                                     {
-                                        method.Invoke(mz, new object[] { targetChar, 9999f });
+                                        var method = typeof(MushroomZombie).GetMethod("SetCurrentTarget", BindingFlags.Instance | BindingFlags.NonPublic);
+                                        if (method != null)
+                                        {
+                                            method.Invoke(mz, new object[] { targetChar, 9999f });
+                                        }
                                     }
+                                    catch { }
                                 }
-                                catch { }
                             }
                         }
                         break;
@@ -4805,13 +4844,29 @@ public static class Utilities
 
                     case Globals.CreatureType.Scorpion:
                     {
-                        PhotonNetwork.Instantiate("0_Items/Scorpion", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        GameObject scorpObj = PhotonNetwork.Instantiate("0_Items/Scorpion", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        if (scorpObj != null && targetChar != null)
+                        {
+                            var mob = scorpObj.GetComponent<Mob>();
+                            if (mob != null)
+                            {
+                                mob.SetForcedTarget(targetChar);
+                            }
+                        }
                         break;
                     }
 
                     case Globals.CreatureType.Beetle:
                     {
-                        PhotonNetwork.Instantiate("0_Items/Beetle", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        GameObject beetleObj = PhotonNetwork.Instantiate("0_Items/Beetle", spawnPos + Vector3.up * 0.2f, Quaternion.identity, 0, null);
+                        if (beetleObj != null && targetChar != null)
+                        {
+                            var mob = beetleObj.GetComponent<Mob>();
+                            if (mob != null)
+                            {
+                                mob.SetForcedTarget(targetChar);
+                            }
+                        }
                         break;
                     }
 
@@ -4823,7 +4878,11 @@ public static class Utilities
                             var beehive = hiveObj.GetComponent<Beehive>();
                             if (beehive != null && beehive.currentBees != null && beehive.currentBees.photonView != null)
                             {
-                                beehive.currentBees.photonView.SafeRPC("SetBeesAngryRPC", Photon.Pun.RpcTarget.All, true);
+                                beehive.currentBees.photonView.RPC("SetBeesAngryRPC", Photon.Pun.RpcTarget.AllBuffered, new object[] { true });
+                                if (targetChar != null)
+                                {
+                                    beehive.currentBees.currentAggroCharacter = targetChar;
+                                }
                             }
                         }
                         break;

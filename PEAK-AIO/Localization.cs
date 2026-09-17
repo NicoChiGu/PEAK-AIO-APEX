@@ -1676,36 +1676,36 @@ public static class Localization
             { Language.Italian, "Seleziona Tipo Creatura" }
         }},
         { "creatures.type.scoutmaster", new Dictionary<Language, string> {
-            { Language.English, "Scoutmaster (Boss / Big Ghost)" },
-            { Language.SimplifiedChinese, "教官 (Scoutmaster / 大幽灵)" },
-            { Language.TraditionalChinese, "教官 (Scoutmaster / 大幽靈)" },
-            { Language.Japanese, "スカウトマスター (教官/大幽霊)" },
-            { Language.Korean, "스카우트마스터 (교관/대형 유령)" },
-            { Language.Italian, "Scoutmaster (Boss / Grande Spettro)" }
+            { Language.English, "Scoutmaster (Shadow Boss)" },
+            { Language.SimplifiedChinese, "教官 BOSS (Scoutmaster / 迷雾黑影)" },
+            { Language.TraditionalChinese, "教官 BOSS (Scoutmaster / 迷霧黑影)" },
+            { Language.Japanese, "スカウトマスター (影のボス)" },
+            { Language.Korean, "스카우트마스터 (그림자 보스)" },
+            { Language.Italian, "Scoutmaster (Boss Ombra)" }
         }},
         { "creatures.type.scoutmaster_desc", new Dictionary<Language, string> {
             { Language.English, "The menacing shadow boss. Stalks, teleports, grabs players and violently hurls them off cliffs." },
-            { Language.SimplifiedChinese, "令人胆寒的黑影向导Boss。能瞬移追踪、抓取队员并残暴地抛下万丈悬崖。" },
-            { Language.TraditionalChinese, "令人膽寒的黑影嚮導Boss。能瞬移追蹤、抓取隊員並殘暴地拋下萬丈懸崖。" },
+            { Language.SimplifiedChinese, "令人胆寒的黑影教官Boss。能瞬移追踪、抓取队员并残暴地抛下万丈悬崖。" },
+            { Language.TraditionalChinese, "令人膽寒的黑影教官Boss。能瞬移追蹤、抓取隊員並殘暴地拋下萬丈懸崖。" },
             { Language.Japanese, "不気味な黒い影のボス。テレポート追跡し、プレイヤーを掴んで崖下へ投げ飛ばします。" },
             { Language.Korean, "공포스러운 그림자 보스. 순간이동으로 추적하고 플레이어를 붙잡아 절벽 아래로 내던집니다." },
             { Language.Italian, "L'inquietante boss ombra. Insegue, teletrasporta, afferra i giocatori e li scaglia dai dirupi." }
         }},
         { "creatures.type.bigghost", new Dictionary<Language, string> {
-            { Language.English, "Player Ghost (Specter)" },
-            { Language.SimplifiedChinese, "玩家灵体 (Player Ghost)" },
-            { Language.TraditionalChinese, "玩家靈體 (Player Ghost)" },
-            { Language.Japanese, "プレイヤーゴースト (霊体)" },
-            { Language.Korean, "플레이어 고스트 (영체)" },
-            { Language.Italian, "Fantasma Giocatore (Spettro)" }
+            { Language.English, "Big Ghost (Player Specter)" },
+            { Language.SimplifiedChinese, "大幽灵 (Big Ghost / 游荡虚影)" },
+            { Language.TraditionalChinese, "大幽靈 (Big Ghost / 游盪虛影)" },
+            { Language.Japanese, "ビッグゴースト (大幽霊 / 彷徨う霊体)" },
+            { Language.Korean, "빅 고스트 (대형 유령 / 방황하는 영체)" },
+            { Language.Italian, "Grande Spettro (Big Ghost)" }
         }},
         { "creatures.type.bigghost_desc", new Dictionary<Language, string> {
-            { Language.English, "Ethereal floating specter. Supports custom size scaling (up to 5x Big Ghost) and target following." },
-            { Language.SimplifiedChinese, "半透明漂浮幽灵。支持自定义体型倍率缩放（可达5倍大幽灵）并跟随目标。" },
-            { Language.TraditionalChinese, "半透明漂浮幽靈。支援自訂體型倍率縮放（可達5倍大幽靈）並跟隨目標。" },
-            { Language.Japanese, "浮遊する霊体。最大5倍までのサイズ拡大とターゲット追尾をサポート。" },
-            { Language.Korean, "떠다니는 반투명 영체. 최대 5배 거대 유령 크기 조절 및 대상 추적 지원." },
-            { Language.Italian, "Spettro etereo fluttuante. Supporta la scala dimensionale (fino a 5x) e l'inseguimento del bersaglio." }
+            { Language.English, "Ethereal floating big specter. Supports custom size scaling (up to 5x Big Ghost) and active target following." },
+            { Language.SimplifiedChinese, "半透明漂浮的巨大幽灵。支持自定义体型倍率缩放（可达5倍大幽灵）与动态目标跟随悬浮。" },
+            { Language.TraditionalChinese, "半透明漂浮的巨大幽靈。支援自訂體型倍率縮放（可達5倍大幽靈）與動態目標跟隨懸浮。" },
+            { Language.Japanese, "巨大な半透明の浮遊霊。最大5倍までのサイズ拡大とアクティブなターゲット追従をサポート。" },
+            { Language.Korean, "반투명 거대 부유 유령. 최대 5배 거대 유령 크기 조절 및 대상 역동적 추적 지원." },
+            { Language.Italian, "Grande spettro etereo fluttuante. Supporta la scala dimensionale (fino a 5x) e l'inseguimento del bersaglio." }
         }},
         { "creatures.type.zombie", new Dictionary<Language, string> {
             { Language.English, "Mushroom Zombie" },
@@ -1715,7 +1715,23 @@ public static class Localization
             { Language.Korean, "버섯 좀비" },
             { Language.Italian, "Zombie Fungino" }
         }},
+        { "creatures.type.mushroomzombie", new Dictionary<Language, string> {
+            { Language.English, "Mushroom Zombie" },
+            { Language.SimplifiedChinese, "真菌丧尸 (Mushroom Zombie)" },
+            { Language.TraditionalChinese, "真菌喪屍 (Mushroom Zombie)" },
+            { Language.Japanese, "キノコゾンビ" },
+            { Language.Korean, "버섯 좀비" },
+            { Language.Italian, "Zombie Fungino" }
+        }},
         { "creatures.type.zombie_desc", new Dictionary<Language, string> {
+            { Language.English, "Fungal-infected crawler that wakes from slumber, lunges, bites and spreads spore madness." },
+            { Language.SimplifiedChinese, "真菌寄生丧尸。能苏醒突袭、飞扑撕咬攀登者并传播孢子感染。" },
+            { Language.TraditionalChinese, "真菌寄生喪屍。能甦醒突襲、飛撲撕咬攀登者並傳播孢子感染。" },
+            { Language.Japanese, "キノコに寄生されたゾンビ。跳躍して噛みつき、胞子感染を広げます。" },
+            { Language.Korean, "버섯에 기생당한 좀비. 도약하여 생존자를 물어뜯고 포자를 퍼뜨립니다." },
+            { Language.Italian, "Zombie parassitato dai funghi. Balza, morde i sopravvissuti e diffonde spore." }
+        }},
+        { "creatures.type.mushroomzombie_desc", new Dictionary<Language, string> {
             { Language.English, "Fungal-infected crawler that wakes from slumber, lunges, bites and spreads spore madness." },
             { Language.SimplifiedChinese, "真菌寄生丧尸。能苏醒突袭、飞扑撕咬攀登者并传播孢子感染。" },
             { Language.TraditionalChinese, "真菌寄生喪屍。能甦醒突襲、飛撲撕咬攀登者並傳播孢子感染。" },
@@ -1732,44 +1748,60 @@ public static class Localization
             { Language.Italian, "Scorpione del Deserto" }
         }},
         { "creatures.type.scorpion_desc", new Dictionary<Language, string> {
-            { Language.English, "Deadly desert arachnid. Attacks players, inflicts poison, but can also be caught, held, or cooked and eaten!" },
-            { Language.SimplifiedChinese, "致命荒漠毒虫。会攻击施加剧毒，但也可被玩家捡入背包、手持或在篝火上烤熟食用！" },
-            { Language.TraditionalChinese, "致命荒漠毒蟲。會攻擊施加劇毒，但也可被玩家撿入背包、手持或在篝火上烤熟食用！" },
-            { Language.Japanese, "危険な毒サソリ。攻撃して毒を与えますが、拾って調理し食べることも可能！" },
-            { Language.Korean, "치명적인 사막 전갈. 중독 공격을 가하지만, 가방에 줍거나 모닥불에 구워 먹을 수도 있습니다!" },
-            { Language.Italian, "Aracnide velenoso del deserto. Avvelena i giocatori, ma può essere raccolto, cotto e mangiato!" }
+            { Language.English, "Deadly desert arachnid. Aggressive, scuttles toward targets, inflicts lethal poison and paralyzing stings." },
+            { Language.SimplifiedChinese, "致命沙漠毒蝎。具有高主动攻击性，追逐目标施加剧毒与麻痹蜇刺。" },
+            { Language.TraditionalChinese, "致命沙漠毒蠍。具有高主動攻擊性，追逐目標施加劇毒與麻痺螫刺。" },
+            { Language.Japanese, "猛毒のサソリ。アグレッシブに接近し、麻痺と毒の針で攻撃します。" },
+            { Language.Korean, "치명적인 사막 전갈. 공격성이 높아 목표를 추적해 치명적인 독침으로 마비시킵니다." },
+            { Language.Italian, "Pericoloso scorpione. Aggressivo, scatta verso il bersaglio e infligge veleno paralizzante." }
         }},
         { "creatures.type.beetle", new Dictionary<Language, string> {
-            { Language.English, "Giant Beetle (Mob & Item)" },
-            { Language.SimplifiedChinese, "巨型甲虫 (Giant Beetle)" },
-            { Language.TraditionalChinese, "巨型甲蟲 (Giant Beetle)" },
-            { Language.Japanese, "巨大カブトムシ" },
-            { Language.Korean, "거대 딱정벌레" },
-            { Language.Italian, "Scarabeo Gigante" }
+            { Language.English, "Heavy Beetle (Ramming)" },
+            { Language.SimplifiedChinese, "重甲巨甲虫 (Heavy Beetle)" },
+            { Language.TraditionalChinese, "重甲巨甲蟲 (Heavy Beetle)" },
+            { Language.Japanese, "ヘビービートル (突進甲虫)" },
+            { Language.Korean, "헤비 비틀 (돌진 갑충)" },
+            { Language.Italian, "Scarabeo Corazzato" }
         }},
         { "creatures.type.beetle_desc", new Dictionary<Language, string> {
-            { Language.English, "Heavily armored insect that rams into players with massive knockback force." },
-            { Language.SimplifiedChinese, "重装重壳甲虫。会以巨大冲击力将玩家击飞出数米远。" },
-            { Language.TraditionalChinese, "重裝重殼甲蟲。會以巨大衝擊力將玩家擊飛出數米遠。" },
-            { Language.Japanese, "重装甲の昆虫。強力なノックバック衝撃でプレイヤーを吹き飛ばします。" },
-            { Language.Korean, "단단한 갑각을 지닌 곤충. 거대한 넉백 힘으로 플레이어를 날려버립니다." },
-            { Language.Italian, "Insetto corazzato che carica i giocatori respingendoli con forza devastante." }
+            { Language.English, "Armored tank beetle. Locks onto climbers and initiates unstoppable head-on charges." },
+            { Language.SimplifiedChinese, "坚甲坦克型巨甲虫。锁定攀登者后发动势不可挡的高速冲撞击飞。" },
+            { Language.TraditionalChinese, "堅甲坦克型巨甲蟲。鎖定攀登者後發動勢不可擋的高速衝撞擊飛。" },
+            { Language.Japanese, "重装甲のビートル。突進してプレイヤーを吹き飛ばします。" },
+            { Language.Korean, "중갑 장갑 갑충. 플레이어를 겨냥해 무자비한 고속 돌진으로 날려버립니다." },
+            { Language.Italian, "Scarabeo pesante e corazzato. Carica a testa bassa spazzando via i giocatori." }
         }},
         { "creatures.type.bees", new Dictionary<Language, string> {
-            { Language.English, "Killer Bee Swarm (Beehive)" },
-            { Language.SimplifiedChinese, "杀人蜂群 (Killer Bees)" },
-            { Language.TraditionalChinese, "殺人蜂群 (Killer Bees)" },
-            { Language.Japanese, "キラービーの群れ" },
-            { Language.Korean, "살인벌 떼" },
-            { Language.Italian, "Sciame di Vespe Assassine" }
+            { Language.English, "Angry Bee Swarm" },
+            { Language.SimplifiedChinese, "狂怒狂蜂群 (Bee Swarm)" },
+            { Language.TraditionalChinese, "狂怒狂蜂群 (Bee Swarm)" },
+            { Language.Japanese, "狂暴な蜂の群れ" },
+            { Language.Korean, "분노한 벌 떼" },
+            { Language.Italian, "Sciame di Vespe Furiose" }
+        }},
+        { "creatures.type.beeswarm", new Dictionary<Language, string> {
+            { Language.English, "Angry Bee Swarm" },
+            { Language.SimplifiedChinese, "狂怒狂蜂群 (Bee Swarm)" },
+            { Language.TraditionalChinese, "狂怒狂蜂群 (Bee Swarm)" },
+            { Language.Japanese, "狂暴な蜂の群れ" },
+            { Language.Korean, "분노한 벌 떼" },
+            { Language.Italian, "Sciame di Vespe Furiose" }
         }},
         { "creatures.type.bees_desc", new Dictionary<Language, string> {
-            { Language.English, "Spawns an active wild beehive that unleashes a raging swarm buzzing after all survivors." },
-            { Language.SimplifiedChinese, "生成野外蜂巢并释放暴怒蜂群，嗡鸣追击周围所有攀登者。" },
-            { Language.TraditionalChinese, "生成野外蜂巢並釋放暴怒蜂群，嗡鳴追擊周圍所有攀登者。" },
-            { Language.Japanese, "野生の蜂の巣を生成し、激怒した蜂の群れがサバイバーを追跡します。" },
-            { Language.Korean, "야생 벌집을 생성하고 성난 벌 떼를 풀어 주변의 모든 생존자를 공격합니다." },
-            { Language.Italian, "Genera un alveare selvatico che rilascia uno sciame infuriato contro i superstiti." }
+            { Language.English, "Furious hive entity. Relentlessly swarms, continuously stings and pursues climbers until dispersed." },
+            { Language.SimplifiedChinese, "狂暴蜂群实体。全方位包围叮咬目标并造成持续刺痛伤害与视线干扰。" },
+            { Language.TraditionalChinese, "狂暴蜂群實體。全方位包圍叮咬目標並造成持續刺痛傷害與視線干擾。" },
+            { Language.Japanese, "怒り狂う蜂の群れ。標的を包囲して執拗に刺し、持続ダメージを与えます。" },
+            { Language.Korean, "분노에 찬 벌 떼. 대상을 집요하게 둘러싸며 지속적인 침 공격과 시야 방해를 가합니다." },
+            { Language.Italian, "Sciame furioso. Circonda il bersaglio e lo punge incessantemente fino alla fuga." }
+        }},
+        { "creatures.type.beeswarm_desc", new Dictionary<Language, string> {
+            { Language.English, "Furious hive entity. Relentlessly swarms, continuously stings and pursues climbers until dispersed." },
+            { Language.SimplifiedChinese, "狂暴蜂群实体。全方位包围叮咬目标并造成持续刺痛伤害与视线干扰。" },
+            { Language.TraditionalChinese, "狂暴蜂群實體。全方位包圍叮咬目標並造成持續刺痛傷害与視線干擾。" },
+            { Language.Japanese, "怒り狂う蜂の群れ。標的を包囲して執拗に刺し、持続ダメージを与えます。" },
+            { Language.Korean, "분노에 찬 벌 떼. 대상을 집요하게 둘러싸며 지속적인 침 공격과 시야 방해를 가합니다." },
+            { Language.Italian, "Sciame furioso. Circonda il bersaglio e lo punge incessantemente fino alla fuga." }
         }},
         { "creatures.spawn_anchor", new Dictionary<Language, string> {
             { Language.English, "Spawn Reference Anchor" },

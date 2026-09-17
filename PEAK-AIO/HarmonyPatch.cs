@@ -821,9 +821,11 @@ public static class Patch_PlayerGhost_Update
                 }
 
                 // 2. Billboard face towards main camera
-                if (MainCamera.instance != null && MainCamera.instance.cam != null)
+                Camera mainCam = Camera.main;
+                Vector3 camPos = mainCam != null ? mainCam.transform.position : (MainCamera.instance != null ? MainCamera.instance.transform.position : Vector3.zero);
+                if (camPos != Vector3.zero)
                 {
-                    Vector3 lookDir = MainCamera.instance.cam.transform.position - __instance.transform.position;
+                    Vector3 lookDir = camPos - __instance.transform.position;
                     if (lookDir.sqrMagnitude > 0.001f)
                     {
                         __instance.transform.rotation = Quaternion.LookRotation(lookDir);
