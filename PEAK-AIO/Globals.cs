@@ -78,6 +78,9 @@ public static class Globals
     public static List<Luggage> luggageObject = new List<Luggage>();
     public static List<Luggage> allOpenedLuggage = new List<Luggage>();
     public static int selectedSegment = 0;
+    public static int worldTargetPlayerIndex = -1; // -1: All players, >= 0: specific player in player list
+    public static string worldMapSceneName = "WilIsland";
+    public static int worldTargetSegment = 0;
 
     // Debug
     public static string debugSlotBuffer = "0";

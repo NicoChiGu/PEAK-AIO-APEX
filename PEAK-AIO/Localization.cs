@@ -1319,6 +1319,94 @@ public static class Localization
             { Language.Korean, "다음 구역 종점 모닥불로 (제 {0} 구역)" },
             { Language.Italian, "Al Falò dell'Area Successiva (Livello {0})" }
         }},
+        { "world.network_sync_title", new Dictionary<Language, string> {
+            { Language.English, "Map & Network Sync Dispatch" },
+            { Language.SimplifiedChinese, "地图与网络同步调度" },
+            { Language.TraditionalChinese, "地圖與網路同步調度" },
+            { Language.Japanese, "マップ＆ネットワーク同期" },
+            { Language.Korean, "맵 및 네트워크 동기화" },
+            { Language.Italian, "Sincronizzazione Mappa e Rete" }
+        }},
+        { "world.target_player", new Dictionary<Language, string> {
+            { Language.English, "Target Player:" },
+            { Language.SimplifiedChinese, "目标玩家:" },
+            { Language.TraditionalChinese, "目標玩家:" },
+            { Language.Japanese, "対象プレイヤー:" },
+            { Language.Korean, "대상 플레이어:" },
+            { Language.Italian, "Giocatore Bersaglio:" }
+        }},
+        { "world.all_players", new Dictionary<Language, string> {
+            { Language.English, "All Players (Broadcast)" },
+            { Language.SimplifiedChinese, "全员广播" },
+            { Language.TraditionalChinese, "全員廣播" },
+            { Language.Japanese, "全員（ブロードキャスト）" },
+            { Language.Korean, "전원 브로드캐스트" },
+            { Language.Italian, "Tutti i Giocatori (Broadcast)" }
+        }},
+        { "world.target_scene", new Dictionary<Language, string> {
+            { Language.English, "Map Scene:" },
+            { Language.SimplifiedChinese, "地图场景:" },
+            { Language.TraditionalChinese, "地圖場景:" },
+            { Language.Japanese, "マップシーン:" },
+            { Language.Korean, "맵 씬 이름:" },
+            { Language.Italian, "Scena Mappa:" }
+        }},
+        { "world.send_load_rpc", new Dictionary<Language, string> {
+            { Language.English, "Send Map Load RPC" },
+            { Language.SimplifiedChinese, "发送地图载入RPC" },
+            { Language.TraditionalChinese, "發送地圖載入RPC" },
+            { Language.Japanese, "マップ読込RPCを送信" },
+            { Language.Korean, "맵 로드 RPC 전송" },
+            { Language.Italian, "Invia RPC Carica Mappa" }
+        }},
+        { "world.force_sync_segment", new Dictionary<Language, string> {
+            { Language.English, "Force Sync Segment (Anti-Void)" },
+            { Language.SimplifiedChinese, "强制同步当前切片 (防虚空)" },
+            { Language.TraditionalChinese, "強制同步當前切片 (防虛空)" },
+            { Language.Japanese, "エリア同期＆虚空救出" },
+            { Language.Korean, "구역 강제 동기화 (허공 방지)" },
+            { Language.Italian, "Forza Sincronizzazione Area" }
+        }},
+        { "world.rpc_sent_success", new Dictionary<Language, string> {
+            { Language.English, "Notified [{0}] to load scene: {1}" },
+            { Language.SimplifiedChinese, "已通知 [{0}] 载入场景: {1}" },
+            { Language.TraditionalChinese, "已通知 [{0}] 載入場景: {1}" },
+            { Language.Japanese, "[{0}] にシーン読込を通知: {1}" },
+            { Language.Korean, "[{0}] 에게 씬 로드 통지: {1}" },
+            { Language.Italian, "Notificato a [{0}] di caricare: {1}" }
+        }},
+        { "world.sync_segment_success", new Dictionary<Language, string> {
+            { Language.English, "Synced segment {1} for [{0}] and pulled to safe ground" },
+            { Language.SimplifiedChinese, "已为 [{0}] 同步切片 {1} 并拉回安全地表" },
+            { Language.TraditionalChinese, "已為 [{0}] 同步切片 {1} 並拉回安全地表" },
+            { Language.Japanese, "[{0}] のエリア {1} を同期し安全地点へ移動" },
+            { Language.Korean, "[{0}] 의 {1} 구역을 동기화하고 안전 지대로 견인" },
+            { Language.Italian, "Sincronizzata area {1} per [{0}] e spostato a terra sicura" }
+        }},
+        { "world.player_host_tag", new Dictionary<Language, string> {
+            { Language.English, "Host" },
+            { Language.SimplifiedChinese, "房主" },
+            { Language.TraditionalChinese, "房主" },
+            { Language.Japanese, "ホスト" },
+            { Language.Korean, "호스트" },
+            { Language.Italian, "Host" }
+        }},
+        { "world.player_local_tag", new Dictionary<Language, string> {
+            { Language.English, "Self" },
+            { Language.SimplifiedChinese, "自己" },
+            { Language.TraditionalChinese, "自己" },
+            { Language.Japanese, "自分" },
+            { Language.Korean, "자신" },
+            { Language.Italian, "Te stesso" }
+        }},
+        { "world.quick_preset", new Dictionary<Language, string> {
+            { Language.English, "Presets:" },
+            { Language.SimplifiedChinese, "快捷场景:" },
+            { Language.TraditionalChinese, "快捷場景:" },
+            { Language.Japanese, "プリセット:" },
+            { Language.Korean, "프리셋:" },
+            { Language.Italian, "Preimpostazioni:" }
+        }},
 
         // Player afflictions
         { "player.clear_afflictions", new Dictionary<Language, string> {

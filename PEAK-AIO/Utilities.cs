@@ -1,7 +1,9 @@
 using BepInEx.Logging;
 using Photon.Pun;
+using Photon.Realtime;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using Zorro.Core;
@@ -2209,6 +2211,59 @@ public static class Utilities
         return rawPos + Vector3.up * 0.15f;
     }
 
+    private static bool IsInsideTombOrTrigger(Vector3 pos)
+    {
+        try
+        {
+            var tombTriggers = UnityEngine.Object.FindObjectsOfType<TombTrigger>();
+            if (tombTriggers != null)
+            {
+                foreach (var tt in tombTriggers)
+                {
+                    if (tt == null) continue;
+                    Collider col = tt.GetComponent<Collider>();
+                    if (col != null && col.bounds.Contains(pos))
+                        return true;
+                    if (Vector3.Distance(tt.transform.position, pos) < 35f)
+                        return true;
+                }
+            }
+            if (MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.tombProgressPoint != null)
+            {
+                var tPt = MountainProgressHandler.Instance.tombProgressPoint.transform;
+                if (tPt != null && Vector3.Distance(tPt.position, pos) < 45f)
+                    return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public static void TriggerPeakDayHeroTitle()
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.progressPoints != null && MountainProgressHandler.Instance.progressPoints.Length > 0)
+                {
+                    var peakPt = MountainProgressHandler.Instance.progressPoints.Last();
+                    if (peakPt != null)
+                    {
+                        peakPt.Reached = false;
+                        MountainProgressHandler.Instance.CheckProgress(true);
+                        MountainProgressHandler.Instance.TriggerReached(peakPt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogWarning("[PEAK AIO] TriggerPeakDayHeroTitle error: " + ex.Message);
+            }
+        });
+    }
+
     public static bool TryGetSegmentSpawnPosition(Segment segment, out Vector3 safePos)
     {
         safePos = Vector3.zero;
@@ -2222,7 +2277,7 @@ public static class Utilities
 
         if (segIdx >= 5) // Level 6: Peak
         {
-            // 1. 确保第 4 段地形及网格被激活
+            // 1. 确保第 4 段及第 5 段地形及网格被激活
             if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
             {
                 if (mh.segments[4].segmentParent != null && !mh.segments[4].segmentParent.activeSelf)
@@ -2243,24 +2298,39 @@ public static class Utilities
 
             Physics.SyncTransforms();
 
-            // 3. 优先取通关童子军站立点（绝对地表坚实网格）
-            if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.firstCutsceneScout != null)
+            // 3. 权威优先：定位至 MountainProgressHandler 顶峰检查点（登顶石阶入口，触发 PEAK - DAY X 仪式横幅）
+            if (MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.progressPoints != null && MountainProgressHandler.Instance.progressPoints.Length > 0)
+            {
+                var peakPoint = MountainProgressHandler.Instance.progressPoints.Last();
+                if (peakPoint != null && peakPoint.transform != null && peakPoint.transform.position.sqrMagnitude > 1f)
+                {
+                    Vector3 ptPos = peakPoint.transform.position;
+                    Vector3 fwd = peakPoint.transform.forward;
+                    if (fwd.sqrMagnitude < 0.05f) fwd = Vector3.forward;
+                    // 落脚在判定线前方约 1.8 米处的坚实石阶地面
+                    rawPos = ptPos - fwd * 1.8f;
+                    foundPos = true;
+                }
+            }
+
+            // 4. 次选：官方通关童子军站立点（绝对地表坚实网格）
+            if (!foundPos && Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.firstCutsceneScout != null)
             {
                 rawPos = Singleton<PeakHandler>.Instance.firstCutsceneScout.transform.position;
                 foundPos = true;
             }
-            // 4. 次选：官方山顶出生点 respawnThePeak（配合超深探地射线精准吸附停机坪地表）
-            else if (mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > 10f && mh.respawnThePeak.position.y < 800f)
+            // 5. 备选：官方山顶出生点 respawnThePeak
+            else if (!foundPos && mh.respawnThePeak != null && mh.respawnThePeak.position.sqrMagnitude > 1f && mh.respawnThePeak.position.y > 10f && mh.respawnThePeak.position.y < 800f)
             {
                 rawPos = mh.respawnThePeak.position;
                 foundPos = true;
             }
-            else if (Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f && Singleton<PeakHandler>.Instance.transform.position.y < 800f)
+            else if (!foundPos && Singleton<PeakHandler>.Instance != null && Singleton<PeakHandler>.Instance.transform.position.sqrMagnitude > 1f && Singleton<PeakHandler>.Instance.transform.position.y < 800f)
             {
                 rawPos = Singleton<PeakHandler>.Instance.transform.position;
                 foundPos = true;
             }
-            else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
+            else if (!foundPos && mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null)
             {
                 rawPos = mh.segments[4].reconnectSpawnPos.position;
                 foundPos = true;
@@ -2319,10 +2389,13 @@ public static class Utilities
 
             Physics.SyncTransforms();
 
-            // 若激活的是变体切片（如 Citadel 城塞），优先取变体的 reconnectSpawnPos 或 RespawnChest
+            // 防御性海拔阈值：第 5 关海拔极高，有效点必须满足 Y >= 300f，严禁采纳世界原点 (Y 接近 0) 的幽灵点
+            const float MIN_KILN_ALTITUDE = 300f;
+
+            // 候选 1：若激活的是变体切片（如 Citadel 城塞），优先取变体的 reconnectSpawnPos 或 RespawnChest
             if (activeSeg != null && activeSeg != (mh.segments.Length > 4 ? mh.segments[4] : null))
             {
-                if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
+                if (activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y >= MIN_KILN_ALTITUDE)
                 {
                     rawPos = activeSeg.reconnectSpawnPos.position;
                     foundPos = true;
@@ -2330,7 +2403,7 @@ public static class Utilities
                 else if (activeSeg.segmentParent != null)
                 {
                     RespawnChest chest = activeSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
-                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y >= MIN_KILN_ALTITUDE)
                     {
                         rawPos = chest.transform.position + chest.transform.forward * 1.5f;
                         foundPos = true;
@@ -2338,41 +2411,60 @@ public static class Utilities
                 }
             }
 
-            // 若不是变体或变体未找到点位，走经典熔炉查找
-            if (!foundPos)
+            // 候选 2：MountainProgressHandler 权威进度点（第 4 个点）
+            if (!foundPos && MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.progressPoints != null && MountainProgressHandler.Instance.progressPoints.Length > 4)
             {
-                Transform kilnSpawn = GetRespawnTheKiln(mh);
-                if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y > -10f)
+                var pt = MountainProgressHandler.Instance.progressPoints[4];
+                if (pt != null && pt.transform != null && pt.transform.position.sqrMagnitude > 1f && pt.transform.position.y >= MIN_KILN_ALTITUDE)
                 {
-                    rawPos = kilnSpawn.position;
-                    foundPos = true;
-                    if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos == null)
-                    {
-                        mh.segments[4].reconnectSpawnPos = kilnSpawn;
-                    }
-                }
-                else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].reconnectSpawnPos != null && mh.segments[4].reconnectSpawnPos.position.sqrMagnitude > 1f)
-                {
-                    rawPos = mh.segments[4].reconnectSpawnPos.position;
+                    rawPos = pt.transform.position;
                     foundPos = true;
                 }
-                else if (mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null && mh.segments[4].segmentParent != null)
+            }
+
+            // 候选 3：切片自身的 reconnectSpawnPos 或 RespawnChest（高度 >= 300m）
+            if (!foundPos && mh.segments != null && mh.segments.Length > 4 && mh.segments[4] != null)
+            {
+                var kSeg = mh.segments[4];
+                if (kSeg.reconnectSpawnPos != null && kSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && kSeg.reconnectSpawnPos.position.y >= MIN_KILN_ALTITUDE)
                 {
-                    RespawnChest chest = mh.segments[4].segmentParent.GetComponentInChildren<RespawnChest>(true);
-                    if (chest != null && chest.transform.position.sqrMagnitude > 1f)
+                    rawPos = kSeg.reconnectSpawnPos.position;
+                    foundPos = true;
+                }
+                else if (kSeg.segmentParent != null)
+                {
+                    RespawnChest chest = kSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y >= MIN_KILN_ALTITUDE)
                     {
                         rawPos = chest.transform.position + chest.transform.forward * 1.5f;
                         foundPos = true;
                     }
                 }
-                else
+            }
+
+            // 候选 4：官方 GetRespawnTheKiln（仅当高度 >= 300m 时采纳）
+            if (!foundPos)
+            {
+                Transform kilnSpawn = GetRespawnTheKiln(mh);
+                if (kilnSpawn != null && kilnSpawn.position.sqrMagnitude > 1f && kilnSpawn.position.y >= MIN_KILN_ALTITUDE)
                 {
-                    LavaRising lr = GetLavaRising(mh);
-                    if (lr != null && lr.transform.position.sqrMagnitude > 1f)
-                    {
-                        rawPos = lr.transform.position + Vector3.up * 8f;
-                        foundPos = true;
-                    }
+                    rawPos = kilnSpawn.position;
+                    foundPos = true;
+                }
+            }
+
+            // 候选 5（黄金保底）：以第 4 关（Caldera/雾沼）终点营火向前延伸 16 米（穿过大门隔离墙）定位切片 5 开阔入口地面
+            if (!foundPos && mh.segments != null && mh.segments.Length > 3 && mh.segments[3] != null && mh.segments[3].segmentCampfire != null)
+            {
+                var cfObj = mh.segments[3].segmentCampfire;
+                Campfire cf = cfObj.GetComponentInChildren<Campfire>(true);
+                Transform cfTf = cf != null ? cf.transform : cfObj.transform;
+                if (cfTf.position.sqrMagnitude > 1f && cfTf.position.y >= 250f)
+                {
+                    Vector3 forward = cfTf.forward;
+                    if (forward.sqrMagnitude < 0.05f) forward = Vector3.forward;
+                    rawPos = cfTf.position + forward * 16f + Vector3.up * 1f;
+                    foundPos = true;
                 }
             }
         }
@@ -2382,7 +2474,7 @@ public static class Utilities
             if (seg != null)
             {
                 MapHandler.MapSegment activeSeg = seg;
-                // 核心：处理 Caldera（第 4 关）等含有变体地形（Volcano/Mesa/Swamp/Roots）的段落重定向
+                // 核心：处理变体地形重定向（Volcano/Mesa/Swamp/Roots）
                 MapHandler.MapSegment vSeg;
                 if (TryGetVariantSegment(mh, seg, out vSeg) && vSeg != null)
                 {
@@ -2420,28 +2512,39 @@ public static class Utilities
                     foundPos = true;
                 }
 
-                // 候选 1：生效变体段落的 reconnectSpawnPos
+                // 特殊处理：第 3 关（Alpine / Mesa 方山）避开古墓（Tomb）
+                bool isMesa = (segIdx == 2) && ((activeSeg.segmentParent != null && activeSeg.segmentParent.name.IndexOf("Mesa", StringComparison.OrdinalIgnoreCase) >= 0) || mh.BiomeIsPresent(Biome.BiomeType.Mesa));
+
+                // 候选 1：生效变体段落的 reconnectSpawnPos（检查是否误入古墓）
                 if (!foundPos && activeSeg.reconnectSpawnPos != null && activeSeg.reconnectSpawnPos.position.sqrMagnitude > 1f && activeSeg.reconnectSpawnPos.position.y > -50f)
                 {
-                    rawPos = activeSeg.reconnectSpawnPos.position;
-                    foundPos = true;
+                    Vector3 cand = activeSeg.reconnectSpawnPos.position;
+                    if (!isMesa || !IsInsideTombOrTrigger(cand))
+                    {
+                        rawPos = cand;
+                        foundPos = true;
+                    }
                 }
 
-                // 候选 2：基础段落的 reconnectSpawnPos
+                // 候选 2：基础段落的 reconnectSpawnPos（检查是否误入古墓）
                 if (!foundPos && seg.reconnectSpawnPos != null && seg.reconnectSpawnPos.position.sqrMagnitude > 1f && seg.reconnectSpawnPos.position.y > -50f)
                 {
-                    rawPos = seg.reconnectSpawnPos.position;
-                    foundPos = true;
+                    Vector3 cand = seg.reconnectSpawnPos.position;
+                    if (!isMesa || !IsInsideTombOrTrigger(cand))
+                    {
+                        rawPos = cand;
+                        foundPos = true;
+                    }
                 }
 
-                // 候选 3：MountainProgressHandler 权威进度点 Transform
+                // 候选 3：MountainProgressHandler 权威进度点 Transform（方山地表主干道绝对安全）
                 if (!foundPos && MountainProgressHandler.Instance != null && MountainProgressHandler.Instance.progressPoints != null)
                 {
                     var points = MountainProgressHandler.Instance.progressPoints;
                     if (segIdx >= 0 && segIdx < points.Length && points[segIdx] != null && points[segIdx].transform != null)
                     {
                         var ptTf = points[segIdx].transform;
-                        if (ptTf.position.sqrMagnitude > 1f && ptTf.position.y > -50f)
+                        if (ptTf.position.sqrMagnitude > 1f && ptTf.position.y > -50f && (!isMesa || !IsInsideTombOrTrigger(ptTf.position)))
                         {
                             rawPos = ptTf.position;
                             foundPos = true;
@@ -2449,11 +2552,26 @@ public static class Utilities
                     }
                 }
 
-                // 候选 4：RespawnChest 石雕像（Caldera 等段落的重生标志）
+                // 候选 3.5（方山 Mesa 黄金地表保底）：以第 2 关（Tropics/Roots，segIdx 1）终点营火向前延伸 14 米穿过隔离大门进入方山开阔地表
+                if (!foundPos && isMesa && mh.segments != null && mh.segments.Length > 1 && mh.segments[1] != null && mh.segments[1].segmentCampfire != null)
+                {
+                    var cfObj = mh.segments[1].segmentCampfire;
+                    Campfire cf = cfObj.GetComponentInChildren<Campfire>(true);
+                    Transform cfTf = cf != null ? cf.transform : cfObj.transform;
+                    if (cfTf.position.sqrMagnitude > 1f && cfTf.position.y > -50f)
+                    {
+                        Vector3 forward = cfTf.forward;
+                        if (forward.sqrMagnitude < 0.05f) forward = Vector3.forward;
+                        rawPos = cfTf.position + forward * 14f + Vector3.up * 0.5f;
+                        foundPos = true;
+                    }
+                }
+
+                // 候选 4：RespawnChest 石雕像
                 if (!foundPos && activeSeg.segmentParent != null)
                 {
                     RespawnChest chest = activeSeg.segmentParent.GetComponentInChildren<RespawnChest>(true);
-                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f && (!isMesa || !IsInsideTombOrTrigger(chest.transform.position)))
                     {
                         rawPos = chest.transform.position + chest.transform.forward * 1.5f;
                         foundPos = true;
@@ -2462,7 +2580,7 @@ public static class Utilities
                 if (!foundPos && seg.segmentParent != null)
                 {
                     RespawnChest chest = seg.segmentParent.GetComponentInChildren<RespawnChest>(true);
-                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f)
+                    if (chest != null && chest.transform.position.sqrMagnitude > 1f && chest.transform.position.y > -50f && (!isMesa || !IsInsideTombOrTrigger(chest.transform.position)))
                     {
                         rawPos = chest.transform.position + chest.transform.forward * 1.5f;
                         foundPos = true;
@@ -2550,6 +2668,22 @@ public static class Utilities
                     {
                         Character.localCharacter.WarpPlayerRPC(finalPos, true);
                     }
+
+                    // 若传送到方山地表，确保重置可能误入古墓的环境音效标记
+                    if (segIdx == 2)
+                    {
+                        var anims = Character.localCharacter.GetComponent<CharacterAnimations>();
+                        if (anims != null && anims.ambienceAudio != null)
+                        {
+                            anims.ambienceAudio.inTomb = false;
+                        }
+                    }
+                }
+
+                // 若传送到顶峰，主动触发顶峰日仪式大字提示与音效
+                if (segIdx >= 5 || segment == Segment.Peak)
+                {
+                    TriggerPeakDayHeroTitle();
                 }
 
                 WorldDataCache.Invalidate();
@@ -2561,6 +2695,164 @@ public static class Utilities
                 if (Logger != null)
                     Logger.LogError("[PEAK AIO] JumpToSegmentStartSafe error: " + ex.Message);
                 Globals.GlobalNotifier.ShowError("跳转到起点失败: " + ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 向指定玩家（或全员）发送大地图场景载入 RPC
+    /// </summary>
+    public static void SendMapLoadRPC(Photon.Realtime.Player targetPlayer, string sceneName, int ascent = 0)
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sceneName))
+                {
+                    sceneName = "WilIsland";
+                }
+
+                var kiosk = UnityEngine.Object.FindObjectOfType<AirportCheckInKiosk>();
+                if (kiosk != null && kiosk.photonView != null)
+                {
+                    if (targetPlayer != null)
+                    {
+                        kiosk.photonView.RPC("BeginIslandLoadRPC", targetPlayer, new object[] { sceneName, ascent });
+                        Globals.GlobalNotifier.ShowSuccess(string.Format(Localization.T("world.rpc_sent_success"), targetPlayer.NickName, sceneName));
+                    }
+                    else
+                    {
+                        kiosk.photonView.RPC("BeginIslandLoadRPC", RpcTarget.All, new object[] { sceneName, ascent });
+                        Globals.GlobalNotifier.ShowSuccess(string.Format(Localization.T("world.rpc_sent_success"), Localization.T("world.all_players"), sceneName));
+                    }
+                }
+                else
+                {
+                    // 若当前场景中无登机亭（例如已在世界地图中），若目标包含本地玩家，直接在本地安全启动官方加载流程
+                    bool includesSelf = (targetPlayer == null || targetPlayer == PhotonNetwork.LocalPlayer);
+                    if (includesSelf)
+                    {
+                        Ascents.currentAscent = ascent;
+                        GameHandler.AddStatus<SceneSwitchingStatus>(new SceneSwitchingStatus());
+                        RetrievableResourceSingleton<LoadingScreenHandler>.Instance.Load(
+                            LoadingScreen.LoadingScreenType.Plane,
+                            null,
+                            new System.Collections.IEnumerator[] { RetrievableResourceSingleton<LoadingScreenHandler>.Instance.LoadSceneProcess(sceneName, true, true, 0f) }
+                        );
+                        Globals.GlobalNotifier.ShowSuccess(string.Format(Localization.T("world.rpc_sent_success"), Localization.T("world.player_local_tag"), sceneName));
+                    }
+                    else
+                    {
+                        Globals.GlobalNotifier.ShowError("当前场景无登机服务，无法向远端发送跨场景RPC");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] SendMapLoadRPC error: " + ex.Message);
+                Globals.GlobalNotifier.ShowError("发送地图RPC失败: " + ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 强制同步指定玩家（或全员）的切片地形与网格，并将其拉至安全坚实地面，防止掉入虚空
+    /// </summary>
+    public static void ForceSyncPlayerSegment(Photon.Realtime.Player targetPlayer, Segment segment)
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (!MapHandler.Exists || MapHandler.Instance == null)
+                {
+                    Globals.GlobalNotifier.ShowError("无法同步：未在世界地图场景中！");
+                    return;
+                }
+
+                Vector3 safePos;
+                if (!TryGetSegmentSpawnPosition(segment, out safePos))
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("未找到切片 {0} 的安全点！", segment));
+                    return;
+                }
+
+                // 1. 触发原生切片逻辑并向所有客户端广播地形网格包
+                try
+                {
+                    var jumpLogicMethod = typeof(MapHandler).GetMethod("JumpToSegmentLogic", BindingFlags.NonPublic | BindingFlags.Static);
+                    if (jumpLogicMethod != null)
+                    {
+                        HashSet<int> targetActorIds = new HashSet<int>();
+                        if (targetPlayer != null)
+                        {
+                            targetActorIds.Add(targetPlayer.ActorNumber);
+                        }
+                        else
+                        {
+                            var allChars = PlayerHandler.GetAllPlayers();
+                            if (allChars != null)
+                            {
+                                foreach (var p in allChars)
+                                {
+                                    if (p != null && p.photonView != null && p.photonView.Owner != null)
+                                        targetActorIds.Add(p.photonView.Owner.ActorNumber);
+                                }
+                            }
+                        }
+                        // JumpToSegmentLogic(segment, playersToTeleport, sendToEveryone: true, updateFog: false)
+                        jumpLogicMethod.Invoke(null, new object[] { segment, targetActorIds, true, false });
+                    }
+                    else if (PhotonNetwork.IsMasterClient)
+                    {
+                        MapHandler.JumpToSegment(segment);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (Logger != null)
+                        Logger.LogWarning("[PEAK AIO] JumpToSegmentLogic invoke error: " + ex.Message);
+                }
+
+                // 2. 将本地或目标角色传送到该切片的安全坚实地面
+                if (targetPlayer == null || targetPlayer == PhotonNetwork.LocalPlayer)
+                {
+                    if (Character.localCharacter != null)
+                    {
+                        if (Character.localCharacter.photonView != null)
+                            Character.localCharacter.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { safePos, true });
+                        else
+                            Character.localCharacter.WarpPlayerRPC(safePos, true);
+                    }
+                }
+
+                if (targetPlayer != null && targetPlayer != PhotonNetwork.LocalPlayer)
+                {
+                    var allChars = PlayerHandler.GetAllPlayerCharacters();
+                    if (allChars != null)
+                    {
+                        foreach (var c in allChars)
+                        {
+                            if (c != null && c.photonView != null && c.photonView.Owner != null && c.photonView.Owner.ActorNumber == targetPlayer.ActorNumber)
+                            {
+                                c.photonView.RPC("WarpPlayerRPC", RpcTarget.All, new object[] { safePos, true });
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                WorldDataCache.Invalidate();
+                string targetName = targetPlayer != null ? targetPlayer.NickName : Localization.T("world.all_players");
+                Globals.GlobalNotifier.ShowSuccess(string.Format(Localization.T("world.sync_segment_success"), targetName, segment));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] ForceSyncPlayerSegment error: " + ex.Message);
+                Globals.GlobalNotifier.ShowError("切片同步失败: " + ex.Message);
             }
         });
     }

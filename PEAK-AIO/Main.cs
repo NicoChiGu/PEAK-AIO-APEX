@@ -2213,6 +2213,100 @@ public class PeakMod : BaseUnityPlugin
 
         GUILayout.Space(8);
 
+        // --- Map & Network Sync Dispatch Section ---
+        GUILayout.BeginVertical(cardBoxStyle);
+        GUILayout.Label(Localization.T("world.network_sync_title"), sectionHeaderStyle);
+        GUILayout.Space(4);
+
+        // 1. Target Player Selection
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("world.target_player"), boldLabelStyle, GUILayout.Width(90));
+
+        Photon.Realtime.Player[] onlinePlayers = (Photon.Pun.PhotonNetwork.PlayerList != null) ? Photon.Pun.PhotonNetwork.PlayerList : new Photon.Realtime.Player[0];
+        if (Globals.worldTargetPlayerIndex >= onlinePlayers.Length)
+        {
+            Globals.worldTargetPlayerIndex = -1;
+        }
+
+        string currentSelectedPlayerText = (Globals.worldTargetPlayerIndex < 0 || onlinePlayers.Length == 0)
+            ? Localization.T("world.all_players")
+            : string.Format("{0}{1}{2}",
+                onlinePlayers[Globals.worldTargetPlayerIndex].NickName,
+                onlinePlayers[Globals.worldTargetPlayerIndex].IsMasterClient ? string.Format(" [{0}]", Localization.T("world.player_host_tag")) : "",
+                onlinePlayers[Globals.worldTargetPlayerIndex].IsLocal ? string.Format(" [{0}]", Localization.T("world.player_local_tag")) : ""
+              );
+
+        if (GUILayout.Button("<", sidebarBtnStyle, GUILayout.Width(28), GUILayout.Height(22)))
+        {
+            Globals.worldTargetPlayerIndex--;
+            if (Globals.worldTargetPlayerIndex < -1)
+                Globals.worldTargetPlayerIndex = onlinePlayers.Length - 1;
+        }
+
+        GUILayout.Label(currentSelectedPlayerText, boldLabelStyle, GUILayout.MinWidth(180), GUILayout.Height(22));
+
+        if (GUILayout.Button(">", sidebarBtnStyle, GUILayout.Width(28), GUILayout.Height(22)))
+        {
+            Globals.worldTargetPlayerIndex++;
+            if (Globals.worldTargetPlayerIndex >= onlinePlayers.Length)
+                Globals.worldTargetPlayerIndex = -1;
+        }
+
+        if (GUILayout.Button(Localization.T("world.all_players"), Globals.worldTargetPlayerIndex == -1 ? sidebarActiveBtnStyle : sidebarBtnStyle, GUILayout.Height(22), GUILayout.Width(90)))
+        {
+            Globals.worldTargetPlayerIndex = -1;
+        }
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(4);
+
+        // 2. Map Scene Name Input & Quick Presets
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("world.target_scene"), boldLabelStyle, GUILayout.Width(90));
+        Globals.worldMapSceneName = GUILayout.TextField(Globals.worldMapSceneName ?? "WilIsland", textInputStyle, GUILayout.Width(160), GUILayout.Height(22));
+
+        GUILayout.Space(6);
+        GUILayout.Label(Localization.T("world.quick_preset"), labelStyle, GUILayout.Width(65));
+        if (GUILayout.Button("WilIsland", sidebarBtnStyle, GUILayout.Height(22), GUILayout.Width(75)))
+        {
+            Globals.worldMapSceneName = "WilIsland";
+        }
+        if (GUILayout.Button("Airport", sidebarBtnStyle, GUILayout.Height(22), GUILayout.Width(60)))
+        {
+            Globals.worldMapSceneName = "Airport";
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6);
+
+        // 3. Action Buttons
+        GUILayout.BeginHorizontal();
+
+        Photon.Realtime.Player targetPlayerObj = (Globals.worldTargetPlayerIndex >= 0 && Globals.worldTargetPlayerIndex < onlinePlayers.Length)
+            ? onlinePlayers[Globals.worldTargetPlayerIndex]
+            : null;
+
+        // Button A: Send Map Load RPC
+        if (GUILayout.Button(Localization.T("world.send_load_rpc"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(180)))
+        {
+            Utilities.SendMapLoadRPC(targetPlayerObj, Globals.worldMapSceneName, 0);
+        }
+
+        GUILayout.Space(8);
+
+        // Button B: Force Sync Segment (Anti-Void)
+        if (GUILayout.Button(Localization.T("world.force_sync_segment"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(220)))
+        {
+            Segment currentSeg = MapHandler.Exists ? MapHandler.CurrentSegmentNumber : Segment.Beach;
+            Utilities.ForceSyncPlayerSegment(targetPlayerObj, currentSeg);
+        }
+
+        GUILayout.EndHorizontal();
+        GUILayout.EndVertical();
+
+        GUILayout.Space(8);
+
         // --- Containers / Luggage Section ---
         GUILayout.BeginHorizontal();
 
