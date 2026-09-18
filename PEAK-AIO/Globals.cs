@@ -65,6 +65,8 @@ public static class Globals
     public static string lobbyItemSearchBuffer = "";
     public static int selectedLobbyItem = -1;
     public static Vector2 lobbyItemScroll = Vector2.zero;
+    public static float lastLobbyRefreshTime = -10f;
+    public const float LOBBY_REFRESH_COOLDOWN = 2.0f;
 
     // Teleport
     public static bool teleportToPingEnabled = false;
@@ -81,12 +83,15 @@ public static class Globals
     public static int worldTargetPlayerIndex = -1; // -1: All players, >= 0: specific player in player list
     public static string worldMapSceneName = "WilIsland";
     public static int worldTargetSegment = 0;
+    public static int worldTargetSegmentIndex = 0; // 当前路线下拉菜单选中的段落索引 (0 ~ 5)
+    public static bool isWorldSegmentDropdownOpen = false; // 下拉菜单展开状态
 
     // Debug
     public static string debugSlotBuffer = "0";
 
     // GUI State
-    public static Rect windowRect = new Rect(40f, 40f, 780f, 520f);
+    public static Rect windowRect = new Rect(40f, 40f, 920f, 620f);
+    public static bool windowPosInitialized = false;
     public static Vector2 sidebarScroll = Vector2.zero;
     public static Vector2 mainScroll = Vector2.zero;
     public static Vector2[] slotScrolls = new Vector2[4] { Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero };

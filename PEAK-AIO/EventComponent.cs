@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class EventComponent : MonoBehaviour
 {
     private float stateTimer = 0f;
+    private float staminaUpdateTimer = 0f;
     private float validationTimer = 0f;
     private float locationSnapshotTimer = 0f;
     private const float STATE_INTERVAL = 0.1f;
@@ -76,6 +78,19 @@ public class EventComponent : MonoBehaviour
         if (validationTimer >= VALIDATION_INTERVAL)
         {
             validationTimer = 0f;
+
+            try
+            {
+                if (Globals.allPlayers != null && Globals.allPlayers.Count > 0)
+                {
+                    int allCharsCount = Character.AllCharacters != null ? Character.AllCharacters.Count : 0;
+                    if (Globals.allPlayers.Any(p => p == null) || Globals.allPlayers.Count != allCharsCount)
+                    {
+                        Utilities.RefreshPlayerList();
+                    }
+                }
+            }
+            catch { }
 
             try
             {
@@ -179,33 +194,34 @@ public class EventComponent : MonoBehaviour
             }
         }
 
-        stateTimer += Time.deltaTime;
-        if (stateTimer < STATE_INTERVAL)
-            return;
-        stateTimer = 0f;
-
-        if (ConfigManager.InfiniteStamina.Value || ConfigManager.LockStatus.Value || ConfigManager.NoWeight.Value)
+        staminaUpdateTimer += Time.deltaTime;
+        if (staminaUpdateTimer >= STATE_INTERVAL)
         {
-            var character = GameHelpers.GetCharacterComponent();
-            if (character != null)
+            staminaUpdateTimer = 0f;
+
+            if (ConfigManager.InfiniteStamina.Value || ConfigManager.LockStatus.Value || ConfigManager.NoWeight.Value)
             {
-                if (ConfigManager.InfiniteStamina.Value)
+                var character = GameHelpers.GetCharacterComponent();
+                if (character != null)
                 {
-                    var p = ConstantFields.GetInfiniteStaminaProperty();
-                    if (p != null) p.SetValue(character, true, null);
-                }
-
-                if (ConfigManager.LockStatus.Value)
-                {
-                    var p = ConstantFields.GetStatusLockProperty();
-                    if (p != null) p.SetValue(character, true, null);
-                }
-
-                if (ConfigManager.NoWeight.Value)
-                {
-                    if (character.refs != null && character.refs.afflictions != null)
+                    if (ConfigManager.InfiniteStamina.Value)
                     {
-                        character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Weight, 0f, false);
+                        var p = ConstantFields.GetInfiniteStaminaProperty();
+                        if (p != null) p.SetValue(character, true, null);
+                    }
+
+                    if (ConfigManager.LockStatus.Value)
+                    {
+                        var p = ConstantFields.GetStatusLockProperty();
+                        if (p != null) p.SetValue(character, true, null);
+                    }
+
+                    if (ConfigManager.NoWeight.Value)
+                    {
+                        if (character.refs != null && character.refs.afflictions != null)
+                        {
+                            character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Weight, 0f, false);
+                        }
                     }
                 }
             }

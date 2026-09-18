@@ -217,68 +217,60 @@ public static class Localization
             { Language.Italian, "Dettagli" }
         }},
         { "player.jump_mult", new Dictionary<Language, string> {
-            { Language.English, "Jump Mult: %.2f" },
-            { Language.SimplifiedChinese, "跳跃倍率: %.2f" },
-            { Language.TraditionalChinese, "跳躍倍率: %.2f" },
-            { Language.Japanese, "ジャンプ倍率: %.2f" },
-            { Language.Korean, "점프 배율: %.2f" },
-            { Language.Italian, "Moltiplicatore Salto: %.2f" }
+            { Language.English, "Jump Mult" },
+            { Language.SimplifiedChinese, "跳跃倍率" },
+            { Language.TraditionalChinese, "跳躍倍率" },
+            { Language.Japanese, "ジャンプ倍率" },
+            { Language.Korean, "점프 배율" },
+            { Language.Italian, "Moltiplicatore Salto" }
         }},
         { "player.move_speed", new Dictionary<Language, string> {
-            { Language.English, "Move Speed: %.2f" },
-            { Language.SimplifiedChinese, "移动速度: %.2f" },
-            { Language.TraditionalChinese, "移動速度: %.2f" },
-            { Language.Japanese, "移動速度: %.2f" },
-            { Language.Korean, "이동 속도: %.2f" },
-            { Language.Italian, "Velocità Movimento: %.2f" }
+            { Language.English, "Move Speed" },
+            { Language.SimplifiedChinese, "移动速度" },
+            { Language.TraditionalChinese, "移動速度" },
+            { Language.Japanese, "移動速度" },
+            { Language.Korean, "이동 속도" },
+            { Language.Italian, "Velocità Movimento" }
         }},
         { "player.climb_speed", new Dictionary<Language, string> {
-            { Language.English, "Climb Speed: %.2f" },
-            { Language.SimplifiedChinese, "攀爬速度: %.2f" },
-            { Language.TraditionalChinese, "攀爬速度: %.2f" },
-            { Language.Japanese, "登攀速度: %.2f" },
-            { Language.Korean, "등반 속도: %.2f" },
-            { Language.Italian, "Velocità Arrampicata: %.2f" }
+            { Language.English, "Climb Speed" },
+            { Language.SimplifiedChinese, "攀爬速度" },
+            { Language.TraditionalChinese, "攀爬速度" },
+            { Language.Japanese, "登攀速度" },
+            { Language.Korean, "등반 속도" },
+            { Language.Italian, "Velocità Arrampicata" }
         }},
         { "player.vine_speed", new Dictionary<Language, string> {
-            { Language.English, "Vine Speed: %.2f" },
-            { Language.SimplifiedChinese, "藤蔓速度: %.2f" },
-            { Language.TraditionalChinese, "藤蔓速度: %.2f" },
-            { Language.Japanese, "ツル速度: %.2f" },
-            { Language.Korean, "덩굴 속도: %.2f" },
-            { Language.Italian, "Velocità Liane: %.2f" }
+            { Language.English, "Vine Speed" },
+            { Language.SimplifiedChinese, "藤蔓速度" },
+            { Language.TraditionalChinese, "藤蔓速度" },
+            { Language.Japanese, "ツル速度" },
+            { Language.Korean, "덩굴 속도" },
+            { Language.Italian, "Velocità Liane" }
         }},
         { "player.rope_speed", new Dictionary<Language, string> {
-            { Language.English, "Rope Speed: %.2f" },
-            { Language.SimplifiedChinese, "绳索速度: %.2f" },
-            { Language.TraditionalChinese, "繩索速度: %.2f" },
-            { Language.Japanese, "ロープ速度: %.2f" },
-            { Language.Korean, "로프 속도: %.2f" },
-            { Language.Italian, "Velocità Corda: %.2f" }
+            { Language.English, "Rope Speed" },
+            { Language.SimplifiedChinese, "绳索速度" },
+            { Language.TraditionalChinese, "繩索速度" },
+            { Language.Japanese, "ロープ速度" },
+            { Language.Korean, "로프 속도" },
+            { Language.Italian, "Velocità Corda" }
         }},
         { "player.fly_speed", new Dictionary<Language, string> {
-            { Language.English, "Fly Speed: %.2f" },
-            { Language.SimplifiedChinese, "飞行速度: %.2f" },
-            { Language.TraditionalChinese, "飛行速度: %.2f" },
-            { Language.Japanese, "飛行速度: %.2f" },
-            { Language.Korean, "비행 속도: %.2f" },
-            { Language.Italian, "Velocità Volo: %.2f" }
+            { Language.English, "Fly Speed" },
+            { Language.SimplifiedChinese, "飞行速度" },
+            { Language.TraditionalChinese, "飛行速度" },
+            { Language.Japanese, "飛行速度" },
+            { Language.Korean, "비행 속도" },
+            { Language.Italian, "Velocità Volo" }
         }},
         { "player.fly_acceleration", new Dictionary<Language, string> {
-            { Language.English, "Fly Acceleration: %.2f" },
-            { Language.SimplifiedChinese, "飞行加速度: %.2f" },
-            { Language.TraditionalChinese, "飛行加速度: %.2f" },
-            { Language.Japanese, "飛行加速度: %.2f" },
-            { Language.Korean, "비행 가속도: %.2f" },
-            { Language.Italian, "Accelerazione Volo: %.2f" }
-        }},
-        { "player.spawn_backpack", new Dictionary<Language, string> {
-            { Language.English, "Spawn Backpack" },
-            { Language.SimplifiedChinese, "生成背包" },
-            { Language.TraditionalChinese, "生成背包" },
-            { Language.Japanese, "生成バックパック" },
-            { Language.Korean, "생성 가방" },
-            { Language.Italian, "Generare Zaino" }
+            { Language.English, "Fly Acceleration" },
+            { Language.SimplifiedChinese, "飞行加速度" },
+            { Language.TraditionalChinese, "飛行加速度" },
+            { Language.Japanese, "飛行加速度" },
+            { Language.Korean, "비행 가속도" },
+            { Language.Italian, "Accelerazione Volo" }
         }},
 
         // Tooltips - Player
@@ -1343,6 +1335,14 @@ public static class Localization
             { Language.Korean, "전원 브로드캐스트" },
             { Language.Italian, "Tutti i Giocatori (Broadcast)" }
         }},
+        { "world.target_segment", new Dictionary<Language, string> {
+            { Language.English, "Target Segment:" },
+            { Language.SimplifiedChinese, "目标切片:" },
+            { Language.TraditionalChinese, "目標切片:" },
+            { Language.Japanese, "対象エリア:" },
+            { Language.Korean, "대상 구역:" },
+            { Language.Italian, "Segmento Bersaglio:" }
+        }},
         { "world.target_scene", new Dictionary<Language, string> {
             { Language.English, "Map Scene:" },
             { Language.SimplifiedChinese, "地图场景:" },
@@ -1547,6 +1547,46 @@ public static class Localization
         }},
 
         // Lobby Extra Controls
+        { "lobby.backpack_mgmt", new Dictionary<Language, string> {
+            { Language.English, "Backpack Management (Slot 4)" },
+            { Language.SimplifiedChinese, "背包管理 (4号槽)" },
+            { Language.TraditionalChinese, "背包管理 (4號槽)" },
+            { Language.Japanese, "バックパック管理 (スロット4)" },
+            { Language.Korean, "배낭 관리 (슬롯 4)" },
+            { Language.Italian, "Gestione Zaino (Slot 4)" }
+        }},
+        { "lobby.equip_backpack_slot4", new Dictionary<Language, string> {
+            { Language.English, "Equip Backpack (Slot 4)" },
+            { Language.SimplifiedChinese, "穿戴背包 (4号槽)" },
+            { Language.TraditionalChinese, "穿戴背包 (4號槽)" },
+            { Language.Japanese, "バックパック装着 (スロット4)" },
+            { Language.Korean, "배낭 착용 (슬롯 4)" },
+            { Language.Italian, "Indossa Zaino (Slot 4)" }
+        }},
+        { "lobby.drop_backpack", new Dictionary<Language, string> {
+            { Language.English, "Drop Backpack" },
+            { Language.SimplifiedChinese, "卸下背包" },
+            { Language.TraditionalChinese, "卸下背包" },
+            { Language.Japanese, "バックパック解除" },
+            { Language.Korean, "배낭 벗기" },
+            { Language.Italian, "Rilascia Zaino" }
+        }},
+        { "lobby.spawn_backpack_ground", new Dictionary<Language, string> {
+            { Language.English, "Spawn Backpack (Ground)" },
+            { Language.SimplifiedChinese, "生成背包 (地面)" },
+            { Language.TraditionalChinese, "生成背包 (地面)" },
+            { Language.Japanese, "バックパック生成 (地面)" },
+            { Language.Korean, "배낭 생성 (바닥)" },
+            { Language.Italian, "Genera Zaino (Terra)" }
+        }},
+        { "lobby.give_all_backpack", new Dictionary<Language, string> {
+            { Language.English, "Give Backpack to All" },
+            { Language.SimplifiedChinese, "全员发放背包" },
+            { Language.TraditionalChinese, "全員發放背包" },
+            { Language.Japanese, "全員にバックパック付与" },
+            { Language.Korean, "모두에게 배낭 지급" },
+            { Language.Italian, "Dai Zaino a Tutti" }
+        }},
         { "lobby.give_to_slot4", new Dictionary<Language, string> {
             { Language.English, "Equip to Slot 4 (Backpack)" },
             { Language.SimplifiedChinese, "直接装备到4号背包栏" },

@@ -1421,13 +1421,6 @@ public static class Utilities
 
                 if (Globals.allPlayers.Count > 0 && Globals.selectedPlayer == -1)
                     Globals.selectedPlayer = 0;
-
-                string namesStr = string.Join(", ", Globals.playerNames.ToArray());
-                if (Logger != null)
-                {
-                    Logger.LogInfo(string.Format("[PlayerList] [{0}]", namesStr));
-                    Logger.LogInfo(string.Format("[PlayerList] Found {0} players.", Globals.allPlayers.Count));
-                }
             }
             catch (Exception ex)
             {
@@ -3234,6 +3227,10 @@ public static class Utilities
         return false;
     }
 
+    private static float s_LastCustomMapScanTime = -10f;
+    private static bool s_HasCustomMapAssembly = false;
+    private static bool s_CustomMapAssemblyChecked = false;
+
     public static bool TryGetCustomMapOrPlaylist(
         out int customMapIndex,
         out string sceneName,
@@ -3253,7 +3250,16 @@ public static class Utilities
 
         try
         {
+            float now = Time.realtimeSinceStartup;
+            if (s_CustomMapAssemblyChecked && !s_HasCustomMapAssembly && (now - s_LastCustomMapScanTime < 10f))
+            {
+                return false;
+            }
+            s_LastCustomMapScanTime = now;
+            s_CustomMapAssemblyChecked = true;
+
             Assembly[] asms = AppDomain.CurrentDomain.GetAssemblies();
+            bool foundCandidate = false;
             for (int i = 0; i < asms.Length; i++)
             {
                 string asmName = asms[i].GetName().Name;
@@ -3261,6 +3267,8 @@ public static class Utilities
                     asmName.IndexOf("CustomMap", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     asmName.IndexOf("Playlist", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
+                    foundCandidate = true;
+                    s_HasCustomMapAssembly = true;
                     Type[] types;
                     try { types = asms[i].GetTypes(); } catch { continue; }
 
@@ -3461,6 +3469,7 @@ public static class Utilities
                     }
                 }
             }
+            s_HasCustomMapAssembly = foundCandidate;
         }
         catch { }
 
@@ -4990,65 +4999,186 @@ public static class Utilities
     public static bool IsBackpackItem(Item item, string name)
     {
         if (item == null && string.IsNullOrEmpty(name)) return false;
-        string n = name ?? "";
-        if (item != null && string.IsNullOrEmpty(n))
+        string combined = (name ?? "") + " ";
+        if (item != null)
         {
-            try { n = item.GetName(); } catch { }
-            if (string.IsNullOrEmpty(n)) n = item.name;
+            try { combined += (item.GetName() ?? "") + " "; } catch { }
+            if (!string.IsNullOrEmpty(item.name)) combined += item.name + " ";
+            if (item.gameObject != null && !string.IsNullOrEmpty(item.gameObject.name))
+                combined += item.gameObject.name + " ";
         }
-        if (string.IsNullOrEmpty(n)) return false;
+        if (string.IsNullOrWhiteSpace(combined)) return false;
+        string n = combined.ToLowerInvariant();
 
-        return n.IndexOf("backpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("jetpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("rocketpack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("rocket pack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("fannypack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("fanny pack", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("背包", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               n.IndexOf("腰包", StringComparison.OrdinalIgnoreCase) >= 0;
+        return n.Contains("backpack") ||
+               n.Contains("jetpack") ||
+               n.Contains("rocket") ||
+               n.Contains("fanny") ||
+               n.Contains("funny") ||
+               n.Contains("背包") ||
+               n.Contains("腰包") ||
+               n.Contains("喷气") ||
+               n.Contains("火箭") ||
+               n.Contains("滑稽") ||
+               n.Contains("zaino") ||
+               n.Contains("marsupio") ||
+               n.Contains("バックパック") ||
+               n.Contains("배낭");
     }
 
     public static BackpackSlot.BackpackType GetBackpackTypeForItem(Item item, string name)
     {
-        string n = name ?? "";
-        if (item != null && string.IsNullOrEmpty(n))
+        string combined = (name ?? "") + " ";
+        if (item != null)
         {
-            try { n = item.GetName(); } catch { }
-            if (string.IsNullOrEmpty(n)) n = item.name;
+            try { combined += (item.GetName() ?? "") + " "; } catch { }
+            if (!string.IsNullOrEmpty(item.name)) combined += item.name + " ";
+            if (item.gameObject != null && !string.IsNullOrEmpty(item.gameObject.name))
+                combined += item.gameObject.name + " ";
         }
-        n = n.ToLowerInvariant();
+        string n = combined.ToLowerInvariant();
 
-        if (n.Contains("jetpack") || n.Contains("喷气"))
+        if (n.Contains("jetpack") || n.Contains("喷气") || n.Contains("ジェットパック") || n.Contains("제트팩"))
             return BackpackSlot.BackpackType.Jetpack;
-        if (n.Contains("rocket") || n.Contains("火箭"))
+        if (n.Contains("rocket") || n.Contains("火箭") || n.Contains("ロケット") || n.Contains("로켓"))
             return BackpackSlot.BackpackType.Rocketpack;
-        if (n.Contains("fanny") || n.Contains("funny") || n.Contains("腰包") || n.Contains("滑稽"))
+        if (n.Contains("fanny") || n.Contains("funny") || n.Contains("腰包") || n.Contains("滑稽") || n.Contains("marsupio") || n.Contains("ファニー") || n.Contains("힙색"))
             return BackpackSlot.BackpackType.Fannypack;
 
         return BackpackSlot.BackpackType.Backpack;
     }
 
-    public static Item FindBackpackPrefab(BackpackSlot.BackpackType type)
+    public static bool MatchesBackpackType(Item item, BackpackSlot.BackpackType type)
     {
-        string keyword = "backpack";
+        if (item == null) return false;
+        if (!IsBackpackItem(item, null)) return false;
+
+        string combined = "";
+        if (!string.IsNullOrEmpty(item.name)) combined += item.name + " ";
+        if (item.gameObject != null && !string.IsNullOrEmpty(item.gameObject.name)) combined += item.gameObject.name + " ";
+        try { combined += (item.GetName() ?? "") + " "; } catch { }
+        string n = combined.ToLowerInvariant();
+
         switch (type)
         {
-            case BackpackSlot.BackpackType.Jetpack: keyword = "jetpack"; break;
-            case BackpackSlot.BackpackType.Rocketpack: keyword = "rocket"; break;
-            case BackpackSlot.BackpackType.Fannypack: keyword = "fanny"; break;
-            case BackpackSlot.BackpackType.Backpack: keyword = "backpack"; break;
+            case BackpackSlot.BackpackType.Jetpack:
+                if (n.Contains("jetpack") || n.Contains("喷气") || n.Contains("ジェットパック") || n.Contains("제트팩"))
+                    return true;
+                return GetBackpackTypeForItem(item, null) == BackpackSlot.BackpackType.Jetpack;
+
+            case BackpackSlot.BackpackType.Rocketpack:
+                if (n.Contains("rocket") || n.Contains("火箭") || n.Contains("ロケット") || n.Contains("로켓"))
+                    return true;
+                return GetBackpackTypeForItem(item, null) == BackpackSlot.BackpackType.Rocketpack;
+
+            case BackpackSlot.BackpackType.Fannypack:
+                if (n.Contains("fanny") || n.Contains("funny") || n.Contains("腰包") || n.Contains("滑稽") || n.Contains("marsupio") || n.Contains("ファニー") || n.Contains("힙색"))
+                    return true;
+                return GetBackpackTypeForItem(item, null) == BackpackSlot.BackpackType.Fannypack;
+
+            case BackpackSlot.BackpackType.Backpack:
+            default:
+                // 排除其他衍生背包关键字
+                if (n.Contains("jetpack") || n.Contains("喷气") ||
+                    n.Contains("rocket") || n.Contains("火箭") ||
+                    n.Contains("fanny") || n.Contains("funny") || n.Contains("腰包") || n.Contains("滑稽") || n.Contains("marsupio"))
+                    return false;
+
+                if (n.Contains("backpack") || n.Contains("背包") || n.Contains("zaino") || n.Contains("バックパック") || n.Contains("배낭"))
+                    return true;
+
+                return GetBackpackTypeForItem(item, null) == BackpackSlot.BackpackType.Backpack;
+        }
+    }
+
+    public static Item FindBackpackPrefab(BackpackSlot.BackpackType type = BackpackSlot.BackpackType.Backpack)
+    {
+        // 1. 若物品字典尚未初始化，先执行同步加载（冷启动防线）
+        if (Globals.items == null || Globals.items.Count == 0)
+        {
+            UpdateItemsSync();
         }
 
-        for (int i = 0; i < Globals.items.Count; i++)
+        // 2. 检索已加载的 Globals.items（已扫描物品防线，精准识别）
+        if (Globals.items != null && Globals.items.Count > 0)
         {
-            var item = Globals.items[i];
-            if (item == null) continue;
-            string n = "";
-            try { n = item.GetName(); } catch { }
-            if (string.IsNullOrEmpty(n)) n = item.name;
-            if (!string.IsNullOrEmpty(n) && n.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
-                return item;
+            for (int i = 0; i < Globals.items.Count; i++)
+            {
+                var item = Globals.items[i];
+                if (item == null) continue;
+
+                if (MatchesBackpackType(item, type))
+                {
+                    return item;
+                }
+            }
         }
+
+        // 3. 官方 Resources 多别名加载兜底（核心防线）
+        string[] resourcePaths = null;
+        switch (type)
+        {
+            case BackpackSlot.BackpackType.Jetpack:
+                resourcePaths = new string[] { "0_Items/Jetpack", "0_Items/JetPack" };
+                break;
+            case BackpackSlot.BackpackType.Rocketpack:
+                resourcePaths = new string[] { "0_Items/Rocketpack", "0_Items/RocketPack", "0_Items/Rocket_Pack" };
+                break;
+            case BackpackSlot.BackpackType.Fannypack:
+                resourcePaths = new string[] { "0_Items/Fannypack", "0_Items/FannyPack", "0_Items/Fanny Pack" };
+                break;
+            case BackpackSlot.BackpackType.Backpack:
+            default:
+                resourcePaths = new string[] { "0_Items/Backpack" };
+                break;
+        }
+
+        if (resourcePaths != null)
+        {
+            for (int i = 0; i < resourcePaths.Length; i++)
+            {
+                try
+                {
+                    var bpGo = Resources.Load<GameObject>(resourcePaths[i]);
+                    if (bpGo != null)
+                    {
+                        var bpItem = bpGo.GetComponent<Item>();
+                        if (bpItem != null) return bpItem;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (Logger != null) Logger.LogError(string.Format("[Backpack] Resources.Load('{0}') failed: {1}", resourcePaths[i], ex));
+                }
+            }
+        }
+
+        // 4. Resources 全局深搜兜底
+        try
+        {
+            var allItems = Resources.FindObjectsOfTypeAll<Item>();
+            if (allItems != null)
+            {
+                for (int i = 0; i < allItems.Length; i++)
+                {
+                    var it = allItems[i];
+                    if (it != null && MatchesBackpackType(it, type))
+                    {
+                        return it;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // 5. 终极兜底：若某种衍生背包实在找不到，回退到基础背包 Backpack，避免返回 null
+        if (type != BackpackSlot.BackpackType.Backpack)
+        {
+            if (Logger != null)
+                Logger.LogWarning(string.Format("[Backpack] Could not find prefab for '{0}', falling back to Backpack", type));
+            return FindBackpackPrefab(BackpackSlot.BackpackType.Backpack);
+        }
+
         return null;
     }
 
@@ -5085,8 +5215,62 @@ public static class Utilities
             backpackSlot.EmptyOut();
             backpackSlot.backpackType = BackpackSlot.BackpackType.None;
 
+            // 全网同步空槽位状态
+            if (player.photonView != null)
+            {
+                var syncObj = new InventorySyncData(
+                    player.itemSlots,
+                    backpackSlot,
+                    player.tempFullSlot
+                );
+                byte[] syncData = SerializeSyncData(syncObj);
+                player.photonView.RPC("SyncInventoryRPC", RpcTarget.All, new object[] { syncData, true });
+            }
+
             if (Logger != null)
                 Logger.LogInfo("[Backpack] Dropped existing backpack to the ground.");
+        }
+    }
+
+    public static void DropCurrentBackpack(int playerIndex)
+    {
+        if (playerIndex < 0 || playerIndex >= Globals.allPlayers.Count) return;
+
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                var character = Globals.allPlayers[playerIndex];
+                if (character == null) return;
+
+                Player player = character.player;
+                if (player == null && character.IsLocal)
+                    player = Player.localPlayer;
+
+                if (player != null)
+                {
+                    DropCurrentBackpack(player);
+                    Globals.GlobalNotifier.ShowError(string.Format("已卸下 '{0}' 的背包", character.characterName), 3.0f);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] DropCurrentBackpack error: " + ex);
+                Globals.GlobalNotifier.ShowError("卸下背包失败: " + ex.Message);
+            }
+        });
+    }
+
+    public static void DropCurrentBackpack()
+    {
+        if (Globals.selectedPlayer >= 0 && Globals.selectedPlayer < Globals.allPlayers.Count)
+        {
+            DropCurrentBackpack(Globals.selectedPlayer);
+        }
+        else
+        {
+            DropCurrentBackpack(Player.localPlayer);
         }
     }
 
@@ -5243,35 +5427,39 @@ public static class Utilities
                 }
                 else
                 {
-                    // 远端玩家：通过游戏原生权威生成器 InstantiateAndGrabRPC 生成并自动塞入目标4号背包槽
-                    if (GameUtils.instance != null)
-                    {
-                        GameUtils.instance.InstantiateAndGrab(bpPrefab, character, 0);
-                    }
-                    else if (PhotonNetwork.IsMasterClient)
+                    // 远端玩家穿戴背包：调用原版正确穿戴方法 Wear，避免调用 Interact 导致弹出轮盘 UI
+                    string prefabName = bpPrefab.gameObject.name;
+                    if (prefabName.EndsWith("(Clone)"))
+                        prefabName = prefabName.Substring(0, prefabName.Length - 7);
+
+                    if (PhotonNetwork.IsMasterClient)
                     {
                         Vector3 spawnPos = GetCharacterPosition(character) + GetCharacterForward(character) * 0.5f + Vector3.up * 0.2f;
-                        var spawnedGo = PhotonNetwork.InstantiateItemRoom(bpPrefab.gameObject.name, spawnPos, Quaternion.identity);
+
+                        var spawnedGo = PhotonNetwork.InstantiateItemRoom(prefabName, spawnPos, Quaternion.identity);
                         if (spawnedGo != null)
                         {
-                            var itemComp = spawnedGo.GetComponent<Item>();
-                            if (itemComp != null)
+                            var bpComp = spawnedGo.GetComponent<Backpack>();
+                            if (bpComp != null)
                             {
-                                itemComp.Interact(character);
+                                bpComp.Wear(character);
+                            }
+                            else
+                            {
+                                var itemComp = spawnedGo.GetComponent<Item>();
+                                if (itemComp != null)
+                                {
+                                    itemComp.Interact(character);
+                                }
                             }
                         }
                     }
                     else
                     {
-                        var gu = UnityEngine.Object.FindObjectOfType<GameUtils>();
+                        var gu = GameUtils.instance ?? UnityEngine.Object.FindObjectOfType<GameUtils>();
                         if (gu != null && gu.photonView != null)
                         {
-                            gu.photonView.SafeRPC("InstantiateAndGrabRPC", RpcTarget.MasterClient,
-                                bpPrefab.gameObject.name,
-                                character.transform.position,
-                                character.photonView,
-                                (byte)0
-                            );
+                            gu.InstantiateAndGrab(bpPrefab, character, 0);
                         }
                     }
                 }
@@ -5378,26 +5566,79 @@ public static class Utilities
                 if (target == null) return;
 
                 Item prefab = FindBackpackPrefab(type);
-                Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
+                if (prefab == null)
+                {
+                    Globals.GlobalNotifier.ShowError("生成背包失败: 未找到背包预制体");
+                    return;
+                }
 
-                if (prefab != null)
-                {
-                    ItemDatabase.Add(prefab, spawnPos);
-                }
-                else
-                {
-                    if (Logger != null)
-                        Logger.LogWarning(string.Format("[Lobby] Could not find prefab for backpack type {0}", type));
-                }
+                Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
+                ItemDatabase.Add(prefab, spawnPos);
+
+                string bpName = "";
+                try { bpName = prefab.GetName(); } catch { }
+                if (string.IsNullOrEmpty(bpName)) bpName = prefab.name;
 
                 if (Logger != null)
-                    Logger.LogInfo(string.Format("[Lobby] Spawned {0} for player '{1}' on ground", type, target.characterName));
+                    Logger.LogInfo(string.Format("[Lobby] Spawned {0} for player '{1}' on ground at {2}", bpName, target.characterName, spawnPos));
+                Globals.GlobalNotifier.ShowError(string.Format("已为 '{0}' 在地面生成背包: {1}", target.characterName, bpName), 3.0f);
             }
             catch (Exception ex)
             {
                 if (Logger != null)
                     Logger.LogError("[Lobby] GiveQuickBackpackToPlayer error: " + ex);
                 Globals.GlobalNotifier.ShowError("生成背包失败: " + ex.Message);
+            }
+        });
+    }
+
+    public static void GiveBackpackToAllPlayers()
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (Globals.allPlayers.Count == 0)
+                {
+                    RefreshPlayerList();
+                }
+
+                Item bpPrefab = FindBackpackPrefab(BackpackSlot.BackpackType.Backpack);
+                if (bpPrefab == null)
+                {
+                    Globals.GlobalNotifier.ShowError("全员发放背包失败: 未找到背包预制体");
+                    return;
+                }
+
+                int count = 0;
+                for (int i = 0; i < Globals.allPlayers.Count; i++)
+                {
+                    var target = Globals.allPlayers[i];
+                    if (target == null) continue;
+                    if (Globals.excludeSelfFromAllActions && target.IsLocal) continue;
+
+                    Vector3 spawnPos = CalculateGroundSpawnPosition(target, 2.0f);
+                    ItemDatabase.Add(bpPrefab, spawnPos);
+                    count++;
+                }
+
+                if (count == 0 && Globals.allPlayers.Count > 0 && Globals.excludeSelfFromAllActions)
+                {
+                    Globals.GlobalNotifier.ShowError("全员发放未生效：当前勾选了'排除自己'且房间内无其他玩家！");
+                }
+                else
+                {
+                    Globals.GlobalNotifier.ShowError(string.Format("已为 {0} 名玩家发放地面背包", count), 3.0f);
+                }
+
+                if (Logger != null)
+                    Logger.LogInfo(string.Format("[Lobby] Gave backpack to {0} players on ground. ExcludeSelf: {1}", count, Globals.excludeSelfFromAllActions));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[Lobby] GiveBackpackToAllPlayers error: " + ex);
+                Globals.GlobalNotifier.ShowError("全员发放背包失败: " + ex.Message);
             }
         });
     }

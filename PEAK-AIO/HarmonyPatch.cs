@@ -176,13 +176,15 @@ public class Patch_CharacterMovement_CanMoveCamera
 [HarmonyPatch(typeof(CursorHandler), "Update")]
 public class Patch_CursorHandler_Update
 {
-    static void Postfix()
+    static bool Prefix()
     {
         if (PeakMod.IsMenuOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            return false;
         }
+        return true;
     }
 }
 
@@ -842,6 +844,61 @@ public static class Patch_PlayerGhost_Update
         }
 
         // Original player spectator ghost: pass through to native logic
+        return true;
+    }
+}
+
+[HarmonyPatch(typeof(GameUtils), "InstantiateAndGrabRPC")]
+public class Patch_InstantiateAndGrabRPC
+{
+    private static bool Prefix(string itemPrefabName, PhotonView characterView, int cookedAmount)
+    {
+        try
+        {
+            if (!PhotonNetwork.IsMasterClient)
+                return false;
+
+            if (characterView == null)
+                return true;
+
+            Character component = characterView.GetComponent<Character>();
+            if (component == null)
+                return true;
+
+            if (!string.IsNullOrEmpty(itemPrefabName) && Utilities.IsBackpackItem(null, itemPrefabName))
+            {
+                component.refs.items.lastEquippedSlotTime = 0f;
+                Vector3 spawnPos = Utilities.GetCharacterPosition(component) + Utilities.GetCharacterForward(component) * 0.5f + Vector3.up * 0.2f;
+
+                string cleanPrefabName = itemPrefabName;
+                if (cleanPrefabName.EndsWith("(Clone)"))
+                    cleanPrefabName = cleanPrefabName.Substring(0, cleanPrefabName.Length - 7);
+
+                var spawned = PhotonNetwork.InstantiateItemRoom(cleanPrefabName, spawnPos, Quaternion.identity);
+                if (spawned != null)
+                {
+                    var bp = spawned.GetComponent<Backpack>();
+                    if (bp != null)
+                    {
+                        bp.Wear(component);
+                        return false;
+                    }
+                    else
+                    {
+                        var it = spawned.GetComponent<Item>();
+                        if (it != null)
+                        {
+                            it.Interact(component);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ConfigManager.Logger.LogError("[Patch] InstantiateAndGrabRPC backpack wear failed: " + ex);
+        }
         return true;
     }
 }

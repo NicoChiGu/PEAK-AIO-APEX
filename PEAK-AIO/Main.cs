@@ -4,7 +4,9 @@ using HarmonyLib;
 using Photon.Pun;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [BepInPlugin("com.onigremlin.peakaio", "PEAK AIO Mod", "1.2.0")]
 public class PeakMod : BaseUnityPlugin
@@ -63,6 +65,15 @@ public class PeakMod : BaseUnityPlugin
     private Texture2D texBadgeComp;
     private Texture2D texBadgePend;
 
+    // Switch & Button Textures
+    private Texture2D texSwitchBgOff;
+    private Texture2D texSwitchBgOn;
+    private Texture2D texSwitchThumb;
+    private Texture2D texPrimaryBtnHover;
+    private Texture2D texPrimaryBtnActive;
+    private Texture2D texDangerBtnHover;
+    private Texture2D texDangerBtnActive;
+
     private static Texture2D MakeSolidTex(int width, int height, Color col)
     {
         Color[] pix = new Color[width * height];
@@ -74,11 +85,113 @@ public class PeakMod : BaseUnityPlugin
         return result;
     }
 
+    private static Texture2D MakeCapsuleTex(int w, int h, Color col)
+    {
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        float r = h * 0.5f;
+        Vector2 leftCenter = new Vector2(r, r);
+        Vector2 rightCenter = new Vector2(w - r, r);
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+                float dist;
+                if (p.x < leftCenter.x)
+                    dist = Vector2.Distance(p, leftCenter);
+                else if (p.x > rightCenter.x)
+                    dist = Vector2.Distance(p, rightCenter);
+                else
+                    dist = Mathf.Abs(p.y - r);
+
+                if (dist <= r - 0.5f)
+                {
+                    tex.SetPixel(x, y, col);
+                }
+                else if (dist < r + 0.5f)
+                {
+                    float alpha = Mathf.Clamp01(r + 0.5f - dist);
+                    Color c = col;
+                    c.a *= alpha;
+                    tex.SetPixel(x, y, c);
+                }
+                else
+                {
+                    tex.SetPixel(x, y, Color.clear);
+                }
+            }
+        }
+        tex.Apply();
+        return tex;
+    }
+
+    private static Texture2D MakeCircleTex(int size, Color fillColor, Color borderColor)
+    {
+        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        float r = size * 0.5f;
+        Vector2 center = new Vector2(r, r);
+        float borderThickness = 1.0f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+                float dist = Vector2.Distance(p, center);
+
+                if (dist <= r - borderThickness)
+                {
+                    tex.SetPixel(x, y, fillColor);
+                }
+                else if (dist <= r)
+                {
+                    tex.SetPixel(x, y, borderColor);
+                }
+                else if (dist < r + 0.8f)
+                {
+                    float alpha = Mathf.Clamp01(r + 0.8f - dist);
+                    Color c = borderColor;
+                    c.a *= alpha;
+                    tex.SetPixel(x, y, c);
+                }
+                else
+                {
+                    tex.SetPixel(x, y, Color.clear);
+                }
+            }
+        }
+        tex.Apply();
+        return tex;
+    }
+
     private void Awake()
     {
         Logger.LogInfo("[PEAK AIO] Initializing Mod (Native Unity GUI)...");
+        SceneManager.sceneLoaded += OnSceneLoaded;
         this.gameObject.AddComponent<EventComponent>();
         this.gameObject.AddComponent<AutoReconnectService>();
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        try
+        {
+            Globals.allPlayers.Clear();
+            Globals.playerNames.Clear();
+            Globals.selectedPlayer = -1;
+            GameHelpers.Refresh();
+            EventComponent.QueueDelayedAction(Utilities.RefreshPlayerList, 1.5f);
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null) Logger.LogError("[PEAK AIO] OnSceneLoaded failed: " + ex);
+        }
     }
 
     private void OnEnable()
@@ -187,6 +300,21 @@ public class PeakMod : BaseUnityPlugin
         texBadgeComp = MakeSolidTex(2, 2, badgeCompCol);
         texBadgePend = MakeSolidTex(2, 2, badgePendCol);
 
+        // Switch Textures (Zero GC cached)
+        Color switchOnCol = new Color(0.24f, 0.58f, 0.32f, 1.0f);
+        Color switchOffCol = new Color(0.68f, 0.65f, 0.59f, 1.0f);
+        Color thumbFill = new Color(0.98f, 0.98f, 0.96f, 1.0f);
+        Color thumbBorder = new Color(0.50f, 0.46f, 0.40f, 0.6f);
+
+        texSwitchBgOn = MakeCapsuleTex(42, 22, switchOnCol);
+        texSwitchBgOff = MakeCapsuleTex(42, 22, switchOffCol);
+        texSwitchThumb = MakeCircleTex(18, thumbFill, thumbBorder);
+
+        texPrimaryBtnHover = MakeSolidTex(2, 2, new Color(0.36f, 0.63f, 0.43f, 1.0f));
+        texPrimaryBtnActive = MakeSolidTex(2, 2, new Color(0.28f, 0.50f, 0.34f, 1.0f));
+        texDangerBtnHover = MakeSolidTex(2, 2, new Color(0.82f, 0.50f, 0.45f, 1.0f));
+        texDangerBtnActive = MakeSolidTex(2, 2, new Color(0.68f, 0.38f, 0.33f, 1.0f));
+
         // Clone base skin to retain all default controls and scrollbars
         customSkin = Instantiate(GUI.skin);
         try
@@ -194,7 +322,7 @@ public class PeakMod : BaseUnityPlugin
             string[] fontCandidates = new string[] {
                 "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Malgun Gothic", "Meiryo", "Arial"
             };
-            Font dynamicFont = Font.CreateDynamicFontFromOSFont(fontCandidates, 12);
+            Font dynamicFont = Font.CreateDynamicFontFromOSFont(fontCandidates, 14);
             if (dynamicFont != null)
             {
                 customSkin.font = dynamicFont;
@@ -208,9 +336,9 @@ public class PeakMod : BaseUnityPlugin
         windowStyle.onNormal.background = texCanvasTan;
         windowStyle.normal.textColor = logInk;
         windowStyle.onNormal.textColor = logInk;
-        windowStyle.fontSize = 14;
+        windowStyle.fontSize = 15;
         windowStyle.fontStyle = FontStyle.Bold;
-        windowStyle.padding = new RectOffset(8, 8, 24, 8);
+        windowStyle.padding = new RectOffset(10, 10, 26, 10);
         windowStyle.border = new RectOffset(0, 0, 0, 0);
         customSkin.window = windowStyle;
 
@@ -222,18 +350,18 @@ public class PeakMod : BaseUnityPlugin
         defaultBtn.normal.textColor = logInk;
         defaultBtn.hover.textColor = logInk;
         defaultBtn.active.textColor = logInk;
-        defaultBtn.fontSize = 12;
+        defaultBtn.fontSize = 13;
         defaultBtn.alignment = TextAnchor.MiddleCenter;
         defaultBtn.margin = new RectOffset(2, 2, 2, 2);
-        defaultBtn.padding = new RectOffset(6, 6, 4, 4);
+        defaultBtn.padding = new RectOffset(8, 8, 5, 5);
         customSkin.button = defaultBtn;
         regularBtnStyle = defaultBtn;
 
         // Primary Button
         primaryBtnStyle = new GUIStyle(defaultBtn);
         primaryBtnStyle.normal.background = texLightGreen;
-        primaryBtnStyle.hover.background = MakeSolidTex(2, 2, new Color(0.36f, 0.63f, 0.43f, 1.0f));
-        primaryBtnStyle.active.background = MakeSolidTex(2, 2, new Color(0.28f, 0.50f, 0.34f, 1.0f));
+        primaryBtnStyle.hover.background = texPrimaryBtnHover;
+        primaryBtnStyle.active.background = texPrimaryBtnActive;
         primaryBtnStyle.normal.textColor = Color.white;
         primaryBtnStyle.hover.textColor = Color.white;
         primaryBtnStyle.active.textColor = Color.white;
@@ -242,8 +370,8 @@ public class PeakMod : BaseUnityPlugin
         // Danger Button
         dangerBtnStyle = new GUIStyle(defaultBtn);
         dangerBtnStyle.normal.background = texScoutRed;
-        dangerBtnStyle.hover.background = MakeSolidTex(2, 2, new Color(0.82f, 0.50f, 0.45f, 1.0f));
-        dangerBtnStyle.active.background = MakeSolidTex(2, 2, new Color(0.68f, 0.38f, 0.33f, 1.0f));
+        dangerBtnStyle.hover.background = texDangerBtnHover;
+        dangerBtnStyle.active.background = texDangerBtnActive;
         dangerBtnStyle.normal.textColor = Color.white;
         dangerBtnStyle.hover.textColor = Color.white;
         dangerBtnStyle.active.textColor = Color.white;
@@ -254,8 +382,7 @@ public class PeakMod : BaseUnityPlugin
         sidebarBtnStyle.normal.background = texTrailDust;
         sidebarBtnStyle.hover.background = texTrailDustHover;
         sidebarBtnStyle.normal.textColor = logInk;
-        sidebarBtnStyle.fontSize = 11;
-        sidebarBtnStyle.fixedHeight = 32;
+        sidebarBtnStyle.fontSize = 13;
         sidebarBtnStyle.fontStyle = FontStyle.Bold;
 
         sidebarActiveBtnStyle = new GUIStyle(sidebarBtnStyle);
@@ -270,7 +397,7 @@ public class PeakMod : BaseUnityPlugin
         cardBoxStyle = new GUIStyle(customSkin.box);
         cardBoxStyle.normal.background = texCardBg;
         cardBoxStyle.normal.textColor = logInk;
-        cardBoxStyle.padding = new RectOffset(8, 8, 8, 8);
+        cardBoxStyle.padding = new RectOffset(10, 10, 10, 10);
         cardBoxStyle.margin = new RectOffset(2, 2, 2, 2);
         cardBoxStyle.border = new RectOffset(0, 0, 0, 0);
         customSkin.box = cardBoxStyle;
@@ -278,21 +405,21 @@ public class PeakMod : BaseUnityPlugin
         // Section Header
         sectionHeaderStyle = new GUIStyle(customSkin.label);
         sectionHeaderStyle.normal.textColor = sidebarGreen;
-        sectionHeaderStyle.fontSize = 13;
+        sectionHeaderStyle.fontSize = 15;
         sectionHeaderStyle.fontStyle = FontStyle.Bold;
         sectionHeaderStyle.margin = new RectOffset(0, 0, 4, 2);
 
         // Subheader
         subHeaderStyle = new GUIStyle(customSkin.label);
         subHeaderStyle.normal.textColor = badgeBrown;
-        subHeaderStyle.fontSize = 12;
+        subHeaderStyle.fontSize = 13;
         subHeaderStyle.fontStyle = FontStyle.Bold;
         subHeaderStyle.margin = new RectOffset(0, 0, 2, 2);
 
         // Standard Label
         labelStyle = new GUIStyle(customSkin.label);
         labelStyle.normal.textColor = logInk;
-        labelStyle.fontSize = 12;
+        labelStyle.fontSize = 13;
         labelStyle.wordWrap = true;
         customSkin.label = labelStyle;
 
@@ -301,7 +428,7 @@ public class PeakMod : BaseUnityPlugin
 
         tipLabelStyle = new GUIStyle(labelStyle);
         tipLabelStyle.normal.textColor = ropeBrown;
-        tipLabelStyle.fontSize = 10;
+        tipLabelStyle.fontSize = 11;
 
         // Text input
         textInputStyle = new GUIStyle(customSkin.textField);
@@ -309,8 +436,8 @@ public class PeakMod : BaseUnityPlugin
         textInputStyle.focused.background = texTrailDustHover;
         textInputStyle.normal.textColor = logInk;
         textInputStyle.focused.textColor = logInk;
-        textInputStyle.fontSize = 12;
-        textInputStyle.padding = new RectOffset(4, 4, 3, 3);
+        textInputStyle.fontSize = 13;
+        textInputStyle.padding = new RectOffset(6, 6, 4, 4);
         customSkin.textField = textInputStyle;
 
         // Selectables
@@ -318,11 +445,11 @@ public class PeakMod : BaseUnityPlugin
         itemSelectableStyle.normal.background = texTrailDust;
         itemSelectableStyle.hover.background = texTrailDustHover;
         itemSelectableStyle.normal.textColor = logInk;
-        itemSelectableStyle.fontSize = 11;
+        itemSelectableStyle.fontSize = 12;
         itemSelectableStyle.alignment = TextAnchor.MiddleLeft;
-        itemSelectableStyle.padding = new RectOffset(6, 4, 3, 3);
+        itemSelectableStyle.padding = new RectOffset(8, 6, 4, 4);
         itemSelectableStyle.margin = new RectOffset(1, 1, 1, 1);
-        itemSelectableStyle.fixedHeight = 22;
+        itemSelectableStyle.fixedHeight = 25;
 
         itemSelectedStyle = new GUIStyle(itemSelectableStyle);
         itemSelectedStyle.normal.background = texLightGreen;
@@ -338,7 +465,7 @@ public class PeakMod : BaseUnityPlugin
         toggleStyle.onNormal.textColor = sidebarGreen;
         toggleStyle.onHover.textColor = sidebarGreen;
         toggleStyle.onActive.textColor = sidebarGreen;
-        toggleStyle.fontSize = 12;
+        toggleStyle.fontSize = 13;
         toggleStyle.fontStyle = FontStyle.Normal;
         customSkin.toggle = toggleStyle;
 
@@ -380,42 +507,42 @@ public class PeakMod : BaseUnityPlugin
         badgeCurrentStyle = new GUIStyle(customSkin.label);
         badgeCurrentStyle.normal.background = texBadgeCur;
         badgeCurrentStyle.normal.textColor = Color.white;
-        badgeCurrentStyle.fontSize = 11;
+        badgeCurrentStyle.fontSize = 12;
         badgeCurrentStyle.fontStyle = FontStyle.Bold;
         badgeCurrentStyle.alignment = TextAnchor.MiddleCenter;
-        badgeCurrentStyle.padding = new RectOffset(7, 7, 3, 3);
+        badgeCurrentStyle.padding = new RectOffset(8, 8, 4, 4);
         badgeCurrentStyle.margin = new RectOffset(1, 1, 1, 1);
 
         badgeCompletedStyle = new GUIStyle(customSkin.label);
         badgeCompletedStyle.normal.background = texBadgeComp;
         badgeCompletedStyle.normal.textColor = Color.white;
-        badgeCompletedStyle.fontSize = 11;
+        badgeCompletedStyle.fontSize = 12;
         badgeCompletedStyle.alignment = TextAnchor.MiddleCenter;
-        badgeCompletedStyle.padding = new RectOffset(6, 6, 3, 3);
+        badgeCompletedStyle.padding = new RectOffset(7, 7, 4, 4);
         badgeCompletedStyle.margin = new RectOffset(1, 1, 1, 1);
 
         badgePendingStyle = new GUIStyle(customSkin.label);
         badgePendingStyle.normal.background = texBadgePend;
         badgePendingStyle.normal.textColor = logInk;
-        badgePendingStyle.fontSize = 11;
+        badgePendingStyle.fontSize = 12;
         badgePendingStyle.alignment = TextAnchor.MiddleCenter;
-        badgePendingStyle.padding = new RectOffset(6, 6, 3, 3);
+        badgePendingStyle.padding = new RectOffset(7, 7, 4, 4);
         badgePendingStyle.margin = new RectOffset(1, 1, 1, 1);
 
         flowArrowStyle = new GUIStyle(customSkin.label);
         flowArrowStyle.normal.textColor = ropeBrown;
-        flowArrowStyle.fontSize = 12;
+        flowArrowStyle.fontSize = 13;
         flowArrowStyle.fontStyle = FontStyle.Bold;
         flowArrowStyle.alignment = TextAnchor.MiddleCenter;
         flowArrowStyle.padding = new RectOffset(0, 0, 2, 0);
 
         stageTagStyle = new GUIStyle(badgePendingStyle);
         stageTagStyle.fontStyle = FontStyle.Bold;
-        stageTagStyle.fontSize = 10;
+        stageTagStyle.fontSize = 11;
         stageTagStyle.normal.textColor = ropeBrown;
 
         stageTagActiveStyle = new GUIStyle(badgeCurrentStyle);
-        stageTagActiveStyle.fontSize = 10;
+        stageTagActiveStyle.fontSize = 11;
 
         skinInitialized = true;
     }
@@ -434,11 +561,27 @@ public class PeakMod : BaseUnityPlugin
         {
             GUI.skin = customSkin;
 
-            // Ensure window stays within screen bounds
-            Globals.windowRect.x = Mathf.Clamp(Globals.windowRect.x, 0, Mathf.Max(0, Screen.width - Globals.windowRect.width));
-            Globals.windowRect.y = Mathf.Clamp(Globals.windowRect.y, 0, Mathf.Max(0, Screen.height - Globals.windowRect.height));
+            float screenW = (float)Screen.width;
+            float screenH = (float)Screen.height;
+            float targetW = Mathf.Clamp(screenW * 0.50f, 920f, 1160f);
+            float targetH = Mathf.Clamp(screenH * 0.60f, 620f, 800f);
 
-            Globals.windowRect = GUILayout.Window(9999, Globals.windowRect, DrawWindow, "PEAK AIO [APEX Edition]", GUILayout.Width(780), GUILayout.Height(520));
+            if (!Globals.windowPosInitialized)
+            {
+                Globals.windowRect = new Rect((screenW - targetW) * 0.5f, (screenH - targetH) * 0.5f, targetW, targetH);
+                Globals.windowPosInitialized = true;
+            }
+            else
+            {
+                Globals.windowRect.width = targetW;
+                Globals.windowRect.height = targetH;
+            }
+
+            // Ensure window stays within screen bounds
+            Globals.windowRect.x = Mathf.Clamp(Globals.windowRect.x, 0, Mathf.Max(0, screenW - Globals.windowRect.width));
+            Globals.windowRect.y = Mathf.Clamp(Globals.windowRect.y, 0, Mathf.Max(0, screenH - Globals.windowRect.height));
+
+            Globals.windowRect = GUILayout.Window(9999, Globals.windowRect, DrawWindow, "PEAK AIO [APEX Edition]", GUILayout.Width(targetW), GUILayout.Height(targetH));
         }
         finally
         {
@@ -521,7 +664,7 @@ public class PeakMod : BaseUnityPlugin
         }
 
         // Close button at top right
-        if (GUI.Button(new Rect(Globals.windowRect.width - 26, 3, 22, 20), "X", dangerBtnStyle))
+        if (GUI.Button(new Rect(Globals.windowRect.width - 28, 4, 24, 20), "X", dangerBtnStyle))
         {
             ToggleMenu();
             return;
@@ -530,7 +673,7 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.BeginHorizontal();
 
         // 1. Left Sidebar
-        GUILayout.BeginVertical(GUILayout.Width(115));
+        GUILayout.BeginVertical(GUILayout.Width(130));
         try
         {
             DrawSidebar();
@@ -568,7 +711,7 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.EndHorizontal();
 
         // Drag bar across the top header
-        GUI.DragWindow(new Rect(0, 0, Globals.windowRect.width - 28, 24));
+        GUI.DragWindow(new Rect(0, 0, Globals.windowRect.width - 32, 26));
     }
 
     private void DrawSidebar()
@@ -584,7 +727,7 @@ public class PeakMod : BaseUnityPlugin
             string label = Localization.T(sidebarKeys[i]);
 
             GUIStyle style = isSelected ? sidebarActiveBtnStyle : sidebarBtnStyle;
-            if (GUILayout.Button(label, style))
+            if (GUILayout.Button(label, style, GUILayout.Height(34)))
             {
                 if (pendingTab != tabIndex)
                 {
@@ -642,12 +785,16 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     private void DrawPlayerTab()
     {
-        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+        Globals.mainScroll.x = 0;
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll, false, false, GUIStyle.none, customSkin.verticalScrollbar);
+
+        float contentWidth = Mathf.Max(600f, Globals.windowRect.width - 130f - 40f);
+        float colWidth = (contentWidth - 12f) * 0.5f;
 
         GUILayout.BeginHorizontal();
 
         // Left Column: Self Mods & Teleport
-        GUILayout.BeginVertical(GUILayout.Width(310));
+        GUILayout.BeginVertical(GUILayout.Width(colWidth));
 
         GUILayout.Label(Localization.T("player.selfmods"), sectionHeaderStyle);
 
@@ -724,12 +871,6 @@ public class PeakMod : BaseUnityPlugin
 
         DrawCheckbox(ConfigManager.FlyMod, Localization.T("player.fly_mode"), FlyPatch.SetFlying);
 
-        GUILayout.Space(6);
-        if (GUILayout.Button(Localization.T("player.spawn_backpack"), GUILayout.Height(24)))
-        {
-            Utilities.GivePlayerBackpack(Player.localPlayer);
-        }
-
         GUILayout.Space(8);
         GUILayout.Label(Localization.T("player.teleport"), sectionHeaderStyle);
 
@@ -769,7 +910,7 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Space(12);
 
         // Right Column: Status & Afflictions Management & Modifiers / Sliders
-        GUILayout.BeginVertical(GUILayout.Width(300));
+        GUILayout.BeginVertical(GUILayout.Width(colWidth));
 
         // --- Status Effects & Debuffs Section ---
         GUILayout.BeginVertical(cardBoxStyle);
@@ -933,7 +1074,8 @@ public class PeakMod : BaseUnityPlugin
             }
         }
 
-        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+        Globals.mainScroll.x = 0;
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll, false, false, GUIStyle.none, customSkin.verticalScrollbar);
         try
         {
             // Safety check for search buffers (extended to 4 slots)
@@ -963,7 +1105,7 @@ public class PeakMod : BaseUnityPlugin
                 GUILayout.Label(Localization.T("tab.items"), sectionHeaderStyle);
                 GUILayout.FlexibleSpace();
                 GUILayout.Label(string.Format(Localization.T("items.loaded_count"), Globals.items.Count), tipLabelStyle);
-                if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(130), GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.refresh"), GUILayout.Width(130), GUILayout.Height(24)))
                 {
                     Utilities.pendingItemRefresh = true;
                 }
@@ -996,13 +1138,16 @@ public class PeakMod : BaseUnityPlugin
             }
             else
             {
+                float contentWidth = Mathf.Max(600f, Globals.windowRect.width - 130f - 40f);
+                float slotColWidth = (contentWidth - 8f) * 0.5f;
+
                 // 2x2 Grid for slots: Row 1 (Slot 0, 1), Row 2 (Slot 2, 3 [Backpack])
                 GUILayout.BeginHorizontal();
                 try
                 {
-                    DrawItemSlotColumn(0);
-                    GUILayout.Space(6);
-                    DrawItemSlotColumn(1);
+                    DrawItemSlotColumn(0, slotColWidth);
+                    GUILayout.Space(8);
+                    DrawItemSlotColumn(1, slotColWidth);
                 }
                 finally
                 {
@@ -1014,9 +1159,9 @@ public class PeakMod : BaseUnityPlugin
                 GUILayout.BeginHorizontal();
                 try
                 {
-                    DrawItemSlotColumn(2);
-                    GUILayout.Space(6);
-                    DrawItemSlotColumn(3);
+                    DrawItemSlotColumn(2, slotColWidth);
+                    GUILayout.Space(8);
+                    DrawItemSlotColumn(3, slotColWidth);
                 }
                 finally
                 {
@@ -1043,31 +1188,29 @@ public class PeakMod : BaseUnityPlugin
 
             // 1. Mushroom Customization
             GUILayout.Label(Localization.T("items.mushroom_customization"), boldLabelStyle);
-            GUILayout.BeginHorizontal();
 
             bool isVanilla = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Vanilla);
             bool isPurified = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Purified);
             bool isToxic = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Toxic);
             bool isSpecific = (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Specific);
 
-            if (GUILayout.Toggle(isVanilla, Localization.T("items.mushroom_mode_vanilla"), GUILayout.Width(130)) && !isVanilla)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("items.mushroom_mode_vanilla"), isVanilla ? primaryBtnStyle : regularBtnStyle, GUILayout.Height(24)))
             {
                 Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Vanilla;
             }
-            if (GUILayout.Toggle(isPurified, Localization.T("items.mushroom_mode_purified"), GUILayout.Width(170)) && !isPurified)
+            if (GUILayout.Button(Localization.T("items.mushroom_mode_purified"), isPurified ? primaryBtnStyle : regularBtnStyle, GUILayout.Height(24)))
             {
                 Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Purified;
             }
-            if (GUILayout.Toggle(isToxic, Localization.T("items.mushroom_mode_toxic"), GUILayout.Width(170)) && !isToxic)
+            if (GUILayout.Button(Localization.T("items.mushroom_mode_toxic"), isToxic ? primaryBtnStyle : regularBtnStyle, GUILayout.Height(24)))
             {
                 Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Toxic;
             }
-            if (GUILayout.Toggle(isSpecific, Localization.T("items.mushroom_mode_specific"), GUILayout.Width(110)) && !isSpecific)
+            if (GUILayout.Button(Localization.T("items.mushroom_mode_specific"), isSpecific ? primaryBtnStyle : regularBtnStyle, GUILayout.Height(24)))
             {
                 Globals.mushroomSpawnMode = Globals.MushroomSpawnMode.Specific;
             }
-
-            GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
             if (Globals.mushroomSpawnMode == Globals.MushroomSpawnMode.Specific)
@@ -1103,16 +1246,10 @@ public class PeakMod : BaseUnityPlugin
 
             // 2. Blowgun Dart Ammo Enchantment
             GUILayout.Label(Localization.T("items.blowgun_enchantment"), boldLabelStyle);
-            GUILayout.BeginHorizontal();
-            bool prevDart = Globals.dartAmmoEnabled;
-            bool newDart = GUILayout.Toggle(prevDart, Localization.T("items.dart_enable"), GUILayout.Width(240));
-            if (newDart != prevDart)
+            DrawModernSwitch(ConfigManager.DartAmmoEnabled, Localization.T("items.dart_enable"), (val) =>
             {
-                Globals.dartAmmoEnabled = newDart;
-                ConfigManager.DartAmmoEnabled.Value = newDart;
-            }
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
+                Globals.dartAmmoEnabled = val;
+            });
 
             if (Globals.dartAmmoEnabled)
             {
@@ -1123,27 +1260,35 @@ public class PeakMod : BaseUnityPlugin
                 DrawDartAmmoButton(Globals.DartAmmoType.SpeedBoost, "items.dart_speed", primaryBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.InfiniteStamina, "items.dart_stamina", primaryBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.FullCleanse, "items.dart_cleanse", primaryBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.LowGravity, "items.dart_lowgrav", primaryBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Glow, "items.dart_glow", primaryBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Revive, "items.dart_revive", primaryBtnStyle);
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(2);
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(104);
+                DrawDartAmmoButton(Globals.DartAmmoType.LowGravity, "items.dart_lowgrav", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Glow, "items.dart_glow", primaryBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Revive, "items.dart_revive", primaryBtnStyle);
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+
+                GUILayout.Space(4);
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(Localization.T("items.dart_ammo_debuffs"), tipLabelStyle, GUILayout.Width(100));
                 DrawDartAmmoButton(Globals.DartAmmoType.Poison, "items.dart_poison", dangerBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.Starvation, "items.dart_starvation", dangerBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.Sleep, "items.dart_sleep", dangerBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.TripFall, "items.dart_fall", dangerBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Thorns, "items.dart_thorns", dangerBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Spores, "items.dart_spores", dangerBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Blind, "items.dart_blind", dangerBtnStyle);
-                DrawDartAmmoButton(Globals.DartAmmoType.Numb, "items.dart_numb", dangerBtnStyle);
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(2);
                 GUILayout.BeginHorizontal();
                 GUILayout.Space(104);
+                DrawDartAmmoButton(Globals.DartAmmoType.Thorns, "items.dart_thorns", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Spores, "items.dart_spores", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Blind, "items.dart_blind", dangerBtnStyle);
+                DrawDartAmmoButton(Globals.DartAmmoType.Numb, "items.dart_numb", dangerBtnStyle);
                 DrawDartAmmoButton(Globals.DartAmmoType.Chaos, "items.dart_chaos", regularBtnStyle);
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
@@ -1153,26 +1298,14 @@ public class PeakMod : BaseUnityPlugin
 
             // 3. Extended Item Attributes
             GUILayout.Label(Localization.T("items.extended_attributes"), boldLabelStyle);
-            GUILayout.BeginHorizontal();
-
-            bool curFoodPoison = Globals.foodPoisonImmunity;
-            bool newFoodPoison = GUILayout.Toggle(curFoodPoison, Localization.T("items.food_poison_immunity"), GUILayout.Width(300));
-            if (newFoodPoison != curFoodPoison)
+            DrawModernSwitch(ConfigManager.FoodPoisonImmunity, Localization.T("items.food_poison_immunity"), (val) =>
             {
-                Globals.foodPoisonImmunity = newFoodPoison;
-                ConfigManager.FoodPoisonImmunity.Value = newFoodPoison;
-            }
-
-            bool curTool = Globals.infiniteToolCharge;
-            bool newTool = GUILayout.Toggle(curTool, Localization.T("items.infinite_tool_charge"), GUILayout.Width(280));
-            if (newTool != curTool)
+                Globals.foodPoisonImmunity = val;
+            });
+            DrawModernSwitch(ConfigManager.InfiniteToolCharge, Localization.T("items.infinite_tool_charge"), (val) =>
             {
-                Globals.infiniteToolCharge = newTool;
-                ConfigManager.InfiniteToolCharge.Value = newTool;
-            }
-
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
+                Globals.infiniteToolCharge = val;
+            });
         }
         finally
         {
@@ -1192,10 +1325,10 @@ public class PeakMod : BaseUnityPlugin
         }
     }
 
-    private void DrawItemSlotColumn(int slot)
+    private void DrawItemSlotColumn(int slot, float colWidth)
     {
         bool isBackpackSlot = (slot == 3);
-        GUILayout.BeginVertical(cardBoxStyle, GUILayout.ExpandWidth(true));
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(colWidth));
         try
         {
             // Slot header
@@ -1265,14 +1398,27 @@ public class PeakMod : BaseUnityPlugin
 
             GUILayout.Space(2);
 
-            // Search filter
+            // Search filter with clear button
+            GUILayout.BeginHorizontal();
             string curSearch = Globals.itemSearchBuffers[slot] ?? "";
-            string newSearch = GUILayout.TextField(curSearch, GUILayout.Height(20));
+            string newSearch = GUILayout.TextField(curSearch, textInputStyle, GUILayout.Height(24), GUILayout.ExpandWidth(true));
             Globals.itemSearchBuffers[slot] = newSearch ?? "";
             string search = Globals.itemSearchBuffers[slot];
+            if (!string.IsNullOrEmpty(search))
+            {
+                if (GUILayout.Button("✕", dangerBtnStyle, GUILayout.Width(24), GUILayout.Height(24)))
+                {
+                    Globals.itemSearchBuffers[slot] = "";
+                    search = "";
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(2);
 
             // Item list (Slot 4 only displays backpack items)
-            Globals.slotScrolls[slot] = GUILayout.BeginScrollView(Globals.slotScrolls[slot], GUILayout.Height(140));
+            float innerListWidth = Mathf.Max(260f, colWidth - 22f);
+            Globals.slotScrolls[slot] = GUILayout.BeginScrollView(Globals.slotScrolls[slot], false, true, GUILayout.Width(innerListWidth), GUILayout.Height(150));
             try
             {
                 bool hasItem = false;
@@ -1296,7 +1442,7 @@ public class PeakMod : BaseUnityPlugin
                     bool isSelected = (Globals.selectedItems[slot] == i);
                     GUIStyle btnStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
 
-                    if (GUILayout.Button(name, btnStyle))
+                    if (GUILayout.Button(name, btnStyle, GUILayout.Height(25), GUILayout.ExpandWidth(true)))
                     {
                         Globals.selectedItems[slot] = i;
                     }
@@ -1317,7 +1463,7 @@ public class PeakMod : BaseUnityPlugin
             if (isBackpackSlot)
             {
                 // Slot 4 specific controls: Drop backpack button
-                if (GUILayout.Button(Localization.T("items.drop_backpack"), dangerBtnStyle, GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.drop_backpack"), dangerBtnStyle, GUILayout.Height(24)))
                 {
                     Utilities.DropCurrentBackpack(Player.localPlayer);
                 }
@@ -1327,7 +1473,7 @@ public class PeakMod : BaseUnityPlugin
                 GUI.enabled = canAct;
 
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
                 {
                     if (canAct)
                     {
@@ -1335,7 +1481,7 @@ public class PeakMod : BaseUnityPlugin
                     }
                 }
 
-                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
                 {
                     if (canAct)
                     {
@@ -1354,16 +1500,17 @@ public class PeakMod : BaseUnityPlugin
                 GUILayout.BeginHorizontal();
                 if (rechargeConfig != null)
                 {
-                    GUILayout.Label(Localization.T("items.recharge"), GUILayout.Width(45));
+                    GUILayout.Label(Localization.T("items.recharge"), GUILayout.Width(48));
                     float current = rechargeConfig.Value;
-                    float next = GUILayout.HorizontalSlider(current, 0f, 100f);
+                    float sliderW = Mathf.Max(60f, colWidth - 195f);
+                    float next = GUILayout.HorizontalSlider(current, 0f, 100f, GUILayout.Width(sliderW));
                     if (Math.Abs(next - current) > 0.001f)
                     {
                         rechargeConfig.Value = next;
                     }
                     GUILayout.Space(4);
-                    GUILayout.Label(string.Format("{0:F0}%", next), GUILayout.Width(35));
-                    if (GUILayout.Button(Localization.T("items.recharge"), GUILayout.Width(60), GUILayout.Height(22)))
+                    GUILayout.Label(string.Format("{0:F0}%", next), GUILayout.Width(40));
+                    if (GUILayout.Button(Localization.T("items.recharge"), GUILayout.Width(65), GUILayout.Height(24)))
                     {
                         Utilities.RechargeInventorySlot(slot, rechargeConfig.Value);
                     }
@@ -1375,7 +1522,7 @@ public class PeakMod : BaseUnityPlugin
                 GUI.enabled = canAct;
 
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.equip_item"), primaryBtnStyle, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
                 {
                     if (canAct)
                     {
@@ -1383,7 +1530,7 @@ public class PeakMod : BaseUnityPlugin
                     }
                 }
 
-                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(22)))
+                if (GUILayout.Button(Localization.T("items.spawn_item"), primaryBtnStyle, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
                 {
                     if (canAct)
                     {
@@ -1405,21 +1552,32 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     private void DrawLobbyTab()
     {
-        if (Globals.allPlayers.Count == 0)
+        if (Event.current != null && Event.current.type == EventType.Layout)
         {
-            Utilities.RefreshPlayerList();
+            float now = Time.realtimeSinceStartup;
+            if ((Globals.allPlayers.Count == 0 || Globals.allPlayers.Any(p => p == null)) &&
+                (now - Globals.lastLobbyRefreshTime > Globals.LOBBY_REFRESH_COOLDOWN))
+            {
+                Globals.lastLobbyRefreshTime = now;
+                Utilities.RefreshPlayerList();
+            }
         }
+
+        float contentWidth = Mathf.Max(600f, Globals.windowRect.width - 130f - 40f);
+        float leftColWidth = (contentWidth - 10f) * 0.46f;
+        float rightColWidth = (contentWidth - 10f) * 0.54f;
 
         GUILayout.BeginHorizontal();
 
         // Left Column: Player List & Batch Actions
-        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(290));
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(leftColWidth));
 
         GUILayout.BeginHorizontal();
         GUILayout.Label(Localization.T("lobby.players"), sectionHeaderStyle);
         GUILayout.FlexibleSpace();
         if (GUILayout.Button(Localization.T("lobby.refresh_players"), GUILayout.Height(20)))
         {
+            Globals.lastLobbyRefreshTime = Time.realtimeSinceStartup;
             Utilities.RefreshPlayerList();
         }
         GUILayout.EndHorizontal();
@@ -1462,7 +1620,7 @@ public class PeakMod : BaseUnityPlugin
         if (GUILayout.Button(Localization.T("lobby.clear_all_afflictions_all"), primaryBtnStyle, GUILayout.Height(24)))
             Utilities.ClearAllAfflictionsForAllPlayers();
 
-        Globals.excludeSelfFromAllActions = GUILayout.Toggle(Globals.excludeSelfFromAllActions, Localization.T("lobby.exclude_self"));
+        Globals.excludeSelfFromAllActions = DrawModernSwitch(Globals.excludeSelfFromAllActions, Localization.T("lobby.exclude_self"));
 
         GUILayout.Space(4);
         if (GUILayout.Button(Localization.T("lobby.warp_all_to_me"), GUILayout.Height(24)))
@@ -1489,37 +1647,28 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Space(6);
         GUILayout.Label(Localization.T("lobby.network_title"), subHeaderStyle);
 
-        bool curTuning = Globals.enableNetworkTuning;
-        bool newTuning = GUILayout.Toggle(curTuning, Localization.T("lobby.enable_network_tuning"));
-        if (newTuning != curTuning)
+        DrawModernSwitch(ConfigManager.EnableNetworkTuning, Localization.T("lobby.enable_network_tuning"), (val) =>
         {
-            Globals.enableNetworkTuning = newTuning;
-            ConfigManager.EnableNetworkTuning.Value = newTuning;
-            if (newTuning) NetworkTuningManager.ApplyOptimizations();
-        }
+            Globals.enableNetworkTuning = val;
+            if (val) NetworkTuningManager.ApplyOptimizations();
+        });
 
-        bool curAntiKick = Globals.enableAntiKick;
-        bool newAntiKick = GUILayout.Toggle(curAntiKick, Localization.T("lobby.enable_antikick"));
-        if (newAntiKick != curAntiKick)
+        DrawModernSwitch(ConfigManager.EnableAntiKick, Localization.T("lobby.enable_antikick"), (val) =>
         {
-            Globals.enableAntiKick = newAntiKick;
-            ConfigManager.EnableAntiKick.Value = newAntiKick;
-        }
+            Globals.enableAntiKick = val;
+        });
 
-        bool curAutoRec = Globals.enableAutoReconnect;
-        bool newAutoRec = GUILayout.Toggle(curAutoRec, Localization.T("lobby.enable_autoreconnect"));
-        if (newAutoRec != curAutoRec)
+        DrawModernSwitch(ConfigManager.EnableAutoReconnect, Localization.T("lobby.enable_autoreconnect"), (val) =>
         {
-            Globals.enableAutoReconnect = newAutoRec;
-            ConfigManager.EnableAutoReconnect.Value = newAutoRec;
-        }
+            Globals.enableAutoReconnect = val;
+        });
 
         GUILayout.EndVertical();
 
         GUILayout.Space(8);
 
         // Right Column: Selected Player Actions & Give Items
-        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(340));
+        GUILayout.BeginVertical(cardBoxStyle, GUILayout.Width(rightColWidth));
 
         GUILayout.Label(Localization.T("lobby.actions"), sectionHeaderStyle);
 
@@ -1679,48 +1828,74 @@ public class PeakMod : BaseUnityPlugin
             GUI.enabled = prevE;
 
             GUILayout.Space(6);
+            GUILayout.Label(Localization.T("lobby.backpack_mgmt"), subHeaderStyle);
 
-            // Quick Backpack Buttons: Row 1 = Direct Equip to Slot 4; Row 2 = Spawn in Front
-            GUILayout.Label(Localization.T("items.slot4") + " (快捷给予 / 穿戴):", subHeaderStyle);
-
-            // Direct Equip
+            // 1. 普通背包 (Backpack)
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Localization.T("lobby.equip_backpack"), primaryBtnStyle, GUILayout.Height(22)))
+            if (GUILayout.Button(Localization.T("lobby.equip_backpack"), primaryBtnStyle, GUILayout.Height(24)))
+            {
                 Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Backpack);
-
-            if (GUILayout.Button(Localization.T("lobby.equip_jetpack"), primaryBtnStyle, GUILayout.Height(22)))
-                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Jetpack);
+            }
+            if (GUILayout.Button(Localization.T("lobby.give_backpack"), sidebarBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Backpack);
+            }
             GUILayout.EndHorizontal();
 
             GUILayout.Space(2);
 
+            // 2. 喷气背包 (Jetpack)
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Localization.T("lobby.equip_rocketpack"), primaryBtnStyle, GUILayout.Height(22)))
-                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Rocketpack);
+            if (GUILayout.Button(Localization.T("lobby.equip_jetpack"), primaryBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Jetpack);
+            }
+            if (GUILayout.Button(Localization.T("lobby.give_jetpack"), sidebarBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Jetpack);
+            }
+            GUILayout.EndHorizontal();
 
-            if (GUILayout.Button(Localization.T("lobby.equip_fannypack"), primaryBtnStyle, GUILayout.Height(22)))
+            GUILayout.Space(2);
+
+            // 3. 火箭背包 (Rocketpack)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.equip_rocketpack"), primaryBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Rocketpack);
+            }
+            if (GUILayout.Button(Localization.T("lobby.give_rocketpack"), sidebarBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Rocketpack);
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(2);
+
+            // 4. 腰包 (Fannypack)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("lobby.equip_fannypack"), primaryBtnStyle, GUILayout.Height(24)))
+            {
                 Utilities.EquipBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Fannypack);
+            }
+            if (GUILayout.Button(Localization.T("lobby.give_fannypack"), sidebarBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Fannypack);
+            }
             GUILayout.EndHorizontal();
 
             GUILayout.Space(4);
 
-            // Spawn on ground
+            // 底部操作行：【卸下背包】与【全员发放背包】
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Localization.T("lobby.give_backpack"), GUILayout.Height(22)))
-                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Backpack);
-
-            if (GUILayout.Button(Localization.T("lobby.give_jetpack"), GUILayout.Height(22)))
-                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Jetpack);
-            GUILayout.EndHorizontal();
-
-            GUILayout.Space(2);
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Localization.T("lobby.give_rocketpack"), GUILayout.Height(22)))
-                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Rocketpack);
-
-            if (GUILayout.Button(Localization.T("lobby.give_fannypack"), GUILayout.Height(22)))
-                Utilities.GiveQuickBackpackToPlayer(Globals.selectedPlayer, BackpackSlot.BackpackType.Fannypack);
+            if (GUILayout.Button(Localization.T("lobby.drop_backpack"), dangerBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.DropCurrentBackpack(Globals.selectedPlayer);
+            }
+            if (GUILayout.Button(Localization.T("lobby.give_all_backpack"), primaryBtnStyle, GUILayout.Height(24)))
+            {
+                Utilities.GiveBackpackToAllPlayers();
+            }
             GUILayout.EndHorizontal();
 
             GUILayout.Space(6);
@@ -1753,8 +1928,17 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.BeginVertical(ribbonCardStyle);
         GUILayout.BeginHorizontal();
 
+        int maxPerLine = 4;
         for (int i = 0; i < badges.Count; i++)
         {
+            if (i > 0 && i % maxPerLine == 0)
+            {
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+                GUILayout.Space(3);
+                GUILayout.BeginHorizontal();
+            }
+
             var b = badges[i];
             GUIStyle bStyle = b.isCurrent ? badgeCurrentStyle : (b.isCompleted ? badgeCompletedStyle : badgePendingStyle);
 
@@ -1771,7 +1955,7 @@ public class PeakMod : BaseUnityPlugin
             string badgeText = string.Format("{0}. {1}{2}", b.stepIndex, b.name, statusMarker);
             GUILayout.Label(badgeText, bStyle, GUILayout.Height(24));
 
-            if (i < badges.Count - 1)
+            if (i < badges.Count - 1 && (i + 1) % maxPerLine != 0)
             {
                 GUILayout.Label("➔", flowArrowStyle, GUILayout.Width(16), GUILayout.Height(24));
             }
@@ -1895,7 +2079,8 @@ public class PeakMod : BaseUnityPlugin
         Utilities.EnsureLuggageListInitialized();
         Utilities.WorldDataCache.EnsureUpdated();
 
-        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+        Globals.mainScroll.x = 0;
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll, false, false, GUIStyle.none, customSkin.verticalScrollbar);
 
         // --- Map / Segment Jump & Route Section ---
         GUILayout.BeginVertical(cardBoxStyle);
@@ -2261,22 +2446,69 @@ public class PeakMod : BaseUnityPlugin
 
         GUILayout.Space(4);
 
-        // 2. Map Scene Name Input & Quick Presets
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(Localization.T("world.target_scene"), boldLabelStyle, GUILayout.Width(90));
-        Globals.worldMapSceneName = GUILayout.TextField(Globals.worldMapSceneName ?? "WilIsland", textInputStyle, GUILayout.Width(160), GUILayout.Height(22));
-
-        GUILayout.Space(6);
-        GUILayout.Label(Localization.T("world.quick_preset"), labelStyle, GUILayout.Width(65));
-        if (GUILayout.Button("WilIsland", sidebarBtnStyle, GUILayout.Height(22), GUILayout.Width(75)))
+        // 2. Target Segment Selection (Dropdown)
+        route = Utilities.WorldDataCache.route;
+        if (route != null && route.Count > 0)
         {
-            Globals.worldMapSceneName = "WilIsland";
+            if (Globals.worldTargetSegmentIndex < 0)
+                Globals.worldTargetSegmentIndex = 0;
+            else if (Globals.worldTargetSegmentIndex >= route.Count)
+                Globals.worldTargetSegmentIndex = route.Count - 1;
         }
-        if (GUILayout.Button("Airport", sidebarBtnStyle, GUILayout.Height(22), GUILayout.Width(60)))
+        else
         {
-            Globals.worldMapSceneName = "Airport";
+            Globals.worldTargetSegmentIndex = 0;
+        }
+
+        string currentSegLabel;
+        if (route != null && route.Count > 0 && Globals.worldTargetSegmentIndex < route.Count)
+        {
+            var curInfo = route[Globals.worldTargetSegmentIndex];
+            currentSegLabel = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), curInfo.level), curInfo.displayName);
+        }
+        else
+        {
+            currentSegLabel = Localization.T("world.segment_beach");
+        }
+
+        string dropdownArrow = Globals.isWorldSegmentDropdownOpen ? "▲" : "▼";
+        string dropdownBtnText = string.Format("[{0}] {1}", dropdownArrow, currentSegLabel);
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(Localization.T("world.target_segment"), boldLabelStyle, GUILayout.Width(90));
+        if (GUILayout.Button(dropdownBtnText, Globals.isWorldSegmentDropdownOpen ? sidebarActiveBtnStyle : sidebarBtnStyle, GUILayout.Height(24), GUILayout.MinWidth(240)))
+        {
+            Globals.isWorldSegmentDropdownOpen = !Globals.isWorldSegmentDropdownOpen;
         }
         GUILayout.EndHorizontal();
+
+        // Accordion Dropdown List (Only current route segments)
+        if (Globals.isWorldSegmentDropdownOpen)
+        {
+            GUILayout.Space(2);
+            GUILayout.BeginVertical(cardBoxStyle);
+            if (route != null && route.Count > 0)
+            {
+                for (int s = 0; s < route.Count; s++)
+                {
+                    var segItem = route[s];
+                    bool isSelected = (s == Globals.worldTargetSegmentIndex);
+                    GUIStyle itemStyle = isSelected ? itemSelectedStyle : itemSelectableStyle;
+                    string itemText = string.Format("{0}: {1}", string.Format(Localization.T("world.level_label"), segItem.level), segItem.displayName);
+                    if (isSelected)
+                    {
+                        itemText = "▶ " + itemText;
+                    }
+
+                    if (GUILayout.Button(itemText, itemStyle, GUILayout.Height(22)))
+                    {
+                        Globals.worldTargetSegmentIndex = s;
+                        Globals.isWorldSegmentDropdownOpen = false;
+                    }
+                }
+            }
+            GUILayout.EndVertical();
+        }
 
         GUILayout.Space(6);
 
@@ -2290,7 +2522,10 @@ public class PeakMod : BaseUnityPlugin
         // Button A: Send Map Load RPC
         if (GUILayout.Button(Localization.T("world.send_load_rpc"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(180)))
         {
-            Utilities.SendMapLoadRPC(targetPlayerObj, Globals.worldMapSceneName, 0);
+            string targetScene = !string.IsNullOrEmpty(Utilities.WorldDataCache.todaySceneName)
+                ? Utilities.WorldDataCache.todaySceneName
+                : "WilIsland";
+            Utilities.SendMapLoadRPC(targetPlayerObj, targetScene, 0);
         }
 
         GUILayout.Space(8);
@@ -2298,8 +2533,10 @@ public class PeakMod : BaseUnityPlugin
         // Button B: Force Sync Segment (Anti-Void)
         if (GUILayout.Button(Localization.T("world.force_sync_segment"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(220)))
         {
-            Segment currentSeg = MapHandler.Exists ? MapHandler.CurrentSegmentNumber : Segment.Beach;
-            Utilities.ForceSyncPlayerSegment(targetPlayerObj, currentSeg);
+            Segment targetSeg = (route != null && Globals.worldTargetSegmentIndex >= 0 && Globals.worldTargetSegmentIndex < route.Count)
+                ? route[Globals.worldTargetSegmentIndex].segment
+                : (MapHandler.Exists ? MapHandler.CurrentSegmentNumber : Segment.Beach);
+            Utilities.ForceSyncPlayerSegment(targetPlayerObj, targetSeg);
         }
 
         GUILayout.EndHorizontal();
@@ -2718,7 +2955,8 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     private void DrawAboutTab()
     {
-        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll);
+        Globals.mainScroll.x = 0;
+        Globals.mainScroll = GUILayout.BeginScrollView(Globals.mainScroll, false, false, GUIStyle.none, customSkin.verticalScrollbar);
 
         GUILayout.Label(Localization.T("about.title"), sectionHeaderStyle);
         GUILayout.Label(Localization.T("about.version"), boldLabelStyle);
@@ -2805,19 +3043,66 @@ public class PeakMod : BaseUnityPlugin
     // ==========================================
     // HELPER DRAWING METHODS
     // ==========================================
-    private void DrawCheckbox(ConfigEntry<bool> config, string label, Action<bool> onChange = null)
+    private bool DrawModernSwitch(bool current, string label, Action<bool> onChange = null, float width = 0f)
     {
-        bool current = config.Value;
-        bool next = GUILayout.Toggle(current, label, toggleStyle);
-        if (next != current)
+        Rect rowRect = width > 0 
+            ? GUILayoutUtility.GetRect(width, 28f, GUILayout.Width(width), GUILayout.Height(28f))
+            : GUILayoutUtility.GetRect(0, 28f, GUILayout.ExpandWidth(true), GUILayout.Height(28f));
+
+        Event evt = Event.current;
+        if (evt.type == EventType.MouseDown && evt.button == 0 && rowRect.Contains(evt.mousePosition))
         {
-            config.Value = next;
+            current = !current;
+            GUI.changed = true;
+            evt.Use();
             if (onChange != null)
-                onChange.Invoke(next);
+            {
+                try { onChange.Invoke(current); } catch { }
+            }
         }
+
+        float trackW = 42f;
+        float trackH = 22f;
+        float labelW = Mathf.Max(0, rowRect.width - trackW - 8f);
+        Rect labelRect = new Rect(rowRect.x, rowRect.y + (rowRect.height - 22f) * 0.5f, labelW, 22f);
+        GUI.Label(labelRect, label, labelStyle);
+
+        Rect trackRect = new Rect(rowRect.xMax - trackW, rowRect.y + (rowRect.height - trackH) * 0.5f, trackW, trackH);
+        Texture2D bgTex = current ? texSwitchBgOn : texSwitchBgOff;
+        if (bgTex != null)
+        {
+            GUI.DrawTexture(trackRect, bgTex);
+        }
+
+        if (texSwitchThumb != null)
+        {
+            float thumbX = current ? (trackRect.xMax - 20f) : (trackRect.xMin + 2f);
+            float thumbY = trackRect.yMin + 2f;
+            Rect thumbRect = new Rect(thumbX, thumbY, 18f, 18f);
+            GUI.DrawTexture(thumbRect, texSwitchThumb);
+        }
+
+        return current;
     }
 
-    private void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format, float labelWidth = 120f, float valueWidth = 50f)
+    private void DrawModernSwitch(ConfigEntry<bool> config, string label, Action<bool> onChange = null, float width = 0f)
+    {
+        if (config == null) return;
+        bool current = config.Value;
+        bool next = DrawModernSwitch(current, label, (val) =>
+        {
+            config.Value = val;
+            if (onChange != null)
+                onChange.Invoke(val);
+        }, width);
+    }
+
+    private void DrawCheckbox(ConfigEntry<bool> config, string label, Action<bool> onChange = null)
+    {
+        DrawModernSwitch(config, label, onChange);
+    }
+
+    private void DrawSliderFloat(ConfigEntry<float> config, string label, float min, float max, string format, float labelWidth = 130f, float valueWidth = 55f)
     {
         if (config == null) return;
         GUILayout.BeginHorizontal();
