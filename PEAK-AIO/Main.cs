@@ -2513,33 +2513,58 @@ public class PeakMod : BaseUnityPlugin
         GUILayout.Space(6);
 
         // 3. Action Buttons
-        GUILayout.BeginHorizontal();
-
         Photon.Realtime.Player targetPlayerObj = (Globals.worldTargetPlayerIndex >= 0 && Globals.worldTargetPlayerIndex < onlinePlayers.Length)
             ? onlinePlayers[Globals.worldTargetPlayerIndex]
             : null;
 
-        // Button A: Send Map Load RPC
-        if (GUILayout.Button(Localization.T("world.send_load_rpc"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(180)))
+        Segment targetSeg = (route != null && Globals.worldTargetSegmentIndex >= 0 && Globals.worldTargetSegmentIndex < route.Count)
+            ? route[Globals.worldTargetSegmentIndex].segment
+            : (MapHandler.Exists ? MapHandler.CurrentSegmentNumber : Segment.Beach);
+
+        bool inAirport = Utilities.IsInAirport();
+
+        if (inAirport)
         {
-            string targetScene = !string.IsNullOrEmpty(Utilities.WorldDataCache.todaySceneName)
-                ? Utilities.WorldDataCache.todaySceneName
-                : "WilIsland";
-            Utilities.SendMapLoadRPC(targetPlayerObj, targetScene, 0);
+            // 在机场场景中：提供起飞登岛关卡初始化加载 RPC
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Localization.T("world.send_load_rpc"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(220)))
+            {
+                string targetScene = !string.IsNullOrEmpty(Utilities.WorldDataCache.todaySceneName)
+                    ? Utilities.WorldDataCache.todaySceneName
+                    : "WilIsland";
+                Utilities.SendMapLoadRPC(targetPlayerObj, targetScene, 0);
+            }
+            GUILayout.EndHorizontal();
         }
-
-        GUILayout.Space(8);
-
-        // Button B: Force Sync Segment (Anti-Void)
-        if (GUILayout.Button(Localization.T("world.force_sync_segment"), primaryBtnStyle, GUILayout.Height(26), GUILayout.Width(220)))
+        else
         {
-            Segment targetSeg = (route != null && Globals.worldTargetSegmentIndex >= 0 && Globals.worldTargetSegmentIndex < route.Count)
-                ? route[Globals.worldTargetSegmentIndex].segment
-                : (MapHandler.Exists ? MapHandler.CurrentSegmentNumber : Segment.Beach);
-            Utilities.ForceSyncPlayerSegment(targetPlayerObj, targetSeg);
-        }
+            // 在海岛世界探险局内：切换地图为切片数据流式加载通知，绝不重载整个Level关卡
+            GUILayout.BeginHorizontal();
+            // 按钮 1: 点燃营火通知全房加载下一场景数据 (广播官方 Light_Rpc -> GoToSegment)
+            if (GUILayout.Button(Localization.T("world.notify_light_campfire"), primaryBtnStyle, GUILayout.Height(28), GUILayout.MinWidth(280)))
+            {
+                Utilities.NotifyLoadNextSegmentViaCampfireRPC();
+            }
+            GUILayout.EndHorizontal();
 
-        GUILayout.EndHorizontal();
+            GUILayout.Space(6);
+
+            GUILayout.BeginHorizontal();
+            // 按钮 2: 通知加载目标切片场景数据 (纯RPC数据加载通知，不瞬移)
+            if (GUILayout.Button(Localization.T("world.notify_load_segment"), primaryBtnStyle, GUILayout.Height(26), GUILayout.MinWidth(220)))
+            {
+                Utilities.NotifyLoadSegmentDataRPC(targetPlayerObj, targetSeg, false);
+            }
+
+            GUILayout.Space(8);
+
+            // 按钮 3: 强制同步当前切片 (防虚空传送)
+            if (GUILayout.Button(Localization.T("world.force_sync_segment"), sidebarBtnStyle, GUILayout.Height(26), GUILayout.MinWidth(220)))
+            {
+                Utilities.ForceSyncPlayerSegment(targetPlayerObj, targetSeg);
+            }
+            GUILayout.EndHorizontal();
+        }
         GUILayout.EndVertical();
 
         GUILayout.Space(8);

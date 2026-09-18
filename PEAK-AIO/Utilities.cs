@@ -2693,7 +2693,152 @@ public static class Utilities
     }
 
     /// <summary>
-    /// 向指定玩家（或全员）发送大地图场景载入 RPC
+    /// 通过营火 RPC (Light_Rpc) 通知全房加载下一场景切片数据 (原生平滑过渡，不重载整个Level地图)
+    /// </summary>
+    public static bool NotifyLoadNextSegmentViaCampfireRPC()
+    {
+        try
+        {
+            if (!MapHandler.Exists || MapHandler.Instance == null)
+            {
+                Globals.GlobalNotifier.ShowError(Localization.T("world.notify_campfire_not_found"));
+                return false;
+            }
+
+            int curIdx = (int)DetectCurrentPlayerSegment();
+            if (curIdx >= 5)
+            {
+                Globals.GlobalNotifier.ShowError(Localization.T("world.notify_campfire_not_found"));
+                return false;
+            }
+
+            // 优先获取当前段落营火 (0: Beach, 1: Tropics, 2: Alpine, 3: Caldera)
+            Campfire cf = GetSegmentCampfire(curIdx);
+            if (cf == null && curIdx > 0)
+            {
+                cf = GetSegmentCampfire(curIdx - 1);
+            }
+
+            if (cf != null)
+            {
+                UnityMainThreadDispatcher.Enqueue(() =>
+                {
+                    try
+                    {
+                        if (!cf.gameObject.activeInHierarchy)
+                        {
+                            if (cf.transform.parent != null)
+                                cf.transform.parent.gameObject.SetActive(true);
+                            cf.gameObject.SetActive(true);
+                        }
+
+                        // 调用官方公开的 DebugLight()，其内部向全房间广播 Light_Rpc (RpcTarget.All)
+                        var pv = cf.GetComponent<Photon.Pun.PhotonView>();
+                        if (pv != null)
+                        {
+                            pv.RPC("Light_Rpc", Photon.Pun.RpcTarget.All, Array.Empty<object>());
+                        }
+                        else
+                        {
+                            cf.DebugLight();
+                        }
+
+                        WorldDataCache.Invalidate();
+                        Globals.GlobalNotifier.ShowSuccess(Localization.T("world.notify_campfire_success"));
+                    }
+                    catch (Exception ex)
+                    {
+                        if (Logger != null)
+                            Logger.LogError("[PEAK AIO] Light_Rpc error: " + ex.Message);
+                        Globals.GlobalNotifier.ShowError("Light_Rpc error: " + ex.Message);
+                    }
+                });
+                return true;
+            }
+            else
+            {
+                // 对于 Caldera 变体、TheKiln 或 The Peak 等无常规营火段落，发送切片通知流式加载下一段落
+                int nextSegIdx = Mathf.Clamp(curIdx + 1, 0, 5);
+                NotifyLoadSegmentDataRPC(null, (Segment)nextSegIdx, false);
+                Globals.GlobalNotifier.ShowSuccess(Localization.T("world.notify_campfire_success"));
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Logger != null)
+                Logger.LogError("[PEAK AIO] NotifyLoadNextSegmentViaCampfireRPC error: " + ex.Message);
+            Globals.GlobalNotifier.ShowError("Campfire RPC error: " + ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 向全房（或指定玩家）发送网络通知，流式加载并激活指定切片的场景数据与环境，不重新加载 Level 关卡地图
+    /// </summary>
+    public static void NotifyLoadSegmentDataRPC(Photon.Realtime.Player targetPlayer, Segment segment, bool teleport = false)
+    {
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            try
+            {
+                if (!MapHandler.Exists || MapHandler.Instance == null)
+                {
+                    Globals.GlobalNotifier.ShowError("无法通知：未在世界地图场景中！");
+                    return;
+                }
+
+                // 1. 若选择传送，则填充目标玩家 ActorNumber；若为纯数据加载通知，则传空 HashSet，绝不传送玩家
+                HashSet<int> targetActorIds = new HashSet<int>();
+                if (teleport)
+                {
+                    if (targetPlayer != null)
+                    {
+                        targetActorIds.Add(targetPlayer.ActorNumber);
+                    }
+                    else
+                    {
+                        var allChars = PlayerHandler.GetAllPlayers();
+                        if (allChars != null)
+                        {
+                            foreach (var p in allChars)
+                            {
+                                if (p != null && p.photonView != null && p.photonView.Owner != null)
+                                    targetActorIds.Add(p.photonView.Owner.ActorNumber);
+                            }
+                        }
+                    }
+                }
+
+                // 2. 触发 JumpToSegmentLogic 并广播 SyncMapHandlerDebugCommandPackage (sendToEveryone = true)
+                var jumpLogicMethod = typeof(MapHandler).GetMethod("JumpToSegmentLogic", BindingFlags.NonPublic | BindingFlags.Static);
+                if (jumpLogicMethod != null)
+                {
+                    jumpLogicMethod.Invoke(null, new object[] { segment, targetActorIds, true, false });
+                }
+                else if (PhotonNetwork.IsMasterClient)
+                {
+                    MapHandler.JumpToSegment(segment);
+                }
+
+                // 3. 刷新物理层次树与 Mod 数据缓存
+                Physics.SyncTransforms();
+                WorldDataCache.Invalidate();
+
+                string targetName = targetPlayer != null ? targetPlayer.NickName : Localization.T("world.all_players");
+                Globals.GlobalNotifier.ShowSuccess(string.Format(Localization.T("world.notify_segment_success"), targetName, segment));
+            }
+            catch (Exception ex)
+            {
+                if (Logger != null)
+                    Logger.LogError("[PEAK AIO] NotifyLoadSegmentDataRPC error: " + ex.Message);
+                Globals.GlobalNotifier.ShowError("NotifyLoadSegmentDataRPC Error: " + ex.Message);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 向指定玩家（或全员）发送大地图场景载入 RPC (仅适用于机场大厅初始起飞登岛)
     /// </summary>
     public static void SendMapLoadRPC(Photon.Realtime.Player targetPlayer, string sceneName, int ascent = 0)
     {
@@ -2704,6 +2849,15 @@ public static class Utilities
                 if (string.IsNullOrEmpty(sceneName))
                 {
                     sceneName = "WilIsland";
+                }
+
+                // 防御性保护：若已在世界大地图中，绝不重新加载 Level 场景，转为发送切片场景数据通知
+                if (!IsInAirport() && MapHandler.Exists)
+                {
+                    if (Logger != null)
+                        Logger.LogWarning("[PEAK AIO] Already in island map. Redirecting SendMapLoadRPC to NotifyLoadSegmentDataRPC.");
+                    NotifyLoadSegmentDataRPC(targetPlayer, MapHandler.CurrentSegmentNumber, false);
+                    return;
                 }
 
                 var kiosk = UnityEngine.Object.FindObjectOfType<AirportCheckInKiosk>();
@@ -2722,9 +2876,9 @@ public static class Utilities
                 }
                 else
                 {
-                    // 若当前场景中无登机亭（例如已在世界地图中），若目标包含本地玩家，直接在本地安全启动官方加载流程
+                    // 若当前在机场大厅但未找到登机亭，若目标包含本地玩家，允许本地起飞流程
                     bool includesSelf = (targetPlayer == null || targetPlayer == PhotonNetwork.LocalPlayer);
-                    if (includesSelf)
+                    if (includesSelf && IsInAirport())
                     {
                         Ascents.currentAscent = ascent;
                         GameHandler.AddStatus<SceneSwitchingStatus>(new SceneSwitchingStatus());
@@ -2737,7 +2891,7 @@ public static class Utilities
                     }
                     else
                     {
-                        Globals.GlobalNotifier.ShowError("当前场景无登机服务，无法向远端发送跨场景RPC");
+                        Globals.GlobalNotifier.ShowError("当前不在机场大厅，无法发送登机起飞RPC");
                     }
                 }
             }

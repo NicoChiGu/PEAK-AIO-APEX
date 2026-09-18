@@ -1383,6 +1383,54 @@ public static class Localization
             { Language.Korean, "[{0}] 의 {1} 구역을 동기화하고 안전 지대로 견인" },
             { Language.Italian, "Sincronizzata area {1} per [{0}] e spostato a terra sicura" }
         }},
+        { "world.notify_light_campfire", new Dictionary<Language, string> {
+            { Language.English, "Light Campfire (Notify Next Scene Data)" },
+            { Language.SimplifiedChinese, "点燃营火通知加载下一场景数据" },
+            { Language.TraditionalChinese, "點燃營火通知載入下一場景數據" },
+            { Language.Japanese, "焚き火点火・次エリアデータ読込通知" },
+            { Language.Korean, "모닥불 점화 및 다음 씬 데이터 로드 알림" },
+            { Language.Italian, "Accendi Falò (Notifica Prossima Scena)" }
+        }},
+        { "world.notify_load_segment", new Dictionary<Language, string> {
+            { Language.English, "Notify Load Target Segment Data" },
+            { Language.SimplifiedChinese, "通知加载目标切片场景数据" },
+            { Language.TraditionalChinese, "通知載入目標切片場景數據" },
+            { Language.Japanese, "対象エリアのシーンデータ読込通知" },
+            { Language.Korean, "대상 구역 씬 데이터 로드 알림" },
+            { Language.Italian, "Notifica Carica Dati Segmento Bersaglio" }
+        }},
+        { "world.notify_segment_success", new Dictionary<Language, string> {
+            { Language.English, "Notified [{0}] to load segment data: {1}" },
+            { Language.SimplifiedChinese, "已通知 [{0}] 加载切片场景数据: {1}" },
+            { Language.TraditionalChinese, "已通知 [{0}] 載入切片場景數據: {1}" },
+            { Language.Japanese, "[{0}] にエリア {1} のデータ読込を通知" },
+            { Language.Korean, "[{0}] 에게 {1} 구역 데이터 로드 통지 완료" },
+            { Language.Italian, "Notificato a [{0}] di caricare dati per area: {1}" }
+        }},
+        { "world.notify_campfire_success", new Dictionary<Language, string> {
+            { Language.English, "Campfire lit! Notified all players to stream next area data." },
+            { Language.SimplifiedChinese, "营火已点燃！已通知全员流式加载下一区域场景数据。" },
+            { Language.TraditionalChinese, "營火已點燃！已通知全員串流載入下一區域場景數據。" },
+            { Language.Japanese, "焚き火点火完了！全員に次エリアのデータ読込を通知しました。" },
+            { Language.Korean, "모닥불 점화 완료! 전원에게 다음 구역 데이터 로드 통지됨." },
+            { Language.Italian, "Falò acceso! Notificato a tutti di caricare la prossima area." }
+        }},
+        { "world.notify_campfire_not_found", new Dictionary<Language, string> {
+            { Language.English, "No active campfire found for current segment!" },
+            { Language.SimplifiedChinese, "未找到当前切片的有效营火！" },
+            { Language.TraditionalChinese, "未找到當前切片的有效營火！" },
+            { Language.Japanese, "現在のエリアに有効な焚き火が見つかりません！" },
+            { Language.Korean, "현재 구역에서 유효한 모닥불을 찾을 수 없습니다!" },
+            { Language.Italian, "Nessun falò valido trovato per l'area corrente!" }
+        }},
+        { "world.airport_launch_title", new Dictionary<Language, string> {
+            { Language.English, "Airport Boarding & Initial Island Launch" },
+            { Language.SimplifiedChinese, "机场登机与初始海岛发射" },
+            { Language.TraditionalChinese, "機場登機與初始海島發射" },
+            { Language.Japanese, "空港搭乗・初期アイランド発進" },
+            { Language.Korean, "공항 탑승 및 초기 섬 런칭" },
+            { Language.Italian, "Imbarco Aeroporto e Lancio Iniziale Isola" }
+        }},
         { "world.player_host_tag", new Dictionary<Language, string> {
             { Language.English, "Host" },
             { Language.SimplifiedChinese, "房主" },
