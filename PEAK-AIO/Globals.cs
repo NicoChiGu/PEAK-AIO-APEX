@@ -85,6 +85,7 @@ public static class Globals
     public static int worldTargetSegment = 0;
     public static int worldTargetSegmentIndex = 0; // 当前路线下拉菜单选中的段落索引 (0 ~ 5)
     public static bool isWorldSegmentDropdownOpen = false; // 下拉菜单展开状态
+    public static float luggageDetectDistance = 300f; // 容器搜寻与探测距离（米）
 
     // Debug
     public static string debugSlotBuffer = "0";

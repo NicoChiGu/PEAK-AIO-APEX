@@ -2584,6 +2584,17 @@ public class PeakMod : BaseUnityPlugin
         }
         GUILayout.EndHorizontal();
 
+        // 探测距离滑块（50m ~ 1000m）
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(string.Format(Localization.T("world.luggage_range"), Globals.luggageDetectDistance), tipLabelStyle, GUILayout.Width(130));
+        float newDist = GUILayout.HorizontalSlider(Globals.luggageDetectDistance, 50f, 1000f);
+        if (Mathf.Abs(newDist - Globals.luggageDetectDistance) > 1f)
+        {
+            Globals.luggageDetectDistance = Mathf.Round(newDist / 10f) * 10f;
+            Utilities.RefreshLuggageList();
+        }
+        GUILayout.EndHorizontal();
+
         Globals.luggageScroll = GUILayout.BeginScrollView(Globals.luggageScroll, GUILayout.Height(130));
         if (Globals.luggageLabels.Count == 0)
         {
@@ -2619,8 +2630,8 @@ public class PeakMod : BaseUnityPlugin
         if (Globals.selectedLuggageIndex >= 0 && Globals.selectedLuggageIndex < Globals.luggageObject.Count)
         {
             var lug = Globals.luggageObject[Globals.selectedLuggageIndex];
-            string name = (lug != null) ? lug.displayName : "None";
-            GUILayout.Label(string.Format("Target: {0}", name), boldLabelStyle);
+            string name = (lug != null) ? Utilities.GetLuggageDisplayName(lug) : "None";
+            GUILayout.Label(string.Format(Localization.T("world.target_label"), name), boldLabelStyle);
 
             GUILayout.Space(6);
 
@@ -2628,9 +2639,7 @@ public class PeakMod : BaseUnityPlugin
             {
                 if (lug != null)
                 {
-                    Vector3 luggageCoords = lug.Center();
-                    luggageCoords.y += 1.5f;
-                    Utilities.TeleportToCoords(luggageCoords.x, luggageCoords.y, luggageCoords.z);
+                    Utilities.TeleportToLuggage(lug);
                 }
             }
 

@@ -116,6 +116,270 @@ public static class Utilities
         return false;
     }
 
+    private static string GetItemBaseName(Item item)
+    {
+        if (item == null) return "Unknown Item";
+        string name = null;
+        try { name = item.GetName(); } catch { }
+        if (string.IsNullOrEmpty(name)) name = item.name;
+        if (string.IsNullOrEmpty(name)) name = "Unknown Item";
+        return name.Trim();
+    }
+
+    /// <summary>
+    /// Intelligently disambiguates duplicate item names by detecting physical and gameplay attributes
+    /// (e.g. rope length, anti-gravity, piton durability/placement, backpack models, evac flares, scroll actions, toxicity).
+    /// If duplicate items still exist after attribute tagging, falls back to appending the clean prefab name.
+    /// </summary>
+    public static List<KeyValuePair<Item, string>> BuildDisambiguatedItemNames(List<Item> collectedItems)
+    {
+        var result = new List<KeyValuePair<Item, string>>(collectedItems != null ? collectedItems.Count : 0);
+        if (collectedItems == null || collectedItems.Count == 0)
+            return result;
+
+        // Group by base display name
+        var groups = new Dictionary<string, List<Item>>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < collectedItems.Count; i++)
+        {
+            var it = collectedItems[i];
+            if (it == null) continue;
+            string baseName = GetItemBaseName(it);
+            List<Item> list;
+            if (!groups.TryGetValue(baseName, out list))
+            {
+                list = new List<Item>();
+                groups[baseName] = list;
+            }
+            list.Add(it);
+        }
+
+        foreach (var pair in groups)
+        {
+            string baseName = pair.Key;
+            List<Item> items = pair.Value;
+
+            if (items.Count == 1)
+            {
+                // Unique item: keep pure clean name (no clutter)
+                result.Add(new KeyValuePair<Item, string>(items[0], baseName));
+                continue;
+            }
+
+            // Group-wide stats for collision group
+            bool hasDifferentUses = false;
+            int firstUses = items[0].totalUses;
+            for (int i = 1; i < items.Count; i++)
+            {
+                if (items[i].totalUses != firstUses)
+                {
+                    hasDifferentUses = true;
+                    break;
+                }
+            }
+
+            bool hasDifferentWeight = false;
+            int firstWeight = items[0].CarryWeight;
+            for (int i = 1; i < items.Count; i++)
+            {
+                if (items[i].CarryWeight != firstWeight)
+                {
+                    hasDifferentWeight = true;
+                    break;
+                }
+            }
+
+            bool hasToxic = false;
+            bool hasSafe = false;
+            for (int i = 0; i < items.Count; i++)
+            {
+                bool isRandom = false;
+                try { isRandom = items[i].GetComponent<Action_RandomMushroomEffect>() != null; } catch { }
+                if (!isRandom)
+                {
+                    if (IsItemToxic(items[i])) hasToxic = true;
+                    else hasSafe = true;
+                }
+            }
+
+            var groupEntries = new List<KeyValuePair<Item, string>>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                var tags = new List<string>();
+
+                // 1. Rope attributes (RopeSpool)
+                try
+                {
+                    var spool = it.GetComponent<RopeSpool>();
+                    if (spool != null)
+                    {
+                        int fuel = Mathf.RoundToInt(spool.ropeStartFuel);
+                        if (fuel > 0)
+                            tags.Add("[" + fuel + "m]");
+                        if (spool.isAntiRope)
+                            tags.Add(Localization.T("items.tag_antigrav"));
+                    }
+                }
+                catch { }
+
+                // 2. Climbing Spike / Piton attributes
+                try
+                {
+                    bool isFragile = false;
+                    try { isFragile = it.GetComponent<ShittyPiton>() != null; } catch { }
+                    if (!isFragile && !string.IsNullOrEmpty(it.name) && it.name.IndexOf("shitty", StringComparison.OrdinalIgnoreCase) >= 0)
+                        isFragile = true;
+
+                    if (isFragile)
+                    {
+                        tags.Add(Localization.T("items.tag_fragile"));
+                    }
+                    else
+                    {
+                        bool hasHandheldSpike = false;
+                        try { hasHandheldSpike = it.GetComponent<ClimbingSpikeComponent>() != null; } catch { }
+
+                        if (hasHandheldSpike)
+                        {
+                            tags.Add(Localization.T("items.tag_handheld"));
+                        }
+                        else if (!string.IsNullOrEmpty(it.name) && (it.name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0 || it.name.IndexOf("placed", StringComparison.OrdinalIgnoreCase) >= 0 || it.GetComponent<ClimbHandle>() != null))
+                        {
+                            tags.Add(Localization.T("items.tag_placed"));
+                        }
+                    }
+                }
+                catch { }
+
+                // 3. Backpack attributes
+                try
+                {
+                    if (IsBackpackItem(it, it.name))
+                    {
+                        var bpType = GetBackpackTypeForItem(it, it.name);
+                        switch (bpType)
+                        {
+                            case BackpackSlot.BackpackType.Jetpack:
+                                tags.Add(Localization.T("items.tag_jetpack"));
+                                break;
+                            case BackpackSlot.BackpackType.Rocketpack:
+                                tags.Add(Localization.T("items.tag_rocketpack"));
+                                break;
+                            case BackpackSlot.BackpackType.Fannypack:
+                                tags.Add(Localization.T("items.tag_fannypack"));
+                                break;
+                            case BackpackSlot.BackpackType.Backpack:
+                                tags.Add(Localization.T("items.tag_backpack_std"));
+                                break;
+                        }
+                    }
+                }
+                catch { }
+
+                // 4. Flare attributes
+                try
+                {
+                    if (it.GetComponent<Flare>() != null || it.GetComponent<Action_Flare>() != null || (!string.IsNullOrEmpty(it.name) && it.name.IndexOf("flare", StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        if (!string.IsNullOrEmpty(it.name) && (it.name.IndexOf("rescue", StringComparison.OrdinalIgnoreCase) >= 0 || it.name.IndexOf("evac", StringComparison.OrdinalIgnoreCase) >= 0 || it.name.IndexOf("heli", StringComparison.OrdinalIgnoreCase) >= 0))
+                        {
+                            tags.Add(Localization.T("items.tag_rescue"));
+                        }
+                        else
+                        {
+                            tags.Add(Localization.T("items.tag_illumination"));
+                        }
+                    }
+                }
+                catch { }
+
+                // 5. Scroll / Magic actions
+                try
+                {
+                    if (it.GetComponent<Action_WarpToRandomPlayer>() != null)
+                        tags.Add(Localization.T("items.tag_warp_player"));
+                    else if (it.GetComponent<Action_WarpToBiome>() != null)
+                        tags.Add(Localization.T("items.tag_warp_biome"));
+                    else if (it.GetComponent<Action_WarpRandomly>() != null)
+                        tags.Add(Localization.T("items.tag_warp_random"));
+                    else if (it.GetComponent<Action_ConstructableScoutCannonScroll>() != null)
+                        tags.Add(Localization.T("items.tag_cannon"));
+                }
+                catch { }
+
+                // 6. Food / Mushroom toxicity & random effect
+                try
+                {
+                    if (it.GetComponent<Action_RandomMushroomEffect>() != null)
+                    {
+                        tags.Add(Localization.T("items.tag_shroom_random"));
+                    }
+                    else if (hasToxic && hasSafe)
+                    {
+                        bool isToxic = IsItemToxic(it);
+                        if (isToxic)
+                            tags.Add(Localization.T("items.suffix_toxic").Trim());
+                        else
+                            tags.Add(Localization.T("items.suffix_nontoxic").Trim());
+                    }
+                }
+                catch { }
+
+                // 7. Durability / total uses (if different within the group)
+                if (hasDifferentUses)
+                {
+                    if (it.totalUses > 0)
+                        tags.Add(string.Format(Localization.T("items.tag_uses_format"), it.totalUses));
+                    else if (it.totalUses == -1)
+                        tags.Add(Localization.T("items.tag_uses_infinite"));
+                }
+
+                // 8. Carry weight (if different within the group)
+                if (hasDifferentWeight && it.CarryWeight > 0)
+                {
+                    tags.Add(string.Format(Localization.T("items.tag_weight_format"), it.CarryWeight));
+                }
+
+                // Assemble tagged display name
+                string taggedName = baseName;
+                if (tags.Count > 0)
+                {
+                    taggedName = baseName + " " + string.Join(" ", tags.ToArray());
+                }
+
+                groupEntries.Add(new KeyValuePair<Item, string>(it, taggedName));
+            }
+
+            // Secondary collision check: if still duplicate within the group, append clean prefab name
+            var countMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < groupEntries.Count; i++)
+            {
+                string s = groupEntries[i].Value;
+                if (countMap.ContainsKey(s)) countMap[s]++;
+                else countMap[s] = 1;
+            }
+
+            for (int i = 0; i < groupEntries.Count; i++)
+            {
+                var entry = groupEntries[i];
+                string finalName = entry.Value;
+                if (countMap[finalName] > 1)
+                {
+                    string cleanPrefab = entry.Key.name ?? "";
+                    if (cleanPrefab.EndsWith("(Clone)"))
+                        cleanPrefab = cleanPrefab.Substring(0, cleanPrefab.Length - 7);
+                    if (!string.IsNullOrEmpty(cleanPrefab))
+                    {
+                        finalName += " [" + cleanPrefab + "]";
+                    }
+                }
+                result.Add(new KeyValuePair<Item, string>(entry.Key, finalName));
+            }
+        }
+
+        return result;
+    }
+
     public static void UpdateItemsSync()
     {
         if (isUpdatingItems) return;
@@ -268,65 +532,8 @@ public static class Utilities
                 }
             }
 
-            // Pass 1: Identify items that have both toxic and non-toxic variants (e.g. Button, Bugle, Cluster mushrooms).
-            // Items with Action_RandomMushroomEffect (blind-box shroomberries) are excluded so they keep their clean name.
-            var toxicItemsByName = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            var safeItemsByName = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-
-            for (int i = 0; i < collectedItems.Count; i++)
-            {
-                var item = collectedItems[i];
-                if (item == null) continue;
-
-                bool isRandom = false;
-                try { isRandom = item.GetComponent<Action_RandomMushroomEffect>() != null; } catch { }
-                if (isRandom) continue;
-
-                string baseName = null;
-                try { baseName = item.GetName(); } catch { }
-                if (string.IsNullOrEmpty(baseName)) baseName = item.name;
-                if (string.IsNullOrEmpty(baseName)) continue;
-
-                bool isToxic = IsItemToxic(item);
-                if (isToxic)
-                    toxicItemsByName[baseName] = true;
-                else
-                    safeItemsByName[baseName] = true;
-            }
-
-            // Pass 2: Extract display names.
-            // If and only if the item has both toxic and safe variants, append (Safe) / (Toxic).
-            // Other random or naturally non-toxic items (e.g. Chubby Shroom, tools) will NOT have any suffixes appended!
-            var itemEntries = new List<KeyValuePair<Item, string>>(collectedItems.Count);
-            for (int i = 0; i < collectedItems.Count; i++)
-            {
-                var item = collectedItems[i];
-                if (item == null) continue;
-
-                string displayName = null;
-                try { displayName = item.GetName(); } catch { }
-                if (string.IsNullOrEmpty(displayName)) displayName = item.name;
-                if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
-
-                bool isRandom = false;
-                try { isRandom = item.GetComponent<Action_RandomMushroomEffect>() != null; } catch { }
-
-                if (!isRandom && toxicItemsByName.ContainsKey(displayName) && safeItemsByName.ContainsKey(displayName))
-                {
-                    bool isToxic = IsItemToxic(item);
-                    if (isToxic)
-                    {
-                        displayName += Localization.T("items.suffix_toxic");
-                    }
-                    else
-                    {
-                        displayName += Localization.T("items.suffix_nontoxic");
-                    }
-                }
-
-                itemEntries.Add(new KeyValuePair<Item, string>(item, displayName));
-            }
-
+            // Disambiguate item names by intelligent attribute tagging and sorting
+            var itemEntries = BuildDisambiguatedItemNames(collectedItems);
             try
             {
                 itemEntries.Sort((a, b) => string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase));
@@ -3701,7 +3908,28 @@ public static class Utilities
             // 3. 参考 MountainProgressHandler 达到的权威最大里程碑
             if (MountainProgressHandler.Instance != null)
             {
-                int maxProgress = MountainProgressHandler.Instance.maxProgressPointReached;
+                var mph = MountainProgressHandler.Instance;
+                int maxProgress = mph.maxProgressPointReached;
+                if (mph.progressPoints != null)
+                {
+                    for (int pIdx = 0; pIdx < mph.progressPoints.Length; pIdx++)
+                    {
+                        var pp = mph.progressPoints[pIdx];
+                        if (pp != null && pp.Reached)
+                        {
+                            int segCandidate = -1;
+                            string t = pp.title != null ? pp.title.ToUpperInvariant() : "";
+                            if (t == "SHORE") segCandidate = 0;
+                            else if (t == "TROPICS" || t == "ROOTS") segCandidate = 1;
+                            else if (t == "ALPINE" || t == "MESA") segCandidate = 2;
+                            else if (t == "CALDERA") segCandidate = 3;
+                            else if (t == "THE KILN") segCandidate = 4;
+                            else if (t == "PEAK") segCandidate = 5;
+
+                            if (segCandidate > maxProgress) maxProgress = segCandidate;
+                        }
+                    }
+                }
                 if (maxProgress > (int)officialSeg && maxProgress <= (int)Segment.Peak)
                 {
                     return (Segment)maxProgress;
@@ -3842,24 +4070,17 @@ public static class Utilities
             else
             {
                 // Level 1..4: Beach, Tropics, Alpine, Caldera
-                if (mapExists && mh.biomes != null && i < mh.biomes.Count)
-                {
-                    bt = mh.biomes[i];
-                }
-
                 if (mapExists && mh.segments != null && i < mh.segments.Length)
                 {
                     var mapSeg = mh.segments[i];
                     if (mapSeg != null)
                     {
-                        if (bt == (Biome.BiomeType)(-1))
+                        try
                         {
-                            try
-                            {
-                                bt = mapSeg.biome;
-                            }
-                            catch { }
+                            // 优先且权威使用 mapSeg.biome 动态属性（内部已封装 hasVariant 与 BiomeIsPresent，完美判定 Mesa/Alpine/Roots 等变体）
+                            bt = mapSeg.biome;
                         }
+                        catch { }
 
                         Transform spawnTf = mapSeg.reconnectSpawnPos;
                         MapHandler.MapSegment vSeg;
@@ -4610,6 +4831,202 @@ public static class Utilities
         public float distance;
     }
 
+    /// <summary>
+    /// 获取容器的多语言显示名称
+    /// </summary>
+    public static string GetLuggageDisplayName(Luggage lug)
+    {
+        if (lug == null)
+            return "None";
+
+        string tag = (lug is LuggageCursed) ? Localization.T("world.tag_cursed") : "";
+
+        if (lug is RespawnChest)
+        {
+            return tag + Localization.T("world.luggage_respawn");
+        }
+
+        string rawName = lug.displayName;
+        if (string.IsNullOrEmpty(rawName))
+        {
+            rawName = (lug.gameObject != null) ? lug.gameObject.name : "";
+        }
+
+        try
+        {
+            string locName = lug.GetName();
+            if (!string.IsNullOrEmpty(locName) && !locName.StartsWith("LOC:", StringComparison.OrdinalIgnoreCase) && !locName.Equals(rawName, StringComparison.OrdinalIgnoreCase))
+            {
+                return tag + locName;
+            }
+        }
+        catch { }
+
+        string clean = rawName.Replace(" ", "").Replace("_", "").Replace("(Clone)", "").Trim();
+
+        if (clean.IndexOf("Respawn", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_respawn");
+        if (clean.IndexOf("Large", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_large");
+        if (clean.IndexOf("Backpack", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_backpack");
+        if (clean.IndexOf("Supply", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_supply");
+        if (clean.IndexOf("Beach", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_beach");
+        if (clean.IndexOf("Jungle", StringComparison.OrdinalIgnoreCase) >= 0 || clean.IndexOf("Tropics", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_jungle");
+        if (clean.IndexOf("Tundra", StringComparison.OrdinalIgnoreCase) >= 0 || clean.IndexOf("Alpine", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_tundra");
+        if (clean.IndexOf("Swamp", StringComparison.OrdinalIgnoreCase) >= 0 || clean.IndexOf("Gloom", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_swamp");
+        if (clean.IndexOf("Caldera", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_caldera");
+        if (clean.IndexOf("TheKiln", StringComparison.OrdinalIgnoreCase) >= 0 || clean.IndexOf("Kiln", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_kiln");
+        if (clean.IndexOf("Citadel", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_citadel");
+        if (clean.IndexOf("Peak", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_peak");
+        if (clean.IndexOf("Climber", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_climber");
+        if (clean.IndexOf("Ancient", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_ancient");
+        if (clean.IndexOf("Mesa", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_mesa");
+        if (clean.IndexOf("Clown", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_clown");
+        if (clean.IndexOf("Mirage", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_mirage");
+        if (clean.IndexOf("Luggage", StringComparison.OrdinalIgnoreCase) >= 0 || clean.IndexOf("Chest", StringComparison.OrdinalIgnoreCase) >= 0)
+            return tag + Localization.T("world.luggage_standard");
+
+        if (string.IsNullOrEmpty(rawName))
+            return tag + Localization.T("world.luggage_standard");
+
+        return tag + rawName;
+    }
+
+    /// <summary>
+    /// 判定指定容器是否属于玩家当前所在的场景切片区域
+    /// 解决在城塞（段落4）仍检测到雾沼（段落3）箱子的问题
+    /// </summary>
+    public static bool IsLuggageInCurrentSegment(Luggage lug, Segment currentSeg, Vector3 playerHeadPos)
+    {
+        if (lug == null || lug.gameObject == null)
+            return false;
+
+        // 1. 基础激活状态检查（若 GameObject 本身未激活直接过滤）
+        if (!lug.gameObject.activeInHierarchy)
+            return false;
+
+        // 2. 特种容器判断：营火复活雕像
+        RespawnChest rc = lug as RespawnChest;
+        if (rc != null)
+        {
+            if (rc.SegmentNumber != currentSeg)
+                return false;
+        }
+
+        // 3. 垂直落差防护：防止检测到垂直断崖底部/上一区域深谷底部的箱子
+        float deltaY = Mathf.Abs(lug.Center().y - playerHeadPos.y);
+        if (deltaY > 120f)
+            return false;
+
+        // 4. 切片层级树归属判定
+        if (MapHandler.Exists && MapHandler.Instance != null)
+        {
+            var mh = MapHandler.Instance;
+            int segIdx = (int)currentSeg;
+
+            if (mh.segments != null && segIdx >= 0 && segIdx < mh.segments.Length)
+            {
+                var curSeg = mh.segments[segIdx];
+                Transform lugTf = lug.transform;
+
+                if (curSeg != null)
+                {
+                    MapHandler.MapSegment vSeg;
+                    TryGetVariantSegment(mh, curSeg, out vSeg);
+
+                    // 收集当前段落所有合法的场景根物体
+                    bool isBelongToCurrent = false;
+
+                    if (curSeg.segmentParent != null && lugTf.IsChildOf(curSeg.segmentParent.transform))
+                        isBelongToCurrent = true;
+                    else if (curSeg.segmentCampfire != null && lugTf.IsChildOf(curSeg.segmentCampfire.transform))
+                        isBelongToCurrent = true;
+                    else if (vSeg != null && vSeg.segmentParent != null && lugTf.IsChildOf(vSeg.segmentParent.transform))
+                        isBelongToCurrent = true;
+                    else if (vSeg != null && vSeg.segmentCampfire != null && lugTf.IsChildOf(vSeg.segmentCampfire.transform))
+                        isBelongToCurrent = true;
+
+                    if (isBelongToCurrent)
+                        return true;
+
+                    // 检查是否明确属于其它段落的根树（若属于其它段落，则必定不是当前区域）
+                    for (int k = 0; k < mh.segments.Length; k++)
+                    {
+                        if (k == segIdx) continue;
+                        var otherSeg = mh.segments[k];
+                        if (otherSeg != null)
+                        {
+                            if (otherSeg.segmentParent != null && lugTf.IsChildOf(otherSeg.segmentParent.transform))
+                                return false;
+                            if (otherSeg.segmentCampfire != null && lugTf.IsChildOf(otherSeg.segmentCampfire.transform))
+                                return false;
+
+                            MapHandler.MapSegment otherVar;
+                            if (TryGetVariantSegment(mh, otherSeg, out otherVar) && otherVar != null)
+                            {
+                                if (otherVar.segmentParent != null && lugTf.IsChildOf(otherVar.segmentParent.transform))
+                                    return false;
+                                if (otherVar.segmentCampfire != null && lugTf.IsChildOf(otherVar.segmentCampfire.transform))
+                                    return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. 无法判定根树归属时的安全回退（如非官方自定义地图）
+        return true;
+    }
+
+    public static void TeleportToLuggage(Luggage lug)
+    {
+        if (lug == null)
+            return;
+
+        Vector3 luggageCoords = lug.Center();
+        luggageCoords.y += 1.5f;
+        TeleportToCoords(luggageCoords.x, luggageCoords.y, luggageCoords.z);
+
+        if (EventComponent.Instance != null)
+        {
+            EventComponent.Instance.StartCoroutine(RefreshLuggageAfterWarpRoutine());
+        }
+        else
+        {
+            UnityMainThreadDispatcher.Enqueue(() =>
+            {
+                RefreshLuggageList();
+            });
+        }
+    }
+
+    private static System.Collections.IEnumerator RefreshLuggageAfterWarpRoutine()
+    {
+        yield return new WaitForSeconds(0.2f);
+        try
+        {
+            Physics.SyncTransforms();
+        }
+        catch { }
+        RefreshLuggageList();
+    }
+
     public static void RefreshLuggageList()
     {
         try
@@ -4628,6 +5045,8 @@ public static class Utilities
 
             var allLuggage = new List<LuggageEntry>();
             Vector3 headPos = localChar.Head;
+            Segment curSeg = DetectCurrentPlayerSegment();
+            float maxDist = (Globals.luggageDetectDistance > 0f) ? Globals.luggageDetectDistance : 300f;
 
             for (int i = 0; i < luggageList.Count; i++)
             {
@@ -4636,8 +5055,12 @@ public static class Utilities
                     var lug = luggageList[i];
                     if (lug == null) continue;
 
+                    // 精准区域/切片与激活状态过滤
+                    if (!IsLuggageInCurrentSegment(lug, curSeg, headPos))
+                        continue;
+
                     float distance = Vector3.Distance(headPos, lug.Center());
-                    if (distance <= 300f)
+                    if (distance <= maxDist)
                     {
                         LuggageEntry entry;
                         entry.lug = lug;
@@ -4658,10 +5081,8 @@ public static class Utilities
                 try
                 {
                     var entry = allLuggage[i];
-                    string name = entry.lug.displayName;
-                    if (string.IsNullOrEmpty(name)) name = "Unnamed";
-                    string typeTag = (entry.lug is LuggageCursed) ? "[Cursed] " : "";
-                    Globals.luggageLabels.Add(string.Format("{0}{1} [{2:F1}m]", typeTag, name, entry.distance));
+                    string dispName = GetLuggageDisplayName(entry.lug);
+                    Globals.luggageLabels.Add(string.Format("{0} [{1:F1}m]", dispName, entry.distance));
                     Globals.luggageObject.Add(entry.lug);
                 }
                 catch
@@ -4674,7 +5095,7 @@ public static class Utilities
                 Globals.selectedLuggageIndex = 0;
 
             if (Logger != null)
-                Logger.LogInfo(string.Format("[Luggage] Refreshed. Found {0} nearby.", Globals.luggageLabels.Count));
+                Logger.LogInfo(string.Format("[Luggage] Refreshed. Found {0} nearby in segment {1}.", Globals.luggageLabels.Count, curSeg));
         }
         catch (Exception ex)
         {

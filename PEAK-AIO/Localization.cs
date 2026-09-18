@@ -682,12 +682,12 @@ public static class Localization
             { Language.Italian, "Aggiorna Lista Bagagli" }
         }},
         { "tip.refresh_luggage", new Dictionary<Language, string> {
-            { Language.English, "Reloads the list of luggage within 300m of your position." },
-            { Language.SimplifiedChinese, "重新加载你位置300米内的行李列表。" },
-            { Language.TraditionalChinese, "重新載入你位置300公尺內的行李列表。" },
-            { Language.Japanese, "現在地から300m以内の荷物リストを再読み込みします。" },
-            { Language.Korean, "현재 위치에서 300m 이내의 수하물 목록을 다시 불러옵니다." },
-            { Language.Italian, "Ricarica l'elenco dei bagagli entro 300m dalla tua posizione." }
+            { Language.English, "Reloads the list of luggage within detection range of your current segment." },
+            { Language.SimplifiedChinese, "重新加载当前区域探测范围内的行李列表。" },
+            { Language.TraditionalChinese, "重新載入當前區域探測範圍內的行李列表。" },
+            { Language.Japanese, "現在エリアの探知範囲内にある荷物リストを再読み込みします。" },
+            { Language.Korean, "현재 지역의 탐지 범위 내에 있는 수하물 목록을 다시 불러옵니다." },
+            { Language.Italian, "Ricarica l'elenco dei bagagli entro il raggio di rilevamento nel segmento attuale." }
         }},
         { "world.all_nearby", new Dictionary<Language, string> {
             { Language.English, "All Nearby Containers" },
@@ -728,6 +728,174 @@ public static class Localization
             { Language.Japanese, "荷物が選択されていません。" },
             { Language.Korean, "수하물이 선택되지 않았습니다." },
             { Language.Italian, "Nessun bagaglio selezionato." }
+        }},
+        { "world.luggage_range", new Dictionary<Language, string> {
+            { Language.English, "Range: {0:F0}m" },
+            { Language.SimplifiedChinese, "探测范围: {0:F0}米" },
+            { Language.TraditionalChinese, "探測範圍: {0:F0}公尺" },
+            { Language.Japanese, "探知範囲: {0:F0}m" },
+            { Language.Korean, "탐지 범위: {0:F0}m" },
+            { Language.Italian, "Raggio: {0:F0}m" }
+        }},
+        { "world.tag_cursed", new Dictionary<Language, string> {
+            { Language.English, "[Cursed] " },
+            { Language.SimplifiedChinese, "[诅咒] " },
+            { Language.TraditionalChinese, "[詛咒] " },
+            { Language.Japanese, "[呪い] " },
+            { Language.Korean, "[저주] " },
+            { Language.Italian, "[Maledetto] " }
+        }},
+        { "world.target_label", new Dictionary<Language, string> {
+            { Language.English, "Target: {0}" },
+            { Language.SimplifiedChinese, "目标: {0}" },
+            { Language.TraditionalChinese, "目標: {0}" },
+            { Language.Japanese, "対象: {0}" },
+            { Language.Korean, "대상: {0}" },
+            { Language.Italian, "Bersaglio: {0}" }
+        }},
+        { "world.luggage_standard", new Dictionary<Language, string> {
+            { Language.English, "Luggage" },
+            { Language.SimplifiedChinese, "行李箱" },
+            { Language.TraditionalChinese, "行李箱" },
+            { Language.Japanese, "スーツケース" },
+            { Language.Korean, "수하물" },
+            { Language.Italian, "Bagaglio" }
+        }},
+        { "world.luggage_large", new Dictionary<Language, string> {
+            { Language.English, "Large Luggage" },
+            { Language.SimplifiedChinese, "大型行李箱" },
+            { Language.TraditionalChinese, "大型行李箱" },
+            { Language.Japanese, "大型スーツケース" },
+            { Language.Korean, "대형 수하물" },
+            { Language.Italian, "Bagaglio Grande" }
+        }},
+        { "world.luggage_backpack", new Dictionary<Language, string> {
+            { Language.English, "Backpack" },
+            { Language.SimplifiedChinese, "登山背包" },
+            { Language.TraditionalChinese, "登山背包" },
+            { Language.Japanese, "バックパック" },
+            { Language.Korean, "배낭" },
+            { Language.Italian, "Zaino" }
+        }},
+        { "world.luggage_supply", new Dictionary<Language, string> {
+            { Language.English, "Supply Chest" },
+            { Language.SimplifiedChinese, "补给箱" },
+            { Language.TraditionalChinese, "補給箱" },
+            { Language.Japanese, "補給チェスト" },
+            { Language.Korean, "보급 상자" },
+            { Language.Italian, "Cassa Rifornimenti" }
+        }},
+        { "world.luggage_respawn", new Dictionary<Language, string> {
+            { Language.English, "Respawn Statue" },
+            { Language.SimplifiedChinese, "复活雕像" },
+            { Language.TraditionalChinese, "復活雕像" },
+            { Language.Japanese, "復活の彫像" },
+            { Language.Korean, "부활 석상" },
+            { Language.Italian, "Statua Rianimazione" }
+        }},
+        { "world.luggage_beach", new Dictionary<Language, string> {
+            { Language.English, "Beach Luggage" },
+            { Language.SimplifiedChinese, "海滩行李箱" },
+            { Language.TraditionalChinese, "海灘行李箱" },
+            { Language.Japanese, "ビーチスーツケース" },
+            { Language.Korean, "해변 수하물" },
+            { Language.Italian, "Bagaglio Spiaggia" }
+        }},
+        { "world.luggage_jungle", new Dictionary<Language, string> {
+            { Language.English, "Jungle Luggage" },
+            { Language.SimplifiedChinese, "热带雨林行李箱" },
+            { Language.TraditionalChinese, "熱帶雨林行李箱" },
+            { Language.Japanese, "ジャングルスーツケース" },
+            { Language.Korean, "정글 수하물" },
+            { Language.Italian, "Bagaglio Giungla" }
+        }},
+        { "world.luggage_tundra", new Dictionary<Language, string> {
+            { Language.English, "Alpine Luggage" },
+            { Language.SimplifiedChinese, "雪山高地行李箱" },
+            { Language.TraditionalChinese, "雪山高地行李箱" },
+            { Language.Japanese, "雪山スーツケース" },
+            { Language.Korean, "설산 수하물" },
+            { Language.Italian, "Bagaglio Alpino" }
+        }},
+        { "world.luggage_caldera", new Dictionary<Language, string> {
+            { Language.English, "Caldera Luggage" },
+            { Language.SimplifiedChinese, "火山口行李箱" },
+            { Language.TraditionalChinese, "火山口行李箱" },
+            { Language.Japanese, "カルデラスーツケース" },
+            { Language.Korean, "칼데라 수하물" },
+            { Language.Italian, "Bagaglio Caldera" }
+        }},
+        { "world.luggage_swamp", new Dictionary<Language, string> {
+            { Language.English, "Gloom Swamp Luggage" },
+            { Language.SimplifiedChinese, "雾沼行李箱" },
+            { Language.TraditionalChinese, "霧沼行李箱" },
+            { Language.Japanese, "霧沼スーツケース" },
+            { Language.Korean, "안개늪 수하물" },
+            { Language.Italian, "Bagaglio Palude Fosca" }
+        }},
+        { "world.luggage_kiln", new Dictionary<Language, string> {
+            { Language.English, "Kiln Luggage" },
+            { Language.SimplifiedChinese, "熔炉行李箱" },
+            { Language.TraditionalChinese, "熔爐行李箱" },
+            { Language.Japanese, "窯元スーツケース" },
+            { Language.Korean, "가마 수하물" },
+            { Language.Italian, "Bagaglio Fornace" }
+        }},
+        { "world.luggage_citadel", new Dictionary<Language, string> {
+            { Language.English, "Citadel Luggage" },
+            { Language.SimplifiedChinese, "城塞行李箱" },
+            { Language.TraditionalChinese, "城塞行李箱" },
+            { Language.Japanese, "城塞スーツケース" },
+            { Language.Korean, "요새 수하물" },
+            { Language.Italian, "Bagaglio Cittadella" }
+        }},
+        { "world.luggage_peak", new Dictionary<Language, string> {
+            { Language.English, "Peak Chest" },
+            { Language.SimplifiedChinese, "巅峰宝箱" },
+            { Language.TraditionalChinese, "巔峰寶箱" },
+            { Language.Japanese, "頂上チェスト" },
+            { Language.Korean, "정상 상자" },
+            { Language.Italian, "Baule Vetta" }
+        }},
+        { "world.luggage_climber", new Dictionary<Language, string> {
+            { Language.English, "Climber's Pack" },
+            { Language.SimplifiedChinese, "登山者遗留包" },
+            { Language.TraditionalChinese, "登山者遺留包" },
+            { Language.Japanese, "登山者の荷物" },
+            { Language.Korean, "등반가 유품 가방" },
+            { Language.Italian, "Sacca dello Scalatore" }
+        }},
+        { "world.luggage_ancient", new Dictionary<Language, string> {
+            { Language.English, "Ancient Chest" },
+            { Language.SimplifiedChinese, "古代遗迹宝箱" },
+            { Language.TraditionalChinese, "古代遺跡寶箱" },
+            { Language.Japanese, "古代の宝箱" },
+            { Language.Korean, "고대 상자" },
+            { Language.Italian, "Baule Antico" }
+        }},
+        { "world.luggage_mesa", new Dictionary<Language, string> {
+            { Language.English, "Mesa Luggage" },
+            { Language.SimplifiedChinese, "方山高原行李箱" },
+            { Language.TraditionalChinese, "方山高原行李箱" },
+            { Language.Japanese, "メサスーツケース" },
+            { Language.Korean, "메사 수하물" },
+            { Language.Italian, "Bagaglio Mesa" }
+        }},
+        { "world.luggage_clown", new Dictionary<Language, string> {
+            { Language.English, "Clown Luggage" },
+            { Language.SimplifiedChinese, "小丑行李箱" },
+            { Language.TraditionalChinese, "小丑行李箱" },
+            { Language.Japanese, "ピエロの荷物" },
+            { Language.Korean, "광대 수하물" },
+            { Language.Italian, "Bagaglio Pagliaccio" }
+        }},
+        { "world.luggage_mirage", new Dictionary<Language, string> {
+            { Language.English, "Mirage Luggage" },
+            { Language.SimplifiedChinese, "海市蜃楼行李箱" },
+            { Language.TraditionalChinese, "海市蜃樓行李箱" },
+            { Language.Japanese, "蜃気楼の荷物" },
+            { Language.Korean, "신기루 수하물" },
+            { Language.Italian, "Bagaglio Miraggio" }
         }},
 
         // About tab
@@ -937,10 +1105,10 @@ public static class Localization
         }},
         { "world.segment_alpine", new Dictionary<Language, string> {
             { Language.English, "Alpine" },
-            { Language.SimplifiedChinese, "高山" },
-            { Language.TraditionalChinese, "高山" },
-            { Language.Japanese, "高山" },
-            { Language.Korean, "고산" },
+            { Language.SimplifiedChinese, "雪山" },
+            { Language.TraditionalChinese, "雪山" },
+            { Language.Japanese, "雪山" },
+            { Language.Korean, "설산" },
             { Language.Italian, "Alpino" }
         }},
         { "world.segment_caldera", new Dictionary<Language, string> {
@@ -2598,6 +2766,150 @@ public static class Localization
             { Language.Japanese, "（無毒）" },
             { Language.Korean, "(무독)" },
             { Language.Italian, " (Non tossico)" }
+        }},
+        { "items.tag_handheld", new Dictionary<Language, string> {
+            { Language.English, "[Handheld]" },
+            { Language.SimplifiedChinese, "[手持放置]" },
+            { Language.TraditionalChinese, "[手持放置]" },
+            { Language.Japanese, "[手持ち]" },
+            { Language.Korean, "[휴대용]" },
+            { Language.Italian, "[In mano]" }
+        }},
+        { "items.tag_placed", new Dictionary<Language, string> {
+            { Language.English, "[Fixed Spike]" },
+            { Language.SimplifiedChinese, "[岩壁固定]" },
+            { Language.TraditionalChinese, "[岩壁固定]" },
+            { Language.Japanese, "[固定設置]" },
+            { Language.Korean, "[고정 설치]" },
+            { Language.Italian, "[Fisso]" }
+        }},
+        { "items.tag_fragile", new Dictionary<Language, string> {
+            { Language.English, "[Fragile]" },
+            { Language.SimplifiedChinese, "[劣质易断]" },
+            { Language.TraditionalChinese, "[劣質易斷]" },
+            { Language.Japanese, "[破損しやすい]" },
+            { Language.Korean, "[취약/파손형]" },
+            { Language.Italian, "[Fragile]" }
+        }},
+        { "items.tag_antigrav", new Dictionary<Language, string> {
+            { Language.English, "[Anti-Grav]" },
+            { Language.SimplifiedChinese, "[反重力]" },
+            { Language.TraditionalChinese, "[反重力]" },
+            { Language.Japanese, "[反重力]" },
+            { Language.Korean, "[반중력]" },
+            { Language.Italian, "[Antigravità]" }
+        }},
+        { "items.tag_rescue", new Dictionary<Language, string> {
+            { Language.English, "[Evac Rescue]" },
+            { Language.SimplifiedChinese, "[呼叫撤离]" },
+            { Language.TraditionalChinese, "[呼叫撤離]" },
+            { Language.Japanese, "[救助要請]" },
+            { Language.Korean, "[구출 요청]" },
+            { Language.Italian, "[Soccorso Evac]" }
+        }},
+        { "items.tag_illumination", new Dictionary<Language, string> {
+            { Language.English, "[Illumination]" },
+            { Language.SimplifiedChinese, "[照明]" },
+            { Language.TraditionalChinese, "[照明]" },
+            { Language.Japanese, "[照明]" },
+            { Language.Korean, "[조명]" },
+            { Language.Italian, "[Illuminazione]" }
+        }},
+        { "items.tag_jetpack", new Dictionary<Language, string> {
+            { Language.English, "[Jetpack]" },
+            { Language.SimplifiedChinese, "[喷气]" },
+            { Language.TraditionalChinese, "[噴氣]" },
+            { Language.Japanese, "[ジェットパック]" },
+            { Language.Korean, "[제트팩]" },
+            { Language.Italian, "[Jetpack]" }
+        }},
+        { "items.tag_rocketpack", new Dictionary<Language, string> {
+            { Language.English, "[Rocketpack]" },
+            { Language.SimplifiedChinese, "[火箭]" },
+            { Language.TraditionalChinese, "[火箭]" },
+            { Language.Japanese, "[ロケットパック]" },
+            { Language.Korean, "[로켓팩]" },
+            { Language.Italian, "[Rocketpack]" }
+        }},
+        { "items.tag_fannypack", new Dictionary<Language, string> {
+            { Language.English, "[Fannypack]" },
+            { Language.SimplifiedChinese, "[腰包]" },
+            { Language.TraditionalChinese, "[腰包]" },
+            { Language.Japanese, "[ファニーパック]" },
+            { Language.Korean, "[힙색]" },
+            { Language.Italian, "[Marsupio]" }
+        }},
+        { "items.tag_backpack_std", new Dictionary<Language, string> {
+            { Language.English, "[Standard]" },
+            { Language.SimplifiedChinese, "[标准]" },
+            { Language.TraditionalChinese, "[標準]" },
+            { Language.Japanese, "[標準]" },
+            { Language.Korean, "[기본]" },
+            { Language.Italian, "[Standard]" }
+        }},
+        { "items.tag_shroom_random", new Dictionary<Language, string> {
+            { Language.English, "[Random Effect]" },
+            { Language.SimplifiedChinese, "[随机效果]" },
+            { Language.TraditionalChinese, "[隨機效果]" },
+            { Language.Japanese, "[ランダム効果]" },
+            { Language.Korean, "[랜덤 효과]" },
+            { Language.Italian, "[Effetto casuale]" }
+        }},
+        { "items.tag_warp_player", new Dictionary<Language, string> {
+            { Language.English, "[Warp to Player]" },
+            { Language.SimplifiedChinese, "[传送队友]" },
+            { Language.TraditionalChinese, "[傳送隊友]" },
+            { Language.Japanese, "[味方ワープ]" },
+            { Language.Korean, "[아군 순간이동]" },
+            { Language.Italian, "[Teletrasporto Giocatore]" }
+        }},
+        { "items.tag_warp_biome", new Dictionary<Language, string> {
+            { Language.English, "[Warp to Biome]" },
+            { Language.SimplifiedChinese, "[传送群系]" },
+            { Language.TraditionalChinese, "[傳送群系]" },
+            { Language.Japanese, "[バイオームワープ]" },
+            { Language.Korean, "[바이옴 순간이동]" },
+            { Language.Italian, "[Teletrasporto Bioma]" }
+        }},
+        { "items.tag_warp_random", new Dictionary<Language, string> {
+            { Language.English, "[Random Warp]" },
+            { Language.SimplifiedChinese, "[随机传送]" },
+            { Language.TraditionalChinese, "[隨機傳送]" },
+            { Language.Japanese, "[ランダムワープ]" },
+            { Language.Korean, "[무작위 순간이동]" },
+            { Language.Italian, "[Teletrasporto Casuale]" }
+        }},
+        { "items.tag_cannon", new Dictionary<Language, string> {
+            { Language.English, "[Build Cannon]" },
+            { Language.SimplifiedChinese, "[建造大炮]" },
+            { Language.TraditionalChinese, "[建造大砲]" },
+            { Language.Japanese, "[大砲設置]" },
+            { Language.Korean, "[대포 설치]" },
+            { Language.Italian, "[Costruisci Cannone]" }
+        }},
+        { "items.tag_uses_format", new Dictionary<Language, string> {
+            { Language.English, "[{0} Uses]" },
+            { Language.SimplifiedChinese, "[{0}次]" },
+            { Language.TraditionalChinese, "[{0}次]" },
+            { Language.Japanese, "[{0}回]" },
+            { Language.Korean, "[{0}회]" },
+            { Language.Italian, "[{0} Usi]" }
+        }},
+        { "items.tag_uses_infinite", new Dictionary<Language, string> {
+            { Language.English, "[Infinite]" },
+            { Language.SimplifiedChinese, "[无限次]" },
+            { Language.TraditionalChinese, "[無限次]" },
+            { Language.Japanese, "[無制限]" },
+            { Language.Korean, "[무제한]" },
+            { Language.Italian, "[Infinito]" }
+        }},
+        { "items.tag_weight_format", new Dictionary<Language, string> {
+            { Language.English, "[Weight: {0}]" },
+            { Language.SimplifiedChinese, "[重量: {0}]" },
+            { Language.TraditionalChinese, "[重量: {0}]" },
+            { Language.Japanese, "[重量: {0}]" },
+            { Language.Korean, "[무게: {0}]" },
+            { Language.Italian, "[Peso: {0}]" }
         }},
 
         // Achievements Tab & UI Keys
